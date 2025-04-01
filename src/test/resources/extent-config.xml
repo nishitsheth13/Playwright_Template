@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extentreports>
+    <configuration>
+        <!-- report theme -->
+
+        <!-- standard, dark -->
+
+        <theme>dark</theme>
+        <!-- document encoding -->
+
+        <!-- defaults to UTF-8 -->
+
+        <encoding>UTF-8</encoding>
+        <!-- protocol for script and stylesheets -->
+
+        <!-- defaults to https -->
+
+        <protocol>https</protocol>
+        <!-- title of the document -->
+        <documentTitle>MRI Energy Cucumber Test Report</documentTitle>
+        <!-- report name - displayed at top-nav -->
+
+        <reportName>MRI Energy Cucumber Report</reportName>
+        <!-- location of charts in the test view -->
+
+        <!-- top, bottom -->
+
+        <testViewChartLocation>bottom</testViewChartLocation>
+        <!-- custom javascript -->
+
+        <scripts>
+
+            <![CDATA[
+            <img src='C:\QA_Resources\Automation Projects\AutomationScripts\Playwright_Java\src\test\resources\attachments\mri_energy_logo.png' />
+$(document).ready(function() {
+});
+]]>
+        </scripts>
+        <!-- custom styles -->
+        <styles>
+            <![CDATA[
+]]>
+        </styles>
+
+<Authors>
+            <author>Nishit Sheth</author>
+        </Authors>
+        <SystemInfo>
+            <info name="OS">Windows 10</info>
+            <info name="Java Version">1.8.0_161</info>
+            <info name="Extent Version">5.0.9</info>
+        </SystemInfo>
+    </configuration>
+</extentreports>
+

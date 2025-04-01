@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+
+<suite name="MRI Energy Testng XML Test Suite">     <!--   Parallel Runner-->
+    <listeners>
+        <listener class-name="listener.listener">
+        </listener>
+    </listeners>
+
+    <!--   Method Runner-->
+    <test name="Smoke Test Execution">
+        <parameter name="Browsers" value="chrome"/>
+        <classes>
+            <class name="pages.login"/>
+        </classes>
+
+
+    </test>
+
+    <!--   Tests Runner-->
+    <test name="Test Execution with Runner">
+        <!--        <parameter name="Server" value="uksestdevtest02"/>-->
+        <classes>
+            <class name="runner.testRunner"/>
+        </classes>
+    </test>
+
+
+</suite>
