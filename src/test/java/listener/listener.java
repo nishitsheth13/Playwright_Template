@@ -1,7 +1,7 @@
 package listener;
 
-import configs.testNGExtentReporter;
-import configs.utils;
+import basicTemplate.configs.testNGExtentReporter;
+import basicTemplate.configs.utils;
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
 import com.aventstack.extentreports.Status;
@@ -24,13 +24,19 @@ public class listener extends utils implements ITestListener {
 
 
     public void onTestStart(ITestResult result) {
-        test = extent.createTest(result.getTestContext().getName());
-        extentTest.set(test);
+        Object[] params = result.getParameters();
+        if (params != null && params.length > 0) {
+            test = extent.createTest(params[0].toString().replace("\"", ""));
+            extentTest.set(test);
+        } else {
+            test = extent.createTest(result.getMethod().getMethodName());
+            extentTest.set(test);
+        }
     }
 
 
     public void onTestSuccess(ITestResult result) {
-        String name = result.getTestContext().getName();
+
         extentTest.get().log(Status.PASS, "Successful");
     }
 
@@ -38,6 +44,7 @@ public class listener extends utils implements ITestListener {
     public void onTestFailure(ITestResult result) {
 
         try {
+
             extentTest.get().addScreenCaptureFromPath(getScreenShotPath(result.getTestContext().getName()));
             extentTest.get().log(Status.FAIL, "Test Failed");
             extentTest.get().fail(result.getThrowable());
@@ -98,4 +105,3 @@ public class listener extends utils implements ITestListener {
     }
 
 }
-
