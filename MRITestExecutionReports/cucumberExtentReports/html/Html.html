@@ -49,7 +49,7 @@
 		<!-- nav-right -->
 		<ul id='nav-mobile' class='right hide-on-med-and-down nav-right'>
 			<a href='#!'>
-			<span class='label blue darken-3 suite-start-time'>Apr 2, 2025 12:48:37 PM</span>
+			<span class='label blue darken-3 suite-start-time'>Dec 3, 2025 03:48:18 PM</span>
 			</a>
 		</ul>
 	</div>
@@ -76,9 +76,7 @@
 				<i class='material-icons'>local_offer</i> Category
 				</a>
 				<ul id='category-toggle' class='dropdown-content'>
-					<li><a href='#'>@Priority=0</a></li>
 					<li><a href='#'>@Priority=1</a></li>
-					<li><a href='#'>@Priority=2</a></li>
 					<li class='divider'></li>
 					<li class='clear'><a href='#!' clear='true'>Clear Filters</a></li>
 				</ul>
@@ -139,7 +137,7 @@
                 </div>
                 <div class='block text-small'>
                     <span class='tooltipped' data-position='top' data-tooltip='100%'>
-                    <span class='strong'>3</span> scenarios passed</span>
+                    <span class='strong'>1</span> scenarios passed</span>
                 </div>
                 <div class='block text-small'>
                     <span class='strong tooltipped' data-position='top' data-tooltip='0%'>
@@ -159,7 +157,7 @@
                 </div>
                 <div class='block text-small'>
                     <span class='tooltipped' data-position='top' data-tooltip='100%'>
-                    <span class='strong'>9</span> steps passed</span>
+                    <span class='strong'>3</span> steps passed</span>
                 </div>
                 <div class='block text-small'>
                     <span class='strong tooltipped' data-position='top' data-tooltip='0%'>
@@ -186,10 +184,10 @@
 	<div class='subview-left left'>
 		<div class='view-summary'>
 			<ul id='test-collection' class='test-collection'>
-				<li class='test displayed active has-leaf pass' status='pass' bdd='true' test-id='3'>
+				<li class='test displayed active has-leaf pass' status='pass' bdd='true' test-id='2'>
 					<div class='test-heading'>
 						<span class='test-name'>Validate User Redirection and Functionality in MRI Energy Web Application Login feature</span>
-						<span class='test-time'>Apr 2, 2025 12:48:40 PM</span>
+						<span class='test-time'>Dec 3, 2025 03:48:30 PM</span>
 						<span class='test-status right pass'>Pass</span>
 					</div>
 					<div class='test-content hide'>
@@ -200,39 +198,9 @@
 	<a class="btn-floating waves-effect waves-light clear grey" title="clear"><i class='material-icons'>clear</i></a>
 </div>
 
-<div class='scenario node' test-id='4' status='pass'>
+<div class='scenario node' test-id='3' status='pass'>
 
-	<span class='duration right label'>00 00 00.157</span>
-	<div class="bdd-test">
-		<div class="scenario-name"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span> Scenario: Verify User is redirected to correct URL</div>
-	</div>
-	
-	
-		<div class='category-list'>
-				<span class='category label'>@Priority=0</span>
-		</div>
-	
-	<ul class='steps'>
-		<li test-id='5' class='node given Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.verifyURL())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Given Enter URL</div>
-
-
-		</li>
-		<li test-id='6' class='node when Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.verifyBrowser())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>When Browser is Open</div>
-
-
-		</li>
-		<li test-id='7' class='node then Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.verifyRedirection())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Then User is redirected to the application's URL</div>
-
-
-		</li>
-	</ul>
-</div>
-<div class='scenario node' test-id='9' status='pass'>
-
-	<span class='duration right label'>00 00 01.061</span>
+	<span class='duration right label'>00 00 01.580</span>
 	<div class="bdd-test">
 		<div class="scenario-name"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span> Scenario: Verify User is able to access the MRI Energy application with Valid Credentials</div>
 	</div>
@@ -243,48 +211,18 @@
 		</div>
 	
 	<ul class='steps'>
-		<li test-id='10' class='node given Pass' status='Pass'>
+		<li test-id='4' class='node given Pass' status='Pass'>
 			<div class="step-name" title="(stepDefs.login.verifyRedirection())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Given User is redirected to the application's URL</div>
 
 
 		</li>
-		<li test-id='11' class='node when Pass' status='Pass'>
+		<li test-id='5' class='node when Pass' status='Pass'>
 			<div class="step-name" title="(stepDefs.login.userEnterTheValidCredentialsOfAdmin())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>When User enter the valid credentials of admin</div>
 
 
 		</li>
-		<li test-id='12' class='node then Pass' status='Pass'>
+		<li test-id='6' class='node then Pass' status='Pass'>
 			<div class="step-name" title="(stepDefs.login.verifyUserShouldBeAbleToRedirectToHomePage())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Then Verify User should be able to redirect to HomePage</div>
-
-
-		</li>
-	</ul>
-</div>
-<div class='scenario node' test-id='14' status='pass'>
-
-	<span class='duration right label'>00 00 00.565</span>
-	<div class="bdd-test">
-		<div class="scenario-name"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span> Scenario: Verify User is not able to access the MRI Energy application With InValid Credentials</div>
-	</div>
-	
-	
-		<div class='category-list'>
-				<span class='category label'>@Priority=2</span>
-		</div>
-	
-	<ul class='steps'>
-		<li test-id='15' class='node given Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.verifyRedirection())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Given User is redirected to the application's URL</div>
-
-
-		</li>
-		<li test-id='16' class='node when Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.userEnterTheInvalidCredentialsOfAdmin())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>When User enter the invalid credentials of admin</div>
-
-
-		</li>
-		<li test-id='17' class='node then Pass' status='Pass'>
-			<div class="step-name" title="(stepDefs.login.verifyUserShouldNotBeAbleToRedirectToHomePage())"><span class='status pass' title='Pass'><i class='material-icons'>check_circle</i></span>Then Verify User should not be able to redirect to HomePage</div>
 
 
 		</li>
@@ -334,39 +272,6 @@
 			<ul id='category-collection' class='category-collection'>
 				<li class='category displayed active'>
 					<div class='category-heading'>
-						<span class='category-name'>@Priority=0</span>
-						<span class='category-status right'>
-						<span class='label pass'>1</span>
-						</span>
-					</div>
-					<div class='category-content hide'>
-						<div class='category-status-counts'>
-							<span status="pass" class='label green accent-4 white-text'>Passed: 1</span>
-							
-							
-						</div>
-						<div class='category-tests'>
-							<table class='bordered table-results'>
-								<thead>
-									<tr>
-										<th>Timestamp</th>
-										<th>TestName</th>
-										<th>Status</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>Apr 2, 2025 12:48:40 PM</td>
-										<td class='linked' test-id='4'>Verify User is redirected to correct URL</td>
-										<td><span class='test-status Pass'>Pass</span></td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</li>
-				<li class='category displayed active'>
-					<div class='category-heading'>
 						<span class='category-name'>@Priority=1</span>
 						<span class='category-status right'>
 						<span class='label pass'>1</span>
@@ -389,41 +294,8 @@
 								</thead>
 								<tbody>
 									<tr>
-										<td>Apr 2, 2025 12:48:41 PM</td>
-										<td class='linked' test-id='9'>Verify User is able to access the MRI Energy application with Valid Credentials</td>
-										<td><span class='test-status Pass'>Pass</span></td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</li>
-				<li class='category displayed active'>
-					<div class='category-heading'>
-						<span class='category-name'>@Priority=2</span>
-						<span class='category-status right'>
-						<span class='label pass'>1</span>
-						</span>
-					</div>
-					<div class='category-content hide'>
-						<div class='category-status-counts'>
-							<span status="pass" class='label green accent-4 white-text'>Passed: 1</span>
-							
-							
-						</div>
-						<div class='category-tests'>
-							<table class='bordered table-results'>
-								<thead>
-									<tr>
-										<th>Timestamp</th>
-										<th>TestName</th>
-										<th>Status</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>Apr 2, 2025 12:48:42 PM</td>
-										<td class='linked' test-id='14'>Verify User is not able to access the MRI Energy application With InValid Credentials</td>
+										<td>Dec 3, 2025 03:48:30 PM</td>
+										<td class='linked' test-id='3'>Verify User is able to access the MRI Energy application with Valid Credentials</td>
 										<td><span class='test-status Pass'>Pass</span></td>
 									</tr>
 								</tbody>
@@ -454,31 +326,31 @@
 			<div class='col s2'>
 				<div class='card-panel r'>
 					Scenarios
-					<div class='panel-lead'>3</div>
+					<div class='panel-lead'>1</div>
 				</div>
 			</div>
 			<div class='col s2'>
 				<div class='card-panel r'>
 					Steps
-					<div class='panel-lead'>9</div>
+					<div class='panel-lead'>3</div>
 				</div>
 			</div>
 			<div class='col s2'>
 				<div class='card-panel r'>
 					Start
-					<div class='panel-lead'>Apr 2, 2025 12:48:37 PM</div>
+					<div class='panel-lead'>Dec 3, 2025 03:48:18 PM</div>
 				</div>
 			</div>
 			<div class='col s2'>
 				<div class='card-panel r'>
 			 		End
-			 		<div class='panel-lead'>Apr 2, 2025 12:48:43 PM</div>
+			 		<div class='panel-lead'>Dec 3, 2025 03:52:20 PM</div>
 				</div>
 			</div>
 			<div class='col s2'>
 				<div class='card-panel r'>
 					Time Taken
-					<div class='panel-lead'>00 00 05.546</div>
+					<div class='panel-lead'>00 04 02.157</div>
 				</div>
 			</div>
 			<div class='col s4'>
@@ -522,25 +394,7 @@
 							<th>Passed %</th>
 						</tr>
 						<tr>
-							<td>@Priority=0</td>
-							<td>1</td>
-							<td>0</td>
-							<td>0</td>
-							<td>
-									100%
-							</td>
-						</tr>
-						<tr>
 							<td>@Priority=1</td>
-							<td>1</td>
-							<td>0</td>
-							<td>0</td>
-							<td>
-									100%
-							</td>
-						</tr>
-						<tr>
-							<td>@Priority=2</td>
 							<td>1</td>
 							<td>0</td>
 							<td>0</td>
@@ -566,16 +420,16 @@
 				errorParent: 0,
 				warningParent: 0,
 				skipParent: 0,
-				childCount: 3,
-				passChild: 3,
+				childCount: 1,
+				passChild: 1,
 				failChild: 0,
 				fatalChild: 0,
 				errorChild: 0,
 				warningChild: 0,
 				skipChild: 0,
 				infoChild: 0,
-				grandChildCount: 9,
-				passGrandChild: 9,
+				grandChildCount: 3,
+				passGrandChild: 3,
 				failGrandChild: 0,
 				fatalGrandChild: 0,
 				errorGrandChild: 0,
@@ -587,7 +441,7 @@
 		
 		<script>
 			var timeline = {
-			        "Validate User Redirection and Functionality in MRI Energy Web Application Login feature":1.829
+			        "Validate User Redirection and Functionality in MRI Energy Web Application Login feature":1.581
 			};
 		</script>
 		

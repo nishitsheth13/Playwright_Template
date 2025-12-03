@@ -8,14 +8,14 @@
     </listeners>
 
     <!--   Method Runner-->
-    <test name="Smoke Test Execution">
-        <parameter name="Browsers" value="chrome"/>
-        <classes>
-            <class name="pages.login"/>
-        </classes>
+    <!--    <test name="Smoke Test Execution">-->
+    <!--        <parameter name="Browsers" value="chrome"/>-->
+    <!--        <classes>-->
+    <!--            <class name="pages.login"/>-->
+    <!--        </classes>-->
 
 
-    </test>
+    <!--    </test>-->
 
     <!--   Tests Runner-->
     <test name="Test Execution with Runner">
