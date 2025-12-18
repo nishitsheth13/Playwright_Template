@@ -31,7 +31,7 @@ public class jiraClient {
                 addComment(issueKey, passCommentText);
             }
         } else {
-            if (checkResponse.getStatusCode() != 200) {
+            if (isFailed) {
                 addComment(issueKey, failCommentText);
             } else if (checkResponse.getStatusCode() == 404) {
                 System.out.println("❌ Unexpected Jira API response: " + checkResponse.getBody().asString());
