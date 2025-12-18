@@ -48,4 +48,17 @@ public class loadProps {
         }
 
     }
+    public static String getJIRAConfig(String key) {
+        Properties prop = new Properties();
+        FileInputStream input;
+
+        try {
+            input = new FileInputStream(System.getProperty("user.dir") + "//src//test//resources//jiraConfigurations.properties");
+            prop.load(input);
+            input.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return prop.getProperty(key);
+    }
 }
