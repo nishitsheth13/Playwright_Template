@@ -46,3 +46,7 @@ MRITestExecutionReports/
 *.png
 *.html
 *.pdf
+
+
+# Files
+./jiraConfig.java

@@ -13,7 +13,7 @@ import java.util.Map;
 public class jiraClient {
 
     private static String getAuthHeader() {
-        String auth = jiraConfig.EMAIL + ":" + jiraConfig.API_TOKEN;
+        String auth = loadProps.getJIRAConfig("JIRA_EMAIL")+ ":" + loadProps.getJIRAConfig("JIRA_API_TOKEN");
         return "Basic " + Base64.getEncoder().encodeToString(auth.getBytes());
     }
 
@@ -25,7 +25,7 @@ public class jiraClient {
                 .given()
                 .header("Authorization", getAuthHeader())
                 .header("Content-Type", "application/json")
-                .get(jiraConfig.BASE_URL + "/rest/api/3/issue/" + issueKey);
+                .get(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + issueKey);
         if (!isFailed) {
             if (checkResponse.getStatusCode() == 200) {
                 addComment(issueKey, passCommentText);
@@ -58,7 +58,7 @@ public class jiraClient {
 
         String payload = "{\n" +
                 "  \"fields\": {\n" +
-                "    \"project\": { \"key\": \"" + jiraConfig.PROJECT_KEY + "\" },\n" +
+                "    \"project\": { \"key\": \"" + loadProps.getJIRAConfig("PROJECT_KEY") + "\" },\n" +
                 "    \"summary\": \"" + escapeForJson(summary) + "\",\n" +
                 "    \"description\": " + adfDescription + ",\n" +
                 "    \"labels\": [\"BugByAutomationFailure\"],\n" +
@@ -71,7 +71,7 @@ public class jiraClient {
                 .header("Authorization", getAuthHeader())
                 .header("Content-Type", "application/json")
                 .body(payload)
-                .post(jiraConfig.BASE_URL + "/rest/api/3/issue");
+                .post(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue");
 
         System.out.println(response.asPrettyString());
 
@@ -86,7 +86,7 @@ public class jiraClient {
                         .header("Authorization", getAuthHeader())
                         .header("X-Atlassian-Token", "no-check")
                         .multiPart("file", attachmentFile)
-                        .post(jiraConfig.BASE_URL + "/rest/api/3/issue/" + createdIssueKey + "/attachments");
+                        .post(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + createdIssueKey + "/attachments");
 
                 if (attachResponse.statusCode() == 200 || attachResponse.statusCode() == 201) {
                     System.out.println("📎 Attachment uploaded successfully.");
@@ -117,7 +117,7 @@ public class jiraClient {
 
         Response response = RestAssured
                 .given()
-                .baseUri(jiraConfig.BASE_URL)
+                .baseUri(loadProps.getJIRAConfig("JIRA_BASE_URL"))
                 .header("Authorization", getAuthHeader())
                 .header("Content-Type", "application/json")
                 .body(requestBody)
@@ -150,7 +150,7 @@ public class jiraClient {
 
         Response response = RestAssured
                 .given()
-                .baseUri(jiraConfig.BASE_URL)
+                .baseUri(loadProps.getJIRAConfig("JIRA_BASE_URL"))
                 .header("Authorization", getAuthHeader())
                 .header("Content-Type", "application/json")
                 .body(requestBody)
