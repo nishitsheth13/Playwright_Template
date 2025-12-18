@@ -36,6 +36,13 @@ build/
 
 ### Mac OS ###
 .DS_Store
+# IntelliJ
+.idea/
+*.iml
 
-.idea
-./MRITestExecutionReports
+# Test execution reports
+MRITestExecutionReports/
+*.avi
+*.png
+*.html
+*.pdf
