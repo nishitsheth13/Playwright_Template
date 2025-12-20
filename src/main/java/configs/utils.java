@@ -136,6 +136,90 @@ public class utils extends base {
     }
 
     /**
+     * Access elements inside Shadow DOM.
+     * Useful for modern web components that use Shadow DOM encapsulation.
+     * 
+     * @param shadowHost The selector for the shadow host element
+     * @param targetSelector The selector for the element inside shadow root
+     * @return Locator for the element inside shadow DOM
+     */
+    public static Locator getShadowDomElement(String shadowHost, String targetSelector) {
+        Locator hostLocator = page.locator(shadowHost);
+        return hostLocator.locator(":scope >> shadow-root >> " + targetSelector);
+    }
+
+    /**
+     * Navigate through menu hierarchy with expand support.
+     * Handles expandable menus, main menus, submenus, and final page navigation.
+     * 
+     * @param expandMenu Locator for expand button
+     * @param mainMenu Locator for main menu
+     * @param subMenu Locator for submenu
+     * @param pageLink Locator for final page link
+     * @throws InterruptedException if thread is interrupted
+     */
+    public static void navigateToMenu(String expandMenu, String mainMenu, String subMenu, String pageLink) throws InterruptedException {
+        Thread.sleep(500);
+        Locator expand = page.locator(expandMenu);
+        Locator main = page.locator(mainMenu);
+        Locator sub = page.locator(subMenu);
+        Locator pageLocator = page.locator(pageLink);
+        
+        boolean isExpanded = main.isVisible();
+        if (!isExpanded && expand.isVisible()) {
+            expand.click();
+            Thread.sleep(300);
+        }
+        
+        if (main.isVisible()) {
+            main.click();
+            if (sub.isVisible()) {
+                sub.click();
+                if (pageLocator.isVisible()) {
+                    pageLocator.click();
+                    System.out.println("✅ Navigated to: " + pageLink);
+                } else {
+                    System.err.println("❌ Page link not visible");
+                }
+            } else {
+                System.err.println("❌ Submenu not visible");
+            }
+        } else {
+            System.err.println("❌ Main menu not visible");
+        }
+    }
+
+    /**
+     * Handle file downloads with Playwright.
+     * Waits for download to complete and returns the downloaded file path.
+     * 
+     * @param downloadTrigger Runnable that triggers the download
+     * @return Path to the downloaded file
+     */
+    public static Path handleDownload(Runnable downloadTrigger) {
+        try {
+            com.microsoft.playwright.Download download = page.waitForDownload(() -> {
+                downloadTrigger.run();
+            });
+            
+            Path downloadPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + 
+                    loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/downloads/" + 
+                    download.suggestedFilename());
+            
+            if (!Files.exists(downloadPath.getParent())) {
+                Files.createDirectories(downloadPath.getParent());
+            }
+            
+            download.saveAs(downloadPath);
+            System.out.println("✅ File downloaded: " + download.suggestedFilename());
+            return downloadPath;
+        } catch (Exception e) {
+            System.err.println("❌ Download failed: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
      * Generates a timestamp string for file naming.
      * 
      * @return Formatted timestamp string (yyyy_MM_dd_HH_mm)
@@ -195,14 +279,6 @@ public class utils extends base {
             System.err.println("❌ Error extracting version: " + e.getMessage());
             throw e;
         }
-    }
-
-    public static Locator getShadowDomElement(String shadowHost, String targetSelector) {
-        // Locate the shadow host
-        Locator hostLocator = page.locator(shadowHost);
-
-        // Navigate into the shadow root and locate the target element
-        return hostLocator.locator(":scope >> shadow-root >> " + targetSelector);
     }
 
     /**

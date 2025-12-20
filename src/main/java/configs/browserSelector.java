@@ -17,6 +17,7 @@ public class browserSelector extends base {
     public static boolean Recording = Boolean.parseBoolean(loadProps.getProperty("Recording_Mode"));
     public static boolean Screenshot = Boolean.parseBoolean(loadProps.getProperty("Screenshots_Mode"));
     public static boolean headless = Boolean.parseBoolean(loadProps.getProperty("Headless_Mode"));
+    public static boolean traceLog = Boolean.parseBoolean(loadProps.getProperty("TraceLog"));
     public static Playwright playwright;
     public static Browser browser;
     public static BrowserContext context;
@@ -57,11 +58,18 @@ public class browserSelector extends base {
                 Files.createDirectories(videoDir);
             }
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions()
+                    .setAcceptDownloads(true)
                     .setViewportSize(null)
                     .setIgnoreHTTPSErrors(true);
             BrowserContext context = browser.newContext(contextOptions);
             context.setDefaultTimeout(20000);
             context.setDefaultNavigationTimeout(20000);
+            if (traceLog) {
+                context.tracing().start(new com.microsoft.playwright.Tracing.StartOptions()
+                        .setScreenshots(true)
+                        .setSnapshots(true)
+                        .setSources(true));
+            }
             page = context.newPage();
             if (Recording && !headless) {
                 recoder.startRecording();
@@ -79,11 +87,18 @@ public class browserSelector extends base {
                 Files.createDirectories(videoDir);
             }
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions()
+                    .setAcceptDownloads(true)
                     .setViewportSize(null)
                     .setIgnoreHTTPSErrors(true);
             BrowserContext context = browser.newContext(contextOptions);
             context.setDefaultTimeout(20000);
             context.setDefaultNavigationTimeout(20000);
+            if (traceLog) {
+                context.tracing().start(new com.microsoft.playwright.Tracing.StartOptions()
+                        .setScreenshots(true)
+                        .setSnapshots(true)
+                        .setSources(true));
+            }
             page = context.newPage();
             if (Recording && !headless) {
                 recoder.startRecording();
@@ -110,6 +125,11 @@ public class browserSelector extends base {
             utils.deleteOldReports();
         }
         if (context != null) {
+            if (traceLog) {
+                context.tracing().stop(new com.microsoft.playwright.Tracing.StopOptions()
+                        .setPath(Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + 
+                        loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/trace.zip")));
+            }
             context.close();
         }
         if (browser != null) {
