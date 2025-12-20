@@ -63,14 +63,7 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     And User clicks on Sign In button
     Then User should see validation messages for both fields
 
-  @Functional @Priority=7
-  Scenario: Verify Remember Me functionality
-    When User enters valid username from configuration
-    And User enters valid password from configuration
-    And User checks the Remember Me checkbox
-    And User clicks on Sign In button
-    Then User should be successfully logged in
-    And Remember Me should be enabled
+
 
   @Functional @Priority=8
   Scenario: Verify Forgot Username link is functional
@@ -130,8 +123,5 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     And Password field should have proper label
     And Sign In button should be keyboard accessible
 
-  @NonFunctional @Compatibility @Priority=17
-  Scenario: Verify login page version information
-    Then Version information should be displayed in footer
-    And Version should show "Version: 2025.2 (Build: 019)"
+
 

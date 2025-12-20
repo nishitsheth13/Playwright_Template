@@ -22,46 +22,63 @@ public class testNGExtentReporter {
 
 
     public static ExtentReports extentReportGenerator() throws IOException {
+        if (extent != null && update) {
+            // Report already initialized and configured
+            return extent;
+        }
+
         String folderName = loadProps.getProperty("Version").replaceAll("[()-+.^:,. ]", "");
         Path reportPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/", folderName);
-        // Step 3: Create the folder if it does not exist
-        if (!Files.exists(reportPath)) {
-            Files.createDirectories(reportPath);
+        Path htmlReportPath = reportPath.resolve("extentReports/testNGExtentReports/html");
+        Path sparkReportPath = reportPath.resolve("extentReports/testNGExtentReports/spark");
+
+        // Create the folders if they do not exist
+        if (!Files.exists(htmlReportPath)) {
+            Files.createDirectories(htmlReportPath);
+            System.out.println("📁 Created HTML report directory: " + htmlReportPath);
         }
-        String path = reportPath + "/extentReports/testNGExtentReports/html/extentReport_" + utils.timeStamp() + ".html";
-        ExtentHtmlReporter reporter = new ExtentHtmlReporter(path);
-        reporter.config().setReportName("MRI Energy Automation Test Report");
-        reporter.config().setDocumentTitle("MRI Energy Automation Test");
-        reporter.config().getCss();
-        reporter.config().setJs("document.getElementsByClassName('logo')[0].style.display='none';");
-        String SparkPath = reportPath + "/extentReports/testNGExtentReports/spark/spark_" + utils.timeStamp() + ".html";
-        ExtentSparkReporter sparkDarkReporter = new ExtentSparkReporter(SparkPath);
-        sparkDarkReporter.config().setCss("css-string");
-        sparkDarkReporter.config().setDocumentTitle("MRI Energy Automation Test");
-        sparkDarkReporter.config().setTimelineEnabled(true);
-        sparkDarkReporter.config().setEncoding("utf-8");
-        sparkDarkReporter.config().setJs("js-string");
-        sparkDarkReporter.config().setProtocol(Protocol.HTTPS);
-        sparkDarkReporter.config().setJs("document.getElementsByClassName('logo')[0].style.display='none';");
-        sparkDarkReporter.config().setReportName("MRI Energy Automation Report");
-        sparkDarkReporter.config().setTheme(Theme.DARK);
-        sparkDarkReporter.config().getReporter();
+        if (!Files.exists(sparkReportPath)) {
+            Files.createDirectories(sparkReportPath);
+            System.out.println("📁 Created Spark report directory: " + sparkReportPath);
+        }
+
+        // Initialize extent reports if not already done
         if (extent == null) {
             extent = new ExtentReports();
-            extent.setSystemInfo("QA Name ", "Nishit Sheth");
-            extent.setSystemInfo("os", "Windows");
-            System.out.println("Reporter attached successfully.");
+            extent.setSystemInfo("QA Name", "Nishit Sheth");
+            extent.setSystemInfo("OS", "Windows");
+            extent.setSystemInfo("Browser", loadProps.getProperty("Browser"));
+            extent.setSystemInfo("Environment", loadProps.getProperty("URL"));
+            extent.setSystemInfo("Version", loadProps.getProperty("Version"));
+            System.out.println("📊 ExtentReports initialized successfully");
+        }
 
-        } else {
-            if (!update) {
-                // Assuming reporter and extent are initialized earlier
-                reporter.config().getReporter();
-                extent.attachReporter(reporter);
-                sparkDarkReporter.config().getReporter();
-                extent.attachReporter(sparkDarkReporter);
-                update = true;
-            }
+        // Attach reporters only once
+        if (!update) {
+            // HTML Reporter
+            String htmlPath = htmlReportPath + "/extentReport_" + utils.timeStamp() + ".html";
+            ExtentHtmlReporter htmlReporter = new ExtentHtmlReporter(htmlPath);
+            htmlReporter.config().setReportName("MRI Energy Automation Test Report");
+            htmlReporter.config().setDocumentTitle("MRI Energy Automation Test");
+            htmlReporter.config().setJs("document.getElementsByClassName('logo')[0].style.display='none';");
+            extent.attachReporter(htmlReporter);
+            System.out.println("📄 HTML Reporter attached: " + htmlPath);
 
+            // Spark Reporter
+            String sparkPath = sparkReportPath + "/spark_" + utils.timeStamp() + ".html";
+            ExtentSparkReporter sparkReporter = new ExtentSparkReporter(sparkPath);
+            sparkReporter.config().setDocumentTitle("MRI Energy Automation Test");
+            sparkReporter.config().setTimelineEnabled(true);
+            sparkReporter.config().setEncoding("utf-8");
+            sparkReporter.config().setProtocol(Protocol.HTTPS);
+            sparkReporter.config().setJs("document.getElementsByClassName('logo')[0].style.display='none';");
+            sparkReporter.config().setReportName("MRI Energy Automation Report");
+            sparkReporter.config().setTheme(Theme.DARK);
+            extent.attachReporter(sparkReporter);
+            System.out.println("⚡ Spark Reporter attached: " + sparkPath);
+
+            update = true;
+            System.out.println("✅ All reporters attached successfully");
         }
 
         return extent;

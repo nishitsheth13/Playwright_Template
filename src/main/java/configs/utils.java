@@ -342,13 +342,16 @@ public class utils extends base {
     }
 
     public String getScreenShotPath(String TestName) throws IOException, AWTException {
+        String screenshotPath = System.getProperty("user.dir") + "/MRITestExecutionReports/" +
+                loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") +
+                "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png";
+
         page.screenshot(new Page.ScreenshotOptions()
-                .setPath(Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png"))
+                .setPath(Paths.get(screenshotPath))
                 .setFullPage(true));
 
-        String destPath = "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png";
-
-        return destPath;
+        System.out.println("📸 Screenshot saved: " + screenshotPath);
+        return screenshotPath;
     }
 
 }

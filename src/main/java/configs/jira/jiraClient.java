@@ -16,6 +16,21 @@ import java.util.Map;
 public class jiraClient {
 
     /**
+     * Gets the properly formatted JIRA base URL with trailing slash.
+     *
+     * @return JIRA base URL ending with /
+     */
+    private static String getJiraBaseUrl() {
+        String baseUrl = loadProps.getJIRAConfig("JIRA_BASE_URL");
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            System.err.println("❌ JIRA_BASE_URL not configured");
+            return null;
+        }
+        // Ensure URL ends with /
+        return baseUrl.trim().endsWith("/") ? baseUrl.trim() : baseUrl.trim() + "/";
+    }
+
+    /**
      * Generates Basic Auth header for JIRA API calls.
      * 
      * @return Base64 encoded authorization header
@@ -39,7 +54,7 @@ public class jiraClient {
      * 
      * @param issueKey JIRA issue key to update
      * @param summary Test summary
-     * @param descriptionText Test description
+     * @param descriptionText Test description or error message
      * @param attachmentFile Screenshot file (optional)
      * @param isFailed Whether the test failed
      */
@@ -50,7 +65,12 @@ public class jiraClient {
                 System.err.println("❌ Cannot update JIRA - authentication failed");
                 return;
             }
-            
+
+            String baseUrl = getJiraBaseUrl();
+            if (baseUrl == null) {
+                return;
+            }
+
             String passCommentText = loadProps.getProperty("PassComment") + " " + loadProps.getProperty("Version");
             String failCommentText = loadProps.getProperty("FailedComment") + " " + loadProps.getProperty("Version");
             
@@ -59,23 +79,84 @@ public class jiraClient {
                     .given()
                     .header("Authorization", authHeader)
                     .header("Content-Type", "application/json")
-                    .get(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + issueKey);
-            
+                    .get(baseUrl + "rest/api/3/issue/" + issueKey);
+
             if (checkResponse.getStatusCode() == 200) {
-                String commentText = isFailed ? failCommentText : passCommentText;
+                String commentText = isFailed ?
+                        failCommentText + "\n\n*Summary:* " + summary + "\n\n*Details:* " + descriptionText :
+                        passCommentText;
+
                 addComment(issueKey, commentText);
+
+                // Attach screenshot if test failed and file exists
+                if (isFailed) {
+                    System.out.println("🔍 Screenshot attachment check:");
+                    System.out.println("   - attachmentFile is null: " + (attachmentFile == null));
+                    if (attachmentFile != null) {
+                        System.out.println("   - attachmentFile path: " + attachmentFile.getAbsolutePath());
+                        System.out.println("   - attachmentFile exists: " + attachmentFile.exists());
+                        System.out.println("   - attachmentFile size: " + attachmentFile.length() + " bytes");
+                    }
+
+                    if (attachmentFile != null && attachmentFile.exists() && attachmentFile.length() > 0) {
+                        System.out.println("📎 Attempting to attach screenshot to " + issueKey);
+                        Response attachResponse = RestAssured
+                                .given()
+                                .header("Authorization", authHeader)
+                                .header("X-Atlassian-Token", "no-check")
+                                .multiPart("file", attachmentFile)
+                                .post(baseUrl + "rest/api/3/issue/" + issueKey + "/attachments");
+
+                        if (attachResponse.statusCode() == 200 || attachResponse.statusCode() == 201) {
+                            System.out.println("✅ Screenshot attached successfully to " + issueKey);
+                        } else {
+                            System.err.println("❌ Failed to upload screenshot (" + attachResponse.statusCode() + "): " + attachResponse.getBody().asString());
+                        }
+                    } else {
+                        if (attachmentFile == null) {
+                            System.err.println("⚠️ No screenshot file provided (attachmentFile is null)");
+                        } else if (!attachmentFile.exists()) {
+                            System.err.println("⚠️ Screenshot file does not exist: " + attachmentFile.getAbsolutePath());
+                        } else if (attachmentFile.length() == 0) {
+                            System.err.println("⚠️ Screenshot file is empty (0 bytes): " + attachmentFile.getAbsolutePath());
+                        }
+                    }
+                }
+
                 System.out.println("✅ JIRA issue " + issueKey + " updated with " + (isFailed ? "failure" : "success") + " comment");
             } else if (checkResponse.getStatusCode() == 404) {
-                System.out.println("⚠️ JIRA issue " + issueKey + " not found");
+                System.err.println("❌ JIRA issue " + issueKey + " not found (404)");
+            } else if (checkResponse.getStatusCode() == 401) {
+                System.err.println("❌ JIRA authentication failed (401) - check credentials");
+            } else if (checkResponse.getStatusCode() == 403) {
+                System.err.println("❌ JIRA access forbidden (403) - check permissions");
             } else {
                 System.err.println("❌ Unexpected JIRA API response (" + checkResponse.getStatusCode() + "): " + checkResponse.getBody().asString());
             }
         } catch (Exception e) {
             System.err.println("❌ Error updating JIRA issue: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public static void createBug(String summary, String descriptionText, File attachmentFile) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return;
+        }
+
+        String authHeader = getAuthHeader();
+        if (authHeader == null) {
+            System.err.println("❌ Cannot create bug - authentication failed");
+            return;
+        }
+
+        String projectKey = loadProps.getJIRAConfig("PROJECT_KEY");
+        if (projectKey == null || projectKey.trim().isEmpty()) {
+            System.err.println("❌ PROJECT_KEY not configured");
+            return;
+        }
+
         String adfDescription = "{\n" +
                 "  \"type\": \"doc\",\n" +
                 "  \"version\": 1,\n" +
@@ -94,7 +175,7 @@ public class jiraClient {
 
         String payload = "{\n" +
                 "  \"fields\": {\n" +
-                "    \"project\": { \"key\": \"" + loadProps.getJIRAConfig("PROJECT_KEY") + "\" },\n" +
+                "    \"project\": { \"key\": \"" + projectKey.trim() + "\" },\n" +
                 "    \"summary\": \"" + escapeForJson(summary) + "\",\n" +
                 "    \"description\": " + adfDescription + ",\n" +
                 "    \"labels\": [\"BugByAutomationFailure\"],\n" +
@@ -104,11 +185,12 @@ public class jiraClient {
 
         Response response = RestAssured
                 .given()
-                .header("Authorization", getAuthHeader())
+                .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
                 .body(payload)
-                .post(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue");
+                .post(baseUrl + "rest/api/3/issue");
 
+        System.out.println("📤 JIRA Bug Creation Response (" + response.getStatusCode() + "):");
         System.out.println(response.asPrettyString());
 
         if (response.getStatusCode() == 201) {
@@ -119,26 +201,43 @@ public class jiraClient {
             if (attachmentFile != null && attachmentFile.exists()) {
                 Response attachResponse = RestAssured
                         .given()
-                        .header("Authorization", getAuthHeader())
+                        .header("Authorization", authHeader)
                         .header("X-Atlassian-Token", "no-check")
                         .multiPart("file", attachmentFile)
-                        .post(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + createdIssueKey + "/attachments");
+                        .post(baseUrl + "rest/api/3/issue/" + createdIssueKey + "/attachments");
 
                 if (attachResponse.statusCode() == 200 || attachResponse.statusCode() == 201) {
-                    System.out.println("📎 Attachment uploaded successfully.");
+                    System.out.println("📎 Attachment uploaded successfully to " + createdIssueKey);
                 } else {
-                    System.out.println("❌ Failed to upload attachment: " + attachResponse.getBody().asString());
+                    System.err.println("❌ Failed to upload attachment: " + attachResponse.getBody().asString());
                 }
             } else {
-                System.out.println("⚠️ No attachment provided.");
+                System.out.println("ℹ️ No screenshot attachment provided or file doesn't exist");
             }
 
+        } else if (response.getStatusCode() == 400) {
+            System.err.println("❌ Bad request - check project key, issue type, or required fields");
+        } else if (response.getStatusCode() == 401) {
+            System.err.println("❌ Authentication failed - check JIRA credentials");
+        } else if (response.getStatusCode() == 403) {
+            System.err.println("❌ Permission denied - user doesn't have permission to create issues");
         } else {
-            System.out.println("❌ Bug creation failed: " + response.getBody().asString());
+            System.err.println("❌ Bug creation failed: " + response.getBody().asString());
         }
     }
 
     public static void addComment(String issueKey, String commentText) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return;
+        }
+
+        String authHeader = getAuthHeader();
+        if (authHeader == null) {
+            System.err.println("❌ Cannot add comment - authentication failed");
+            return;
+        }
+
         Map<String, Object> adfBody = new HashMap<>();
         adfBody.put("type", "doc");
         adfBody.put("version", 1);
@@ -153,22 +252,32 @@ public class jiraClient {
 
         Response response = RestAssured
                 .given()
-                .baseUri(loadProps.getJIRAConfig("JIRA_BASE_URL"))
-                .header("Authorization", getAuthHeader())
+                .baseUri(baseUrl)
+                .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
                 .body(requestBody)
-                .post("/rest/api/3/issue/" + issueKey + "/comment");
+                .post("rest/api/3/issue/" + issueKey + "/comment");
 
         if (response.statusCode() == 201 || response.statusCode() == 200) {
-            System.out.println("💬 ADF Comment added to " + issueKey);
+            System.out.println("💬 Comment added to " + issueKey);
         } else {
-            System.out.println("❌ Failed to add ADF comment: " + response.getStatusCode());
-            System.out.println("Response body: " + response.getBody().asString());
+            System.err.println("❌ Failed to add comment (" + response.statusCode() + "): " + response.getBody().asString());
         }
     }
 
 
     public static void updateTestCase(String issueKey, String newDescription) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return;
+        }
+
+        String authHeader = getAuthHeader();
+        if (authHeader == null) {
+            System.err.println("❌ Cannot update test case - authentication failed");
+            return;
+        }
+
         Map<String, Object> fields = new HashMap<>();
         Map<String, Object> description = new HashMap<>();
         description.put("type", "doc");
@@ -186,14 +295,17 @@ public class jiraClient {
 
         Response response = RestAssured
                 .given()
-                .baseUri(loadProps.getJIRAConfig("JIRA_BASE_URL"))
-                .header("Authorization", getAuthHeader())
+                .baseUri(baseUrl)
+                .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
                 .body(requestBody)
-                .put("/rest/api/3/issue/" + issueKey);
+                .put("rest/api/3/issue/" + issueKey);
 
-        System.out.println("🔄 Update Status: " + response.getStatusCode());
-        System.out.println("🔄 Response: " + response.asString());
+        if (response.getStatusCode() == 204 || response.getStatusCode() == 200) {
+            System.out.println("🔄 Test case " + issueKey + " updated successfully");
+        } else {
+            System.err.println("❌ Update failed (" + response.getStatusCode() + "): " + response.asString());
+        }
     }
 
     private static String escapeForJson(String text) {

@@ -15,78 +15,116 @@
         <suiteXmlFile>src/test/testng.xml</suiteXmlFile>
     </properties>
     <dependencies>
+        <!-- Playwright - Latest stable version -->
         <dependency>
             <groupId>com.microsoft.playwright</groupId>
             <artifactId>playwright</artifactId>
-            <version>1.45.0</version>
+            <version>1.49.0</version>
         </dependency>
-        <!-- Update cucumber-java version -->
+
+        <!-- Cucumber - Latest version 7.x (stable) -->
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-java</artifactId>
-            <version>7.18.1</version> <!-- Updated version for compatibility -->
+            <version>7.20.1</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>7.11.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.aventstack</groupId>
-            <artifactId>extentreports</artifactId>
-            <version>5.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.stephenc.monte</groupId>
-            <artifactId>monte-screen-recorder</artifactId>
-            <version>0.7.7.0</version>
         </dependency>
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-testng</artifactId>
-            <version>7.18.1</version>
+            <version>7.20.1</version>
             <scope>test</scope>
         </dependency>
-        <!--**extra**-->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-to-slf4j</artifactId>
-            <version>2.20.0</version>
-        </dependency>
-        <dependency>
-            <groupId>tech.grasshopper</groupId>
-            <artifactId>extent-pdf-report</artifactId>
-            <version>2.11.0</version>
-        </dependency>
-
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-picocontainer</artifactId>
-            <version>7.18.1</version>
+            <version>7.20.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit</artifactId>
+            <version>7.20.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TestNG - Latest stable version -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>7.10.2</version>
+        </dependency>
+
+        <!-- ExtentReports - Latest version -->
+        <dependency>
+            <groupId>com.aventstack</groupId>
+            <artifactId>extentreports</artifactId>
+            <version>5.1.2</version>
         </dependency>
         <dependency>
             <groupId>tech.grasshopper</groupId>
             <artifactId>extentreports-cucumber7-adapter</artifactId>
             <version>1.14.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+        <dependency>
+            <groupId>tech.grasshopper</groupId>
+            <artifactId>extent-pdf-report</artifactId>
+            <version>2.12.0</version>
+        </dependency>
+
+        <!-- Override vulnerable transitive dependencies with secure versions -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.27.1</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.17.1</version>
+        </dependency>
+
+        <!-- Screen Recorder -->
+        <dependency>
+            <groupId>com.github.stephenc.monte</groupId>
+            <artifactId>monte-screen-recorder</artifactId>
+            <version>0.7.7.0</version>
+        </dependency>
+
+        <!-- Logging - Latest Log4j 2.x -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+            <version>2.24.3</version>
+        </dependency>
+
+        <!-- REST Assured - Latest version -->
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <version>5.5.6</version> <!-- Updated to latest -->
+            <version>5.5.0</version>
         </dependency>
+
+        <!-- JUnit - Latest 4.x version -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.cucumber/cucumber-junit -->
-        <dependency>
-            <groupId>io.cucumber</groupId>
-            <artifactId>cucumber-junit</artifactId>
-            <version>7.18.1</version>
             <scope>test</scope>
         </dependency>
 
@@ -95,11 +133,11 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!-- Your plugins here -->
+                <!-- Cucumber Reporting Plugin -->
                 <plugin>
                     <groupId>net.masterthought</groupId>
                     <artifactId>maven-cucumber-reporting</artifactId>
-                    <version>5.8.0</version>
+                    <version>5.8.2</version>
                     <executions>
                         <execution>
                             <id>execution</id>
@@ -114,32 +152,52 @@
                         </execution>
                     </executions>
                 </plugin>
-                <!-- Update maven-compiler-plugin configuration -->
+
+                <!-- Maven Compiler Plugin - Latest version -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                     <configuration>
-                        <source>22</source>
-                        <target>22</target>
+                        <release>22</release>
+                        <compilerArgs>
+                            <arg>-parameters</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
 
-                <!-- Update maven-surefire-plugin version -->
+                <!-- Maven Surefire Plugin - Latest version -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.1.2</version> <!-- Updated version for compatibility -->
+                    <version>3.5.2</version>
                     <configuration>
-                        <testFailureIgnore>true</testFailureIgnore>
-                        <suiteXmlFiles>${suiteXmlFile}</suiteXmlFiles>
+                        <testFailureIgnore>false</testFailureIgnore>
+                        <rerunFailingTestsCount>2</rerunFailingTestsCount>
+                        <suiteXmlFiles>
+                            <suiteXmlFile>${suiteXmlFile}</suiteXmlFile>
+                        </suiteXmlFiles>
+                        <properties>
+                            <property>
+                                <name>usedefaultlisteners</name>
+                                <value>true</value>
+                            </property>
+                            <property>
+                                <name>listener</name>
+                                <value>listener.listener,configs.RetryListener</value>
+                            </property>
+                        </properties>
+                        <systemPropertyVariables>
+                            <extent.reporter.spark.start>true</extent.reporter.spark.start>
+                            <extent.reporter.spark.out>MRITestExecutionReports/cucumberExtentReports/spark/spark.html</extent.reporter.spark.out>
+                        </systemPropertyVariables>
                     </configuration>
                 </plugin>
 
-                <!-- Update maven-assembly-plugin version -->
+                <!-- Maven Assembly Plugin - Latest version -->
                 <plugin>
                     <artifactId>maven-assembly-plugin</artifactId>
-                    <version>3.3.0</version> <!-- Updated version for compatibility -->
+                    <version>3.7.1</version>
                     <configuration>
                         <archive>
                             <manifest>
