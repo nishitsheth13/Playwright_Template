@@ -144,12 +144,17 @@ public class listener extends utils implements ITestListener {
         }
 
         // Option 2: Map based on Method Name (if no parameters were present)
-        return switch (result.getMethod().getMethodName()) {
-            case "Failed_login",
-                 "Verify User is not able to access the MRI Energy application With InValid Credentials" -> "ECS-7";
-            case "Verify User is able to access the MRI Energy application with Valid Credentials", "login" -> "ECS-8";
-            default -> null; // fallback to config
-        };
+        String methodName = result.getMethod().getMethodName();
+        switch (methodName) {
+            case "Failed_login":
+            case "Verify User is not able to access the MRI Energy application With InValid Credentials":
+                return "ECS-7";
+            case "Verify User is able to access the MRI Energy application with Valid Credentials":
+            case "login":
+                return "ECS-8";
+            default:
+                return null; // fallback to config
+        }
     }
 // ... existing code ...
     // Leave other events if not needed

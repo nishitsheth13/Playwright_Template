@@ -1,6 +1,5 @@
 package configs.jira;
 
-
 import configs.loadProps;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -10,32 +9,69 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * JIRA REST API client for automated defect management.
+ * Handles bug creation, comment addition, and attachment uploads.
+ */
 public class jiraClient {
 
+    /**
+     * Generates Basic Auth header for JIRA API calls.
+     * 
+     * @return Base64 encoded authorization header
+     */
     private static String getAuthHeader() {
-        String auth = loadProps.getJIRAConfig("JIRA_EMAIL")+ ":" + loadProps.getJIRAConfig("JIRA_API_TOKEN");
+        String email = loadProps.getJIRAConfig("JIRA_EMAIL");
+        String token = loadProps.getJIRAConfig("JIRA_API_TOKEN");
+        
+        if (email == null || token == null) {
+            System.err.println("❌ JIRA credentials not found in configuration");
+            return null;
+        }
+        
+        String auth = email + ":" + token;
         return "Basic " + Base64.getEncoder().encodeToString(auth.getBytes());
     }
 
+    /**
+     * Handles test case results by updating JIRA issues.
+     * Adds pass/fail comments based on test outcome.
+     * 
+     * @param issueKey JIRA issue key to update
+     * @param summary Test summary
+     * @param descriptionText Test description
+     * @param attachmentFile Screenshot file (optional)
+     * @param isFailed Whether the test failed
+     */
     public static void handleTestCaseResultSmart(String issueKey, String summary, String descriptionText, File attachmentFile, boolean isFailed) {
-        String passCommentText = loadProps.getProperty("PassComment") + " " + loadProps.getProperty("Version");
-        String failCommentText = loadProps.getProperty("FailComment") + " " + loadProps.getProperty("Version");
-        // Step 1: Check if issue exists
-        Response checkResponse = RestAssured
-                .given()
-                .header("Authorization", getAuthHeader())
-                .header("Content-Type", "application/json")
-                .get(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + issueKey);
-        if (!isFailed) {
+        try {
+            String authHeader = getAuthHeader();
+            if (authHeader == null) {
+                System.err.println("❌ Cannot update JIRA - authentication failed");
+                return;
+            }
+            
+            String passCommentText = loadProps.getProperty("PassComment") + " " + loadProps.getProperty("Version");
+            String failCommentText = loadProps.getProperty("FailedComment") + " " + loadProps.getProperty("Version");
+            
+            // Check if issue exists
+            Response checkResponse = RestAssured
+                    .given()
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", "application/json")
+                    .get(loadProps.getJIRAConfig("JIRA_BASE_URL") + "/rest/api/3/issue/" + issueKey);
+            
             if (checkResponse.getStatusCode() == 200) {
-                addComment(issueKey, passCommentText);
-            }
-        } else {
-            if (isFailed) {
-                addComment(issueKey, failCommentText);
+                String commentText = isFailed ? failCommentText : passCommentText;
+                addComment(issueKey, commentText);
+                System.out.println("✅ JIRA issue " + issueKey + " updated with " + (isFailed ? "failure" : "success") + " comment");
             } else if (checkResponse.getStatusCode() == 404) {
-                System.out.println("❌ Unexpected Jira API response: " + checkResponse.getBody().asString());
+                System.out.println("⚠️ JIRA issue " + issueKey + " not found");
+            } else {
+                System.err.println("❌ Unexpected JIRA API response (" + checkResponse.getStatusCode() + "): " + checkResponse.getBody().asString());
             }
+        } catch (Exception e) {
+            System.err.println("❌ Error updating JIRA issue: " + e.getMessage());
         }
     }
 
