@@ -31,8 +31,8 @@ public class login extends utils {
     public static final String password = "//input[@id='Password']";
     public static final String SignInButton = "//button[@name='button']";
     public static final String UserIcon = "//span[@class='menu_user_title']";
-    public static final String logoutButton = "//*[@id=\"Logout\"]/li[1]/a/div/span";
-    public static final String rememberMeCheckbox = "//input[@type='checkbox' and contains(@class, 'checkbox')]";
+    public static final String logoutButton = "//a[contains(@href, 'Logout') or contains(text(), 'Logout') or @id='Logout']//span";
+    public static final String rememberMeCheckbox = "//input[@id='RememberLogin' or @name='RememberLogin' or (@type='checkbox' and contains(@class, 'checkbox'))]";
     public static final String forgotUsernameLink = "//a[contains(text(), 'Forgot Username')]";
     public static final String forgotPasswordLink = "//a[contains(text(), 'Forgot Password')]";
     public static final String errorMessage = "//div[contains(@class, 'alert') or contains(@class, 'error')]";
@@ -119,6 +119,7 @@ public class login extends utils {
      * @return true if Remember Me is checked
      */
     public static boolean isRememberMeChecked() {
+        page.locator(rememberMeCheckbox).waitFor(new Locator.WaitForOptions().setTimeout(10000));
         return page.locator(rememberMeCheckbox).isChecked();
     }
 
@@ -443,14 +444,41 @@ public class login extends utils {
 
     /**
      * Performs logout operation.
+     * Clicks UserIcon first, then logout button.
      * If logout button not found, navigates to login page.
      */
     public static void logout() {
         try {
-            if (isElementPresent(logoutButton)) {
-                clickOnElement(logoutButton);
-                System.out.println("✅ User logged out successfully");
-            } else {
+            System.out.println("🔹 Clicking User Icon...");
+            if (isElementPresent(UserIcon)) {
+                clickOnElement(UserIcon);
+                page.waitForTimeout(2000);
+                System.out.println("✅ User Icon clicked");
+            }
+            
+            System.out.println("🔹 Looking for Logout button...");
+            // Try multiple possible selectors for logout
+            String[] logoutSelectors = {
+                "//a[contains(@href, 'Logout')]",
+                "//span[contains(text(), 'Logout')]",
+                "//*[@id='Logout']//span",
+                "//li[contains(@class, 'logout')]//span",
+                logoutButton
+            };
+            
+            boolean loggedOut = false;
+            for (String selector : logoutSelectors) {
+                if (isElementPresent(selector)) {
+                    clickOnElement(selector);
+                    page.waitForLoadState();
+                    System.out.println("✅ User logged out successfully using selector: " + selector);
+                    loggedOut = true;
+                    break;
+                }
+            }
+            
+            if (!loggedOut) {
+                System.out.println("⚠️ Logout button not found, navigating to login page");
                 page.navigate(URL);
                 System.out.println("ℹ️ Navigated to login page");
             }

@@ -341,37 +341,6 @@ public class utils extends base {
         Files.delete(path);
     }
 
-//    public static void deleteOldBackup(String backupPath) throws IOException {
-//
-//
-//        if (isDelete) {
-//            File oldFolder = new File(System.getProperty("user.dir") + "/DBbackup/");
-//
-//            if (oldFolder.isDirectory()) {
-//                File[] directories = oldFolder.listFiles(File::isFile); // Get only directories
-//
-//                int deletefoldercount = directories.length - DBCount;
-//                if (directories != null && deletefoldercount > 0) {
-//                    for (File file : directories) {
-//
-//                        // Check conditions for deletion
-//                        String directoryName = file.getName();
-//                        System.out.println(directoryName);
-//                        if (deletefoldercount > 0 && !file.equals(backupPath)) {
-//                            // Recursively delete the directory
-//                            deleteDirectory(file.toPath());
-//                            deletefoldercount--;
-//                            if (deletefoldercount <= 0)
-//                                break;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//    }
-
-
     public String getScreenShotPath(String TestName) throws IOException, AWTException {
         page.screenshot(new Page.ScreenshotOptions()
                 .setPath(Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png"))

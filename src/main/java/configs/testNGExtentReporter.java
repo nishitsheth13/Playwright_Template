@@ -22,16 +22,6 @@ public class testNGExtentReporter {
 
 
     public static ExtentReports extentReportGenerator() throws IOException {
-
-        //ReleaseVersionFolderAUtoFetch
-//        String folderName = utils.getText("/html/body/div/div[2]/div[1]/div[1]");
-//        Path reportPath = Paths.get(System.getProperty("user.dir"), folderName);
-//
-//        // Step 3: Create the folder if it does not exist
-//        if (!Files.exists(reportPath)) {
-//            Files.createDirectories(reportPath);
-//        }
-
         String folderName = loadProps.getProperty("Version").replaceAll("[()-+.^:,. ]", "");
         Path reportPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/", folderName);
         // Step 3: Create the folder if it does not exist

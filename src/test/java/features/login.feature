@@ -15,6 +15,8 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     And User clicks on Sign In button
     Then User should be successfully logged in
     And User should be redirected to the home page
+    And User clicks on logout button
+    Then User should be logged out successfully
 
   @Functional @Negative @Priority=1
   Scenario: Verify login fails with invalid username

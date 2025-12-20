@@ -146,7 +146,6 @@ public class browserSelector extends base {
 
     public static void LaunchBrowser(String browserSelection) throws Exception {
         if (browserSelection.equalsIgnoreCase("chrome")) {
-//            utils.backupDatabase(DBName, System.getProperty("user.dir")+"/DBBackup/"+DBName+"_"+utils.timeStamp()+".bak");
             Playwright playwright = Playwright.create();
             Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
                     .setArgs(Collections.singletonList("--start-maximized"))

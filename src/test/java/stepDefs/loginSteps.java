@@ -72,6 +72,23 @@ public class loginSteps extends browserSelector {
         asserts.assertAll();
     }
 
+    @And("User clicks on logout button")
+    public void userClicksOnLogoutButton() {
+        System.out.println("🔹 Step: User clicks on logout button");
+        page.waitForTimeout(1000);
+        login.logout();
+        System.out.println("✅ Logout button clicked");
+    }
+
+    @Then("User should be logged out successfully")
+    public void userShouldBeLoggedOutSuccessfully() {
+        System.out.println("🔹 Step: Verifying user is logged out");
+        page.waitForTimeout(2000);
+        asserts.assertTrue(login.isOnLoginPage(), "User should be on login page after logout");
+        System.out.println("✅ User logged out successfully");
+        asserts.assertAll();
+    }
+
     @When("User enters invalid username {string}")
     public void userEntersInvalidUsername(String invalidUsername) {
         System.out.println("🔹 Step: User enters invalid username: " + invalidUsername);
