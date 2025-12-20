@@ -25,11 +25,10 @@ public class recoder extends ScreenRecorder {
     public String name;
 
     public recoder(GraphicsConfiguration cfg, Rectangle captureArea, Format fileFormat,
-                   Format screenFormat, Format mouseFormat, Format audioFormat, File movieFolder)
+                   Format screenFormat, Format mouseFormat, Format audioFormat, File movieFolder, String recordingName)
             throws IOException, AWTException {
         super(cfg, captureArea, fileFormat, screenFormat, mouseFormat, audioFormat, movieFolder);
-        this.name = name;
-
+        this.name = recordingName;
     }
 
     public static void startRecording() throws Exception {
@@ -51,7 +50,7 @@ public class recoder extends ScreenRecorder {
                         CompressorNameKey, ENCODING_AVI_TECHSMITH_SCREEN_CAPTURE, DepthKey, 24, FrameRateKey,
                         Rational.valueOf(15), QualityKey, 1.0f, KeyFrameIntervalKey, 15 * 60),
                 new Format(MediaTypeKey, MediaType.VIDEO, EncodingKey, "black", FrameRateKey, Rational.valueOf(30)),
-                null, file);
+                null, file, "TestRecording");
 
         screenRecorder.start();
 

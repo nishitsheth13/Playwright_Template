@@ -67,8 +67,15 @@ public class listener extends utils implements ITestListener {
             Class<?> cl = result.getTestClass().getRealClass();
             try {
                 page = (com.microsoft.playwright.Page) cl.getDeclaredField("page").get(obj);
+            } catch (NoSuchFieldException e) {
+                // Field not found, try to get page from parent class (for classes extending browserSelector)
+                try {
+                    page = (com.microsoft.playwright.Page) cl.getSuperclass().getDeclaredField("page").get(obj);
+                } catch (Exception ex) {
+                    System.out.println("⚠️ Could not access page instance for screenshot: " + ex.getMessage());
+                }
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println("⚠️ Could not access page instance: " + e.getMessage());
             }
 
             File screenshotFile = null;

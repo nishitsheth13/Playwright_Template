@@ -3,8 +3,8 @@
 
 <suite name="MRI Energy Testng XML Test Suite">     <!--   Parallel Runner-->
     <listeners>
-        <listener class-name="listener.listener">
-        </listener>
+        <listener class-name="listener.listener"/>
+        <listener class-name="configs.RetryListener"/>
     </listeners>
 
     <!--   Method Runner-->

@@ -1,103 +1,296 @@
-```md
-# Playwright with Java - MRI Energy Automation Project
+# Playwright Java Automation Framework
 
-This project contains automation test scripts for **MRI Energy Automation**, built using **Java + Playwright + JUnit + TestNG**.
-It enables web application testing across different browsers and includes detailed reporting with screenshots for failed
-scenarios.
-
-## Table of Contents
-
-1. [Getting Started](#getting-started)
-2. [Introduction to Framework](#introduction-to-framework)
-3. [Framework Structure](#framework-structure)
-4. [Running Tests](#running-tests)
-5. [Generating Reports](#generating-reports)
-6. [Creating New Test Scripts](#creating-new-test-scripts)
-7. [Recent Improvements](#recent-improvements)
-8. [Test Data](#test-data)
-9. [POM File](#pom-file)
-10. [Contact](#contact)
+> **MRI Energy Test Automation**  
+> Production-ready BDD framework with Playwright + Cucumber + TestNG + ExtentReports
 
 ---
 
-## Getting Started
-
-In order to run the automation test scripts, ensure that the following software is installed:
-
-1. **Java JDK** (1.8 or higher)
-    - [Download Java](https://www.oracle.com/in/java/technologies/downloads/)
-
-2. **Integrated Development Environment (IDE)**:
-    - Recommended: IntelliJ IDEA or Eclipse
-        - [IntelliJ IDEA](https://www.jetbrains.com/idea/)
-        - [Eclipse IDE](https://www.eclipse.org/downloads/)
-    - If you choose **Eclipse**, install **Cucumber** and **TestNG** plugins from **Help > Eclipse Marketplace**.
-
-3. **Playwright CLI**: Install globally for browser management
-   ```bash
-   npm install -g playwright
-   ```
-
-4. **Browser Installations**:
-    - Install Chrome, Firefox, and Edge browsers to perform cross-browser testing.
-
-### Project Setup
-
-To set up the project:
-
-1. **Clone the repository** or **download the Zip** file and import it into your IDE:
-   ```bash
-   git clone https://github.com/your-repo-url/playwright-java-project.git
-   ```
-
-2. Navigate to the project folder and install dependencies:
-   ```bash
-   mvn clean install
-   ```
-
-3. Install Playwright browsers:
-   ```bash
-   npx playwright install
-   ```
-
----
-
-## Introduction to Framework
-
-This test automation framework is built using **Java**, **Playwright**, and **JUnit**, following the **Page Object
-Model (POM)** design pattern. It also integrates with **Extent Reports** for generating detailed test execution reports.
-
-The project uses **Playwright** for browser automation, allowing cross-browser support. The **POM design pattern**
-centralizes UI elements, improving code reusability and maintainability.
-
----
-
-## Framework Structure
-
-The project structure is as follows:
-
-- **/src/main/java**: Contains important Java classes like `Base`, `BrowserSelector`, and `Utils`, along with page
-  object classes.
-- **/src/test/java**: Contains feature files, test runner classes, and step definitions.
-- **/src/test/resources**: Stores configuration files.
-- **/MRITestExecutionReports/Versions/ExtentReport.html**: Contains the generated reports after execution.
-- **POM.xml**: Contains Maven dependencies and plugins for Playwright, JUnit, Extent Reports, and more.
-
----
-
-## Running Tests
-
-### Run Tests Using Maven:
-
-To run all the tests, execute the following command:
+## 🚀 Quick Start
 
 ```bash
+# Clone and setup
+git clone <repository-url>
+cd Playwright_Template
+
+# Compile
+mvn clean compile test-compile
+
+# Run tests
 mvn test
+
+# Run with tag
+mvn test -Dcucumber.filter.tags="@Smoke"
 ```
 
-### Running Specific Browser Tests:
+**📘 [Complete Framework Guide](AUTOMATION_FRAMEWORK_GUIDE.md)** ← Read this for full documentation
 
-Specify the browser for test execution by using Maven profiles:
+---
+
+## 📦 What's Included
+
+✅ **BDD with Cucumber** - Gherkin feature files  
+✅ **Page Object Model** - Maintainable architecture  
+✅ **Automatic Retry** - Handles flaky tests  
+✅ **Centralized Timeouts** - No hardcoded waits  
+✅ **Rich HTML Reports** - ExtentReports with screenshots  
+✅ **JIRA Integration** - Auto bug creation  
+✅ **Multi-browser** - Chrome, Firefox, Edge, WebKit
+
+---
+
+## 📂 Project Structure
+
+```
+Playwright_Template/
+├── src/main/java/
+│   ├── configs/        # Framework utilities
+│   └── pages/          # Page objects (POM)
+├── src/test/java/
+│   ├── features/       # Cucumber feature files
+│   ├── stepDefs/       # Step definitions
+│   ├── hooks/          # Test setup/teardown
+│   ├── listener/       # TestNG listeners
+│   └── runner/         # Test runner
+├── src/test/resources/
+│   └── configurations.properties  # Main config
+└── pom.xml             # Maven dependencies
+```
+
+---
+
+## ⚙️ Key Configuration
+
+**File:** `src/test/resources/configurations.properties`
+
+```properties
+# Application
+URL=https://your-app-url.com
+Username=admin
+Password=your-password
+
+# Browser
+Browser=chrome              # chrome | firefox | edge | webkit
+Headless_Mode=false
+
+# Retry & Timeout
+MaxRetryCount=2             # Retry failed tests
+DefaultTimeout=30000        # 30 seconds
+PageLoadTimeout=60000       # 60 seconds
+
+# Reporting
+Screenshots_Mode=true
+Recording_Mode=true
+JIRA_Integration=True
+```
+
+---
+
+## 🏃 Running Tests
+
+```bash
+# All tests
+mvn test
+
+# Specific tags
+mvn test -Dcucumber.filter.tags="@Smoke"
+mvn test -Dcucumber.filter.tags="@Functional"
+mvn test -Dcucumber.filter.tags="@Priority=0"
+
+# Multiple tags
+mvn test -Dcucumber.filter.tags="@Smoke and @Functional"
+
+# TestNG XML
+mvn test -DsuiteXmlFile=src/test/testng.xml
+
+# Headless mode
+mvn test -DHeadless_Mode=true
+
+# Different browser
+mvn test -DBrowser=firefox
+```
+
+---
+
+## 📊 Test Reports
+
+Reports are auto-generated in:
+```
+MRITestExecutionReports/{Version_Date}/extentReports/
+├── testNGExtentReports/spark/spark_{timestamp}.html
+└── cucumberExtentReports/index.html
+```
+
+**Features:**
+- ✅ Rich HTML reports with charts
+- ✅ Screenshots for failed tests
+- ✅ Retry attempts logged
+- ✅ Test duration tracking
+- ✅ Environment details
+
+---
+
+## 🎯 Creating New Tests
+
+### 1. Create Feature File
+`src/test/java/features/yourfeature.feature`
+```gherkin
+@Smoke
+Feature: Your Feature
+
+  Scenario: Your test scenario
+    Given User navigates to page
+    When User performs action
+    Then User verifies result
+```
+
+### 2. Create Page Object
+`src/main/java/pages/YourPage.java`
+```java
+public class YourPage extends BasePage {
+    private static final String BTN_SUBMIT = "//button[@id='submit']";
+    
+    public static void clickSubmit() {
+        clickOnElement(BTN_SUBMIT);
+    }
+}
+```
+
+### 3. Create Step Definitions
+`src/test/java/stepDefs/YourSteps.java`
+```java
+public class YourSteps extends browserSelector {
+    @When("User performs action")
+    public void userPerformsAction() {
+        YourPage.clickSubmit();
+    }
+}
+```
+
+### 4. Compile & Run
+```bash
+mvn clean compile test-compile
+mvn test -Dcucumber.filter.tags="@Smoke"
+```
+
+---
+
+## 🛠️ Technology Stack
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Language | Java | 22 |
+| Browser Automation | Playwright | 1.45.0 |
+| BDD Framework | Cucumber | 7.18.1 |
+| Test Runner | TestNG | 7.11.0 |
+| Build Tool | Maven | 3.x |
+| Reporting | ExtentReports | 5.1.0 |
+
+---
+
+## ✅ Best Practices
+
+### Page Objects
+- ✅ Extend `BasePage`
+- ✅ Use locator prefixes (`TXT_`, `BTN_`, `LBL_`)
+- ✅ Use `TimeoutConfig` for waits
+- ✅ Add emoji logs (🌐 📝 ✅ ❌)
+- ❌ No assertions in page objects
+
+### Step Definitions
+- ✅ Keep thin (call page methods)
+- ✅ Put assertions here
+- ❌ No business logic
+
+### Feature Files
+- ✅ Clear, business-readable
+- ✅ Add appropriate tags
+- ✅ Use Background for common steps
+
+---
+
+## 🔧 Troubleshooting
+
+### Tests fail due to timing
+```properties
+# Increase timeouts in configurations.properties
+DefaultTimeout=40000
+PageLoadTimeout=80000
+```
+
+### Flaky tests
+```properties
+# Increase retry count
+MaxRetryCount=3
+```
+
+### Compilation errors
+```bash
+mvn clean compile test-compile
+```
+
+### Reports not generating
+1. Check `Screenshots_Mode=true`
+2. Verify listener in `testng.xml`
+3. Check write permissions
+
+---
+
+## 📚 Documentation
+
+- **[Complete Framework Guide](AUTOMATION_FRAMEWORK_GUIDE.md)** - Full documentation
+- **[POM Best Practices](AUTOMATION_FRAMEWORK_GUIDE.md#-page-object-model-pom)** - Page object patterns
+- **[Retry & Timeout](AUTOMATION_FRAMEWORK_GUIDE.md#-retry--timeout-management)** - Configuration guide
+- **[Test Creation](AUTOMATION_FRAMEWORK_GUIDE.md#-test-creation-workflow)** - Step-by-step workflow
+
+---
+
+## 🎓 Quick Reference
+
+### Essential Commands
+```bash
+mvn clean                                    # Clean project
+mvn compile test-compile                     # Compile
+mvn test                                     # Run all tests
+mvn test -Dcucumber.filter.tags="@Smoke"    # Run with tag
+```
+
+### Common Methods
+```java
+// Navigation
+navigateTo(url);
+
+// Actions
+clickOnElement(locator);
+clearAndEnterText(locator, text);
+
+// Validations
+isElementPresent(locator);
+getElementText(locator);
+
+// Waits
+TimeoutConfig.shortWait();
+TimeoutConfig.mediumWait();
+```
+
+---
+
+## 📞 Support
+
+For detailed information, refer to:
+- **[AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)** - Complete guide
+- **Configuration:** `src/test/resources/configurations.properties`
+- **TestNG Suite:** `src/test/testng.xml`
+
+---
+
+**Framework Version:** 3.0  
+**Status:** Production Ready ✅  
+**Last Updated:** December 20, 2025
+
+---
+
+Made with ❤️ by Automation Team
+
 
 ```bash
 mvn test -Pchromium

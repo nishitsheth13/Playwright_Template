@@ -84,6 +84,40 @@ public class utils extends base {
         }
     }
 
+    /**
+     * Clears and enters text into an element.
+     * 
+     * @param element The locator string for the element
+     * @param inputText The text to enter
+     */
+    public static void clearAndEnterText(String element, String inputText) {
+        if (inputText != null && !inputText.isEmpty()) {
+            try {
+                isElementPresent(element);
+                page.locator(element).clear();
+                page.locator(element).fill(inputText);
+                System.out.println("✅ Cleared and entered text in element: " + element);
+            } catch (Exception e) {
+                System.err.println("❌ Error entering text in element: " + element + " - " + e.getMessage());
+                throw e;
+            }
+        } else {
+            System.out.println("⚠️ Skipped entering text - input is null or empty");
+        }
+    }
+
+    /**
+     * Gets the text content of an element.
+     * 
+     * @param element The locator string for the element
+     * @return The element's text content
+     */
+    public static String getElementText(String element) {
+        String elementText = page.locator(element).innerText();
+        System.out.println("Element text: " + elementText);
+        return elementText;
+    }
+
     public static String getText(String element) {
 
         String elementText = page.locator(element).innerText();
@@ -123,9 +157,7 @@ public class utils extends base {
     }
 
     public static void moveFile(Path oldFilePath, Path newFilePath) {
-        try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(oldFilePath);
-
+        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(oldFilePath)) {
             // Loop through each file in the source directory
             for (Path filePath : directoryStream) {
                 // Define the target path for the file

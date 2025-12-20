@@ -32,6 +32,380 @@ public class login extends utils {
     public static final String SignInButton = "//button[@name='button']";
     public static final String UserIcon = "//span[@class='menu_user_title']";
     public static final String logoutButton = "//*[@id=\"Logout\"]/li[1]/a/div/span";
+    public static final String rememberMeCheckbox = "//input[@type='checkbox' and contains(@class, 'checkbox')]";
+    public static final String forgotUsernameLink = "//a[contains(text(), 'Forgot Username')]";
+    public static final String forgotPasswordLink = "//a[contains(text(), 'Forgot Password')]";
+    public static final String errorMessage = "//div[contains(@class, 'alert') or contains(@class, 'error')]";
+    public static final String loginLogo = "//img[contains(@src, 'logo') or contains(@alt, 'MRI')]";
+    public static final String versionInfo = "//div[contains(text(), 'Version')]";
+    
+    // Forgot Password Page Locators
+    public static final String forgotPasswordEmailInput = "//input[@type='email' or contains(@id, 'Email')]";
+    public static final String receiveViaEmailButton = "//button[contains(text(), 'Receive via Email')]";
+    public static final String backToSignInButton = "//button[contains(text(), 'Back to sign in')]";
+    public static final String forgotPasswordTitle = "//h4[contains(text(), 'Forgot Password')]";
+    public static final String responseMessage = "//div[contains(@class, 'modal') or contains(@role, 'alert')]//div[last()]";
+
+    /**
+     * Navigates to the login page URL.
+     */
+    public static void navigateToLoginPage() {
+        System.out.println("🌐 Navigating to login page...");
+        page.navigate(URL);
+        page.waitForLoadState();
+        System.out.println("✅ Login page loaded");
+    }
+
+    /**
+     * Enters username in the username field.
+     * 
+     * @param user The username to enter
+     */
+    public static void enterUsername(String user) {
+        System.out.println("🔹 Entering username: " + user);
+        clearAndEnterText(username, user);
+        System.out.println("✅ Username entered");
+    }
+
+    /**
+     * Enters password in the password field.
+     * 
+     * @param pass The password to enter
+     */
+    public static void enterPassword(String pass) {
+        System.out.println("🔹 Entering password");
+        clearAndEnterText(password, pass);
+        System.out.println("✅ Password entered");
+    }
+
+    /**
+     * Enters valid username from configuration.
+     */
+    public static void enterValidUsername() {
+        enterUsername(U_name);
+    }
+
+    /**
+     * Enters valid password from configuration.
+     */
+    public static void enterValidPassword() {
+        enterPassword(P_word);
+    }
+
+    /**
+     * Clicks the Sign In button.
+     */
+    public static void clickSignInButton() {
+        System.out.println("🔹 Clicking Sign In button...");
+        clickOnElement(SignInButton);
+        page.waitForLoadState();
+        System.out.println("✅ Sign In button clicked");
+    }
+
+    /**
+     * Checks the Remember Me checkbox.
+     */
+    public static void checkRememberMe() {
+        System.out.println("🔹 Checking Remember Me checkbox...");
+        if (!page.locator(rememberMeCheckbox).isChecked()) {
+            clickOnElement(rememberMeCheckbox);
+        }
+        System.out.println("✅ Remember Me checked");
+    }
+
+    /**
+     * Verifies if Remember Me is enabled.
+     * 
+     * @return true if Remember Me is checked
+     */
+    public static boolean isRememberMeChecked() {
+        return page.locator(rememberMeCheckbox).isChecked();
+    }
+
+    /**
+     * Clicks on Forgot Username link.
+     */
+    public static void clickForgotUsername() {
+        System.out.println("🔹 Clicking Forgot Username link...");
+        clickOnElement(forgotUsernameLink);
+        page.waitForLoadState();
+        System.out.println("✅ Forgot Username clicked");
+    }
+
+    /**
+     * Clicks on Forgot Password link.
+     */
+    public static void clickForgotPassword() {
+        System.out.println("🔹 Clicking Forgot Password link...");
+        clickOnElement(forgotPasswordLink);
+        page.waitForLoadState();
+        System.out.println("✅ Forgot Password clicked");
+    }
+
+    /**
+     * Checks if error message is displayed.
+     * 
+     * @return true if error message is visible
+     */
+    public static boolean isErrorMessageDisplayed() {
+        return isElementPresent(errorMessage);
+    }
+
+    /**
+     * Gets the error message text.
+     * 
+     * @return The error message text
+     */
+    public static String getErrorMessage() {
+        if (isErrorMessageDisplayed()) {
+            return getElementText(errorMessage);
+        }
+        return "";
+    }
+
+    /**
+     * Verifies if user is on login page.
+     * 
+     * @return true if on login page
+     */
+    public static boolean isOnLoginPage() {
+        return page.url().contains("Login") && isElementPresent(SignInButton);
+    }
+
+    /**
+     * Verifies if user is logged in successfully.
+     * 
+     * @return true if logged in
+     */
+    public static boolean isUserLoggedIn() {
+        page.waitForLoadState();
+        return !isElementPresent(SignInButton) && !page.url().contains("Login");
+    }
+
+    /**
+     * Verifies if username field is visible.
+     * 
+     * @return true if username field is visible
+     */
+    public static boolean isUsernameFieldVisible() {
+        return isElementPresent(username);
+    }
+
+    /**
+     * Verifies if password field is visible.
+     * 
+     * @return true if password field is visible
+     */
+    public static boolean isPasswordFieldVisible() {
+        return isElementPresent(password);
+    }
+
+    /**
+     * Verifies if Sign In button is visible.
+     * 
+     * @return true if Sign In button is visible
+     */
+    public static boolean isSignInButtonVisible() {
+        return isElementPresent(SignInButton);
+    }
+
+    /**
+     * Verifies if Remember Me checkbox is visible.
+     * 
+     * @return true if Remember Me checkbox is visible
+     */
+    public static boolean isRememberMeVisible() {
+        return isElementPresent(rememberMeCheckbox);
+    }
+
+    /**
+     * Verifies if Forgot Username link is visible.
+     * 
+     * @return true if Forgot Username link is visible
+     */
+    public static boolean isForgotUsernameVisible() {
+        return isElementPresent(forgotUsernameLink);
+    }
+
+    /**
+     * Verifies if Forgot Password link is visible.
+     * 
+     * @return true if Forgot Password link is visible
+     */
+    public static boolean isForgotPasswordVisible() {
+        return isElementPresent(forgotPasswordLink);
+    }
+
+    // ============================================================
+    // FORGOT PASSWORD FUNCTIONALITY
+    // ============================================================
+
+    /**
+     * Clicks the Forgot Password link on login page.
+     */
+    public static void clickForgotPasswordLink() {
+        System.out.println("🔹 Clicking Forgot Password link...");
+        clickOnElement(forgotPasswordLink);
+        page.waitForLoadState();
+        System.out.println("✅ Navigated to Forgot Password page");
+    }
+
+    /**
+     * Enters email in forgot password page.
+     * 
+     * @param email The email address to enter
+     */
+    public static void enterForgotPasswordEmail(String email) {
+        System.out.println("📧 Entering email: " + email);
+        clearAndEnterText(forgotPasswordEmailInput, email);
+        System.out.println("✅ Email entered");
+    }
+
+    /**
+     * Clicks the Receive via Email button.
+     */
+    public static void clickReceiveViaEmailButton() {
+        System.out.println("🔹 Clicking Receive via Email button...");
+        clickOnElement(receiveViaEmailButton);
+        page.waitForTimeout(2000); // Wait for response
+        System.out.println("✅ Receive via Email button clicked");
+    }
+
+    /**
+     * Clicks the Back to sign in button.
+     */
+    public static void clickBackToSignInButton() {
+        System.out.println("🔹 Clicking Back to sign in button...");
+        clickOnElement(backToSignInButton);
+        page.waitForLoadState();
+        System.out.println("✅ Returned to login page");
+    }
+
+    /**
+     * Checks if forgot password page is displayed.
+     * 
+     * @return true if forgot password page title is present
+     */
+    public static boolean isForgotPasswordPageDisplayed() {
+        return isElementPresent(forgotPasswordTitle);
+    }
+
+    /**
+     * Checks if email input field is displayed on forgot password page.
+     * 
+     * @return true if email input is present
+     */
+    public static boolean isEmailInputDisplayed() {
+        return isElementPresent(forgotPasswordEmailInput);
+    }
+
+    /**
+     * Checks if response message is displayed after submitting email.
+     * 
+     * @return true if response message is present
+     */
+    public static boolean isResponseMessageDisplayed() {
+        return isElementPresent(responseMessage);
+    }
+
+    /**
+     * Gets the response message text.
+     * 
+     * @return The response message text
+     */
+    public static String getResponseMessageText() {
+        return getElementText(responseMessage);
+    }
+
+    /**
+     * Verifies if logo is visible.
+     * 
+     * @return true if logo is visible
+     */
+    public static boolean isLogoVisible() {
+        return isElementPresent(loginLogo);
+    }
+
+    /**
+     * Gets the page title.
+     * 
+     * @return The page title
+     */
+    public static String getPageTitle() {
+        return page.title();
+    }
+
+    /**
+     * Gets version information from footer.
+     * 
+     * @return Version information text
+     */
+    public static String getVersionInfo() {
+        if (isElementPresent(versionInfo)) {
+            return getElementText(versionInfo);
+        }
+        return "";
+    }
+
+    /**
+     * Verifies if password is masked.
+     * 
+     * @return true if password field type is password
+     */
+    public static boolean isPasswordMasked() {
+        String fieldType = page.locator(password).getAttribute("type");
+        return "password".equalsIgnoreCase(fieldType);
+    }
+
+    /**
+     * Clears the username field.
+     */
+    public static void clearUsernameField() {
+        System.out.println("🔹 Clearing username field...");
+        page.locator(username).clear();
+        System.out.println("✅ Username field cleared");
+    }
+
+    /**
+     * Clears the password field.
+     */
+    public static void clearPasswordField() {
+        System.out.println("🔹 Clearing password field...");
+        page.locator(password).clear();
+        System.out.println("✅ Password field cleared");
+    }
+
+    /**
+     * Performs login with specific credentials.
+     * 
+     * @param user The username
+     * @param pass The password
+     */
+    public static void loginWith(String user, String pass) {
+        System.out.println("🔐 Attempting login with provided credentials...");
+        enterUsername(user);
+        enterPassword(pass);
+        clickSignInButton();
+    }
+
+    /**
+     * Performs login with valid credentials multiple times.
+     * 
+     * @param attempts Number of login attempts
+     * @param invalidPassword The invalid password to use
+     */
+    public static void attemptLoginMultipleTimes(int attempts, String invalidPassword) {
+        System.out.println("🔐 Attempting login " + attempts + " times with invalid password...");
+        for (int i = 0; i < attempts; i++) {
+            if (isOnLoginPage()) {
+                enterValidUsername();
+                enterPassword(invalidPassword);
+                clickSignInButton();
+                page.waitForTimeout(1000);
+                System.out.println("⚠️ Login attempt " + (i + 1) + " failed");
+            }
+        }
+    }
 
     /**
      * Performs login with valid credentials.
@@ -40,7 +414,7 @@ public class login extends utils {
      * @throws IOException if any IO error occurs
      */
     @Test
-    public static void login() throws IOException {
+    public static void performLogin() throws IOException {
         if (page.isVisible(username)) {
             System.out.println("🔐 Attempting to login...");
             enterText(username, U_name);
@@ -88,7 +462,7 @@ public class login extends utils {
 
 
     public static void Invoice() throws IOException {
-        login();
+        performLogin();
         page.navigate("https://uksestdevtest02.ukest.lan/MRIEnergy/AdvancedWeb/invoices");
         page.locator("a").filter(new Locator.FilterOptions().setHasText("Invoice Validation")).click();
         page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Manage Invoices")).click();
