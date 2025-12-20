@@ -444,20 +444,14 @@ public class login extends utils {
 
     /**
      * Performs logout operation.
-     * Clicks UserIcon first, then logout button.
-     * If logout button not found, navigates to login page.
      */
     public static void logout() {
         try {
-            System.out.println("🔹 Clicking User Icon...");
             if (isElementPresent(UserIcon)) {
                 clickOnElement(UserIcon);
                 page.waitForTimeout(2000);
-                System.out.println("✅ User Icon clicked");
             }
             
-            System.out.println("🔹 Looking for Logout button...");
-            // Try multiple possible selectors for logout
             String[] logoutSelectors = {
                 "//a[contains(@href, 'Logout')]",
                 "//span[contains(text(), 'Logout')]",
@@ -469,21 +463,19 @@ public class login extends utils {
             boolean loggedOut = false;
             for (String selector : logoutSelectors) {
                 if (isElementPresent(selector)) {
+                    page.locator(selector).scrollIntoViewIfNeeded();
+                    page.waitForTimeout(500);
                     clickOnElement(selector);
                     page.waitForLoadState();
-                    System.out.println("✅ User logged out successfully using selector: " + selector);
                     loggedOut = true;
                     break;
                 }
             }
             
             if (!loggedOut) {
-                System.out.println("⚠️ Logout button not found, navigating to login page");
                 page.navigate(URL);
-                System.out.println("ℹ️ Navigated to login page");
             }
         } catch (Exception e) {
-            System.err.println("❌ Error during logout: " + e.getMessage());
             page.navigate(URL);
         }
     }

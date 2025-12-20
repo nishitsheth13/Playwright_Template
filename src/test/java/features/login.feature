@@ -82,13 +82,7 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     When User enters valid password from configuration
     Then Password field should display masked characters
 
-  @NonFunctional @Security @Priority=11
-  Scenario: Verify account lockout after multiple failed attempts
-    When User attempts login with invalid password 5 times
-    Then User account should be locked
-    And User should see account lockout message
-
-  @NonFunctional @UI @Priority=12
+  @NonFunctional @UI @Priority=11
   Scenario: Verify all login page elements are visible
     Then Username field should be visible
     And Password field should be visible
@@ -98,26 +92,26 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     And Forgot Password link should be visible
     And MRI Energy logo should be visible
 
-  @NonFunctional @UI @Priority=13
+  @NonFunctional @UI @Priority=12
   Scenario: Verify page title and branding
     Then Page title should be "Login - MRI Energy"
     And MRI Energy logo should be displayed correctly
 
-  @NonFunctional @Performance @Priority=14
+  @NonFunctional @Performance @Priority=13
   Scenario: Verify login response time with valid credentials
     When User enters valid username from configuration
     And User enters valid password from configuration
     And User clicks on Sign In button
     Then Login should complete within 5 seconds
 
-  @NonFunctional @Usability @Priority=15
+  @NonFunctional @Usability @Priority=14
   Scenario: Verify tab navigation on login page
     When User uses Tab key to navigate
     Then Focus should move from Username to Password
     And Focus should move to Remember Me checkbox
     And Focus should move to Sign In button
 
-  @NonFunctional @Accessibility @Priority=16
+  @NonFunctional @Accessibility @Priority=15
   Scenario: Verify login page accessibility features
     Then Username field should have proper label
     And Password field should have proper label
@@ -125,3 +119,8 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
 
 
 
+ @NonFunctional @Security @Priority=16
+  Scenario: Verify account lockout after multiple failed attempts
+    When User attempts login with invalid password 5 times
+    Then User account should be locked
+    And User should see account lockout message
