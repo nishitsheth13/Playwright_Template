@@ -1,7 +1,6 @@
-# Playwright MCP Automation Guide
+# Playwright Automation Framework Guide
 
-> **Professional Test Automation with MCP Server & AI**  
-> Create and maintain tests through browser interaction and AI assistance
+> **Professional Test Automation with Playwright + Cucumber + TestNG**
 
 ---
 
@@ -10,22 +9,25 @@
 1. [Overview](#-overview)
 2. [Project Structure](#-project-structure)
 3. [Prerequisites](#-prerequisites)
-4. [MCP + AI Workflow](#-mcp--ai-workflow)
-5. [Step-by-Step Guide](#-step-by-step-guide)
-6. [Test Execution](#-test-execution)
-7. [Configuration Reference](#-configuration-reference)
+4. [Test Execution](#-test-execution)
+5. [Configuration Reference](#-configuration-reference)
+6. [Best Practices](#-best-practices)
 
 ---
 
 ## 🎯 Overview
 
-This framework enables test automation through:
-- **MCP Browser Server**: Capture application behavior and element locators
-- **AI Assistant**: Generate test files based on MCP observations
-- **Automated Execution**: TestNG-based execution with retry and reporting
-- **No Manual Coding**: Let MCP and AI handle the implementation
+### 🤖 Want AI-Generated Tests? 
+**📘 See [AI_GUIDE.md](AI_GUIDE.md) - Create tests in 5 minutes with zero coding!**
 
-**Workflow:** Explore → Capture → Instruct AI → Compile → Execute → Verify
+### Framework Features
+- **Playwright** for browser automation
+- **Cucumber** for BDD scenarios
+- **TestNG** for test execution
+- **Page Object Model** for maintainability
+- **Auto-retry** failed tests
+- **ExtentReports** with screenshots & recordings
+- **Centralized configuration** and timeouts
 
 ---
 
@@ -85,152 +87,123 @@ Playwright_Template/
 
 ## ✅ Prerequisites
 
-**Required Software:**
+**Required:**
 - Java JDK 22
 - Maven 3.x
 - IDE (IntelliJ IDEA / VS Code)
-- Playwright MCP Server
-- AI Assistant (GitHub Copilot / ChatGPT)
 
-**Verification:**
+**Optional (for AI generation):**
+- Node.js 18+ - See [AI_GUIDE.md](AI_GUIDE.md)
+
+**Verify Setup:**
 ```bash
 mvn clean compile test-compile
-# Expected: BUILD SUCCESS
 ```
 
 ---
 
-## 🔄 MCP + AI Workflow
+## 🔧 Traditional Workflow (Manual Coding)
 
-### **Complete Process Flow**
+**If you prefer manual coding instead of AI generation:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  PHASE 1: EXPLORATION (MCP Browser)                             │
-├─────────────────────────────────────────────────────────────────┤
-│  1. Start MCP Browser                                           │
-│  2. Navigate to application                                     │
-│  3. Interact with elements (click, type, navigate)              │
-│  4. Capture snapshots and locators                              │
-│  5. Document behavior and flows                                 │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  PHASE 2: GENERATION (AI Assistant)                             │
-├─────────────────────────────────────────────────────────────────┤
-│  6. Provide MCP observations to AI                              │
-│  7. AI generates Feature file (Gherkin)                         │
-│  8. AI generates Page Object (with MCP locators)                │
-│  9. AI generates Step Definitions (connects feature to page)    │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  PHASE 3: VALIDATION & EXECUTION                                │
-├─────────────────────────────────────────────────────────────────┤
-│  10. Compile project: mvn clean compile test-compile            │
-│  11. Execute tests: mvn test -DsuiteXmlFile=testng.xml          │
-│  12. Verify reports in MRITestExecutionReports/                 │
-│  13. Close MCP browser                                          │
-└─────────────────────────────────────────────────────────────────┘
+### Step 1: Create Page Object
+
+Create a new file in `src/main/java/pages/`:
+
+```javManual Test Creation Workflow
+import com.microsoft.playwright.Page;
+import configs.TimeoutConfig;
+
+public class LoginPage extends BasePage {
+    
+    public LoginPage() {
+        super();
+    }
+    
+    protected static void enterUsername(String locator, String username) {
+        fillText(locator, username);
+    }
+    
+    protected static void enterPassword(String locator, String password) {
+        fillText(locator, password);
+    }
+    
+    protected static void clickLoginButton(String locator) {
+        clickElement(locator);
+    }
+}
 ```
 
----
+### Step 2: Create Feature File
 
-## 📖 Step-by-Step Guide
+Create a new file in `src/test/java/features/`:
 
-### **STEP 1: Launch MCP Browser**
-
-**Objective:** Start Playwright MCP server for application exploration
-
-**Actions:**
-1. Activate MCP browser tools in your IDE
-2. Ensure browser window opens successfully
-3. Verify MCP tools are available
-
-**MCP Tools Available:**
-- `browser_navigate` - Navigate to URLs
-- `browser_snapshot` - Capture page structure
-- `browser_click` - Click elements
-- `browser_type` - Enter text
-- `browser_fill_form` - Fill forms
-
----
-
-### **STEP 2: Explore Application with MCP**
-
-**Objective:** Capture complete user journey and element information
-
-**Process:**
-
-1. **Navigate to Application**
-   ```
-   Tool: browser_navigate
-   URL: https://your-application.com/page
-   ```
-
-2. **Take Snapshots**
-   - Capture initial page state
-   - Identify all interactive elements
-   - Note element attributes (ID, XPath, CSS)
-
-3. **Interact with Elements**
-   - Click buttons, links, menus
-   - Fill forms and input fields
-   - Navigate between pages
-   - Verify outcomes
-
-4. **Document Observations**
-   - Page URLs
-   - Element locators (XPath/CSS selectors)
-   - User actions sequence
-   - Expected vs actual behavior
-   - Success/error messages
-
-**Example MCP Session:**
-```
-1. Navigate: https://app.com/login
-2. Snapshot: Identify username → //input[@id='Username']
-3. Type: Enter "admin"
-4. Snapshot: Identify password → //input[@id='Password']
-5. Type: Enter password
-6. Snapshot: Identify button → //button[@name='button']
-7. Click: Sign In button
-8. Snapshot: Verify dashboard loaded
+```gherkin
+Feature: Login Functionality
+  
+  @Functional @Smoke
+  Scenario: Valid login
+    Given User is on login page
+    When User enters username
+    And User enters password
+    And User clicks login button
+    Then User should be logged in
 ```
 
----
+### Step 3: Create Step Definitions
 
-### **STEP 3: Generate Feature File with AI**
+Create a new file in `src/test/java/stepDefs/`:
 
-**Objective:** Create Gherkin feature file based on MCP observations
+```java
+package stepDefs;
 
-**AI Prompt Template:**
+import io.cucumber.java.en.*;
+import pages.LoginPage;
+
+public class LoginSteps {
+    private LoginPage loginPage;
+    
+    public LoginSteps() {
+        this.loginPage = new LoginPage();
+    }
+    
+    @Given("User is on login page")
+    public void userIsOnLoginPage() {
+        loginPage.navigateTo("https://app.com/login");
+    }
+    
+    @When("User enters username")
+    public void userEntersUsername() {
+        loginPage.enterUsername("//input[@id='username']", "testuser");
+    }
+    
+    @When("User enters password")
+    public void userEntersPassword() {
+        loginPage.enterPassword("//input[@id='password']", "password123");
+    }
+    
+    @When("User clicks login button")
+    public void userClicksLoginButton() {
+        loginPage.clickLoginButton("//button[@id='login']");
+    }
+    
+    @Then("User should be logged in")
+    public void userShouldBeLoggedIn() {
+        // Add assertion
+    }
+}
 ```
-"Create a Cucumber feature file for [FUNCTIONALITY] based on MCP observations:
 
-MCP Observations:
-- Page URL: [url]
-- User Flow: [describe steps observed]
-- Element Locators:
-  - [element name]: [XPath/CSS from MCP]
-  - [element name]: [XPath/CSS from MCP]
+**⚡ Tip:** Use AI generation instead - see [AI_GUIDE.md](AI_GUIDE.md) for 10x faster workflow!
 
-Requirements:
-- File: src/test/java/features/[name].feature
-- Tags: @Smoke @Functional @Priority=0
-- Include Background section
-- Business-readable language
-- Cover positive and negative scenarios"
+### Step 4: Compile & Run
+
+```bash
+mvn clean compile test-compile
+mvn test
 ```
 
-**AI Output Location:** `src/test/java/features/[name].feature`
-
-**What AI Generates:**
-- Feature declaration with description
-- Background (common setup steps)
-- Multiple scenarios (happy path, error cases)
-- Given-When-Then structure
-- Appropriate tags for execution control
+**⚡ Faster Way:** Use AI generation - see [AI_GUIDE.md](AI_GUIDE.md
 
 ---
 
@@ -243,9 +216,9 @@ Requirements:
 "Create a Page Object class for [PAGE NAME] based on MCP observations:
 
 MCP Captured Locators:
-- [element 1]: [XPath/CSS]
-- [element 2]: [XPath/CSS]
-- [element 3]: [XPath/CSS]
+- [element 1]: [Id/XPath/CSS]
+- [element 2]: [Id/XPath/CSS]
+- [element 3]: [Id/XPath/CSS]
 
 Requirements:
 - File: src/main/java/pages/[PageName].java
@@ -618,23 +591,7 @@ Location: `src/test/testng.xml`
 - Always use TestNG XML for consistency
 - Run smoke tests before full regression
 - Verify reports after each execution
-- Fix failures immediately
-
-### **DON'T ❌**
-
-**MCP Usage:**
-- Close browser before test execution completes
-- Skip capturing element locators
-- Assume locators without MCP verification
-
-**AI Usage:**
-- Give vague prompts without context
-- Accept code without review
-- Skip compilation verification
-- Ignore framework conventions
-
-**Test Execution:**
-- Run without compiling first
+- Fun without compiling first
 - Ignore test failures
 - Skip report verification
 - Commit untested code
@@ -653,36 +610,32 @@ Location: `src/test/testng.xml`
 
 ### **Compilation Issues**
 
+- Use descriptive names for page objects and methods
+- Follow Gherkin pattern: Given → When → Then
+- Always compile before running tests: `mvn clean compile`
+- Use tags (@Smoke, @Regression) for test organization
+- Review test reports after execution
+- Keep page objects focused and maintainable
+- UsCommon Issues
+
 | Problem | Solution |
 |---------|----------|
-| Build failure | Run `mvn clean compile test-compile`, check errors |
-| Missing imports | Ask AI: "Fix imports in [file]" |
-| Method not found | Verify page object has method, check spelling |
-| Syntax errors | Ask AI: "Fix syntax error: [error message]" |
+| **Build failure** | Run `mvn clean compile test-compile`, check error logs |
+| **Tests not running** | Verify testng.xml configured, check test class path |
+| **Tests failing** | Check reports in MRITestExecutionReports/, review screenshots |
+| **Reports not generated** | Verify Screenshots_Mode=true, check directory permissions |
+| **Retry not working** | Verify RetryListener in testng.xml, check MaxRetryCount setting |
+| **Browser not launching** | Check Headless_Mode setting, verify browser drivers |
+| **Timeouts** | Adjust timeout values in configurations.properties---
 
-### **Execution Issues**
+## 📚 Additional Resources
 
-| Problem | Solution |
-|---------|----------|
-| Tests not running | Verify testng.xml configured, check tags match |
-| Tests failing | Check reports for screenshots, ask AI to fix |
-| Reports not generated | Verify Screenshots_Mode=true, check write permissions |
-| Retry not working | Verify RetryListener in testng.xml, check MaxRetryCount |
-
----
-
-## 📞 Support
+- **🤖 AI-Powered Testing:** [AI_GUIDE.md](AI_GUIDE.md)
+- **📁 Reports:** `MRITestExecutionReports/`
+- **⚙️ Config:** `src/test/resources/configurations.properties`
 
 **Framework Version:** 3.0  
-**Last Updated:** December 20, 2025  
+**Last Updated:** December 23, 2025  
 **Status:** Production Ready ✅
 
-**For Issues:**
-1. Check Troubleshooting section
-2. Review report screenshots
-3. Ask AI to fix with error context
-4. Contact automation team
-
 ---
-
-**End of Guide**
