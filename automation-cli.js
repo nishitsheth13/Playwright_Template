@@ -96,6 +96,212 @@ async function isMCPServerRunning() {
 }
 
 /**
+ * Record & Auto-Generate (Option 1)
+ * Integrated Playwright recording with auto-generation, validation, and testing
+ */
+async function recordAndGenerate() {
+  console.log(colors.green + '\n🎥 Record & Auto-Generate Test\n' + colors.reset);
+  console.log('This will open Playwright Inspector to record your actions,');
+  console.log('then automatically generate all test files with validation!\n');
+  
+  // Get test details
+  const featureName = await question(colors.cyan + '📝 Feature Name (e.g., Login, Profile): ' + colors.reset);
+  const pageUrl = await question(colors.cyan + '🌐 Page URL path (e.g., /login, /profile): ' + colors.reset);
+  const jiraStory = await question(colors.cyan + '🎫 JIRA Story ID (optional, e.g., ECS-123): ' + colors.reset);
+  
+  if (!featureName.trim()) {
+    console.log(colors.red + '\n❌ Feature name is required!' + colors.reset);
+    return;
+  }
+  
+  console.log(colors.yellow + '\n🚀 Starting recording process...' + colors.reset);
+  console.log(colors.yellow + 'This will call record-and-generate.bat with your inputs\n' + colors.reset);
+  
+  // Call record-and-generate.bat with parameters
+  return new Promise((resolve, reject) => {
+    const recordScript = spawn('cmd.exe', ['/c', 'record-and-generate.bat'], {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        FEATURE_NAME: featureName,
+        PAGE_URL: pageUrl || '/',
+        JIRA_STORY: jiraStory || 'AUTO-GEN'
+      }
+    });
+    
+    recordScript.on('close', (code) => {
+      if (code === 0) {
+        console.log(colors.green + '\n✅ Recording and generation completed successfully!\n' + colors.reset);
+        console.log(colors.bright + '📋 Generated Files:' + colors.reset);
+        console.log(`   ✓ src/main/java/pages/${featureName}.java`);
+        console.log(`   ✓ src/test/java/features/${featureName}.feature`);
+        console.log(`   ✓ src/test/java/stepDefs/${featureName}Steps.java\n`);
+        
+        console.log(colors.cyan + '💡 Next: Enhance with AI prompt:' + colors.reset);
+        console.log(`   "Enhance recorded ${featureName} test by implementing TODOs"`);
+        console.log(`   "Follow COMPLETE_TEST_GUIDE.md patterns"\n`);
+      } else {
+        console.log(colors.red + `\n❌ Recording process failed with code ${code}` + colors.reset);
+      }
+      resolve();
+    });
+    
+    recordScript.on('error', (err) => {
+      console.log(colors.red + '\n❌ Failed to start recording: ' + err.message + colors.reset);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Generate locators from recorded actions
+ */
+function generateLocatorsFromRecording(actions) {
+  const locators = [];
+  
+  actions.forEach((action, index) => {
+    if (action.selector) {
+      const locatorName = action.name || `ELEMENT_${index + 1}`;
+      locators.push({
+        name: locatorName,
+        selector: action.selector,
+        action: action.action,
+        comment: action.description || `Locator for ${action.action} action`
+      });
+    }
+  });
+  
+  return locators;
+}
+
+/**
+ * Generate Page Object from recording
+ */
+function generatePageObjectFromRecording(pageName, url, locators) {
+  const className = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+  
+  let code = `package pages;
+
+import com.microsoft.playwright.Page;
+import configs.BasePage;
+import configs.loadProps;
+
+/**
+ * Page Object for ${className}
+ * Auto-generated from recording
+ * @author AI Automation
+ */
+public class ${className} extends BasePage {
+
+    // Locators
+`;
+
+  // Add locators
+  locators.forEach(loc => {
+    code += `    private static final String ${loc.name.toUpperCase()} = "${loc.selector}"; // ${loc.comment}\n`;
+  });
+  
+  code += `\n    /**\n     * Navigate to ${className} page\n     */\n`;
+  code += `    public static void navigateTo(Page page) {\n`;
+  code += `        String url = loadProps.getProperty("URL") + "${url}";\n`;
+  code += `        page.navigate(url);\n`;
+  code += `        page.waitForLoadState();\n`;
+  code += `    }\n\n`;
+  
+  // Add action methods
+  const uniqueActions = [...new Set(locators.map(l => l.action))];
+  locators.forEach((loc, idx) => {
+    const methodName = loc.name.toLowerCase().replace(/_/g, '');
+    code += `    /**\n     * ${loc.comment}\n     */\n`;
+    
+    switch(loc.action) {
+      case 'click':
+        code += `    public static void ${methodName}() {\n`;
+        code += `        clickOnElement(${loc.name.toUpperCase()});\n`;
+        code += `    }\n\n`;
+        break;
+      case 'fill':
+        code += `    public static void ${methodName}(String text) {\n`;
+        code += `        enterText(${loc.name.toUpperCase()}, text);\n`;
+        code += `    }\n\n`;
+        break;
+      case 'select':
+        code += `    public static void ${methodName}(String value) {\n`;
+        code += `        selectFromDropdown(${loc.name.toUpperCase()}, value);\n`;
+        code += `    }\n\n`;
+        break;
+    }
+  });
+  
+  code += `}`;
+  return code;
+}
+
+/**
+ * Generate Feature file from recording
+ */
+function generateFeatureFromRecording(featureName, scenarios) {
+  let feature = `@${featureName} @Automated\nFeature: ${featureName}\n\n`;
+  feature += `  Background:\n`;
+  feature += `    Given user navigates to ${featureName} page\n\n`;
+  
+  scenarios.forEach((scenario, idx) => {
+    feature += `  @Scenario${idx + 1}\n`;
+    feature += `  Scenario: ${scenario.name || `Test scenario ${idx + 1}`}\n`;
+    
+    scenario.steps.forEach(step => {
+      feature += `    ${step.type} ${step.text}\n`;
+    });
+    feature += `\n`;
+  });
+  
+  return feature;
+}
+
+/**
+ * Generate Step Definitions from recording
+ */
+function generateStepDefsFromRecording(featureName, steps) {
+  const className = featureName.charAt(0).toUpperCase() + featureName.slice(1) + 'Steps';
+  const pageName = featureName.charAt(0).toUpperCase() + featureName.slice(1);
+  
+  let code = `package stepDefs;
+
+import configs.browserSelector;
+import io.cucumber.java.en.*;
+import pages.${pageName};
+
+/**
+ * Step Definitions for ${featureName}
+ * Auto-generated from recording
+ */
+public class ${className} extends browserSelector {
+\n`;
+
+  code += `    @Given("user navigates to ${featureName} page")\n`;
+  code += `    public void userNavigatesTo${pageName}Page() {\n`;
+  code += `        ${pageName}.navigateTo(page);\n`;
+  code += `    }\n\n`;
+  
+  steps.forEach((step, idx) => {
+    const methodName = step.text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(' ')
+      .map((word, i) => i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+    
+    code += `    @${step.type}("${step.text}")\n`;
+    code += `    public void ${methodName}() {\n`;
+    code += `        // TODO: Implement step logic\n`;
+    code += `    }\n\n`;
+  });
+  
+  code += `}`;
+  return code;
+}
+
+/**
  * Start MCP server
  */
 async function startMCPServer() {
@@ -333,18 +539,30 @@ function extractAcceptanceCriteria(adf) {
  * Display main menu
  */
 async function displayMenu() {
-  console.log(colors.yellow + '\n📋 What would you like to do?\n' + colors.reset);
-  console.log('  1️⃣  Generate Complete Test Suite (Recommended)');
-  console.log('  2️⃣  Update Existing Test (Add elements/scenarios)');
-  console.log('  3️⃣  Generate Page Object only');
-  console.log('  4️⃣  Generate Feature File only');
-  console.log('  5️⃣  Generate Step Definitions only');
-  console.log('  6️⃣  Analyze Existing Framework');
-  console.log('  7️⃣  Quick Start Tutorial');
-  console.log('  8️⃣  Generate Test from JIRA Story');
-  console.log('  0️⃣  Exit\n');
+  console.log(colors.yellow + '\n╔════════════════════════════════════════════════════════════╗' + colors.reset);
+  console.log(colors.yellow + '║' + colors.reset + colors.bright + '           🎯 TEST GENERATION OPTIONS                      ' + colors.reset + colors.yellow + '║' + colors.reset);
+  console.log(colors.yellow + '╚════════════════════════════════════════════════════════════╝' + colors.reset);
+  console.log('');
+  console.log(colors.bright + '📌 RECOMMENDED OPTIONS (Smart & Fast):' + colors.reset);
+  console.log(colors.green + '  1️⃣  🎥 Record & Auto-Generate' + colors.reset + ' (Fastest - 5-10 min)');
+  console.log('      └─ Record browser actions → Auto-generate all files');
+  console.log(colors.green + '  2️⃣  🤖 AI-Assisted from JIRA' + colors.reset + ' (Enterprise)');
+  console.log('      └─ Use JIRA story → AI generates complete test');
+  console.log(colors.green + '  3️⃣  ✨ AI-Guided Interactive' + colors.reset + ' (No JIRA needed)');
+  console.log('      └─ Answer questions → AI generates complete suite');
+  console.log('');
+  console.log(colors.bright + '🔧 ADVANCED OPTIONS:' + colors.reset);
+  console.log('  4️⃣  📝 Update Existing Test (Add elements/scenarios)');
+  console.log('  5️⃣  📄 Generate Page Object only');
+  console.log('  6️⃣  📋 Generate Feature File only');
+  console.log('  7️⃣  🔀 Generate Step Definitions only');
+  console.log('');
+  console.log(colors.bright + '📚 HELP & UTILITIES:' + colors.reset);
+  console.log('  8️⃣  🔍 Analyze Existing Framework');
+  console.log('  9️⃣  📖 Quick Start Tutorial');
+  console.log('  0️⃣  🚪 Exit\n');
   
-  const choice = await question(colors.cyan + '👉 Enter your choice (0-8): ' + colors.reset);
+  const choice = await question(colors.cyan + '👉 Enter your choice (0-9): ' + colors.reset);
   return choice.trim();
 }
 
@@ -2630,28 +2848,31 @@ async function main() {
     
     switch (choice) {
       case '1':
-        await generateCompleteTestSuite();
+        await recordAndGenerate();
         break;
       case '2':
-        await updateExistingTest();
+        await generateTestFromJiraStory();
         break;
       case '3':
-        await generatePageObject();
+        await generateCompleteTestSuite();
         break;
       case '4':
-        await generateFeatureFile();
+        await updateExistingTest();
         break;
       case '5':
-        await generateStepDefinitions();
+        await generatePageObject();
         break;
       case '6':
-        await analyzeFramework();
+        await generateFeatureFile();
         break;
       case '7':
-        await quickStartTutorial();
+        await generateStepDefinitions();
         break;
       case '8':
-        await generateTestFromJiraStory();
+        await analyzeFramework();
+        break;
+      case '9':
+        await quickStartTutorial();
         break;
       case '0':
         console.log(colors.green + '\n👋 Thanks for using AI Automation Generator!\n' + colors.reset);
@@ -2668,7 +2889,7 @@ async function main() {
         console.log(colors.red + '\n❌ Invalid choice. Please try again.\n' + colors.reset);
     }
     
-    if (running && choice !== '7') {
+    if (running && choice !== '9') {
       await question(colors.cyan + '\nPress Enter to continue...' + colors.reset);
     }
   }

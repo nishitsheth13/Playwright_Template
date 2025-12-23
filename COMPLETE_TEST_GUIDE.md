@@ -5,6 +5,264 @@
 
 ---
 
+## 🎯 Quick Start Options
+
+### 🚀 UNIFIED CLI (RECOMMENDED - All Options in One Place)
+```bash
+# Single entry point for all test generation methods
+generate-test.bat
+```
+**Interactive menu with 3 options:**
+1. 🎥 **Record & Auto-Generate** (Fastest - 5-10 min)
+2. 🤖 **AI-Assisted Interactive** (Full-featured CLI with JIRA support)
+3. ✅ **Validate & Run Tests** (Check and run existing tests)
+
+**Why use Unified CLI?**
+- ✅ Single command for everything
+- ✅ Smart menu guides you to best option
+- ✅ All features accessible: Recording, AI/JIRA, Interactive, Validation
+- ✅ Consistent experience across all methods
+- ✅ Auto-fixes common issues in all modes
+- ✅ Built-in validation and testing
+
+---
+
+### 🎥 Option 1: Record & Auto-Generate (Inside CLI)
+```bash
+generate-test.bat  # Choose option 1 from menu
+```
+OR direct access:
+```bash
+generate-test.bat record
+# OR
+record-and-generate.bat
+```
+**What it does:**
+1. Opens Playwright Inspector to record your actions
+2. Automatically extracts locators from recording
+3. Generates Page Object, Feature file, and Step Definitions
+4. **Auto-validates & fixes common issues:**
+   - ✅ Checks for duplicate step patterns
+   - ✅ Auto-fixes protected methods to public
+   - ✅ Auto-fixes BASE_URL() to getProperty("URL")
+   - ✅ Multiple compilation attempts with guided fixes
+   - ✅ Detects specific errors (DuplicateStepDefinitionException, NullPointerException)
+5. Compiles and validates generated code (with retry logic)
+6. **Runs tests automatically** via testng.xml
+7. **Provides detailed error guidance** if issues occur
+8. Ready to run immediately!
+
+**Perfect for:**
+- ⚡ Fastest test creation (5-10 minutes start to finish)
+- 🎯 New test cases from scratch
+- ✅ Accurate locators from real page interactions
+- 🔄 Quick POC or demos
+- 👥 Teams new to automation
+- 📱 Testing dynamic web apps with complex locators
+- 🛠️ Auto-fixing common code issues
+
+**Limitations:**
+- Only generates verification TODOs for business-specific logic
+- All framework actions fully implemented
+- Needs AI or manual for complex business validations
+
+**Smart Generation Features:**
+- ✅ Extracts ALL recorded actions (click, fill, select, check, press, navigate)
+- ✅ Generates locator constant for EVERY element
+- ✅ Creates dedicated method for EVERY action using utils.java
+- ✅ Produces complete feature steps for ALL interactions
+- ✅ Maps EVERY step to implemented page object method
+- ✅ Only TODO for business-specific verification logic
+
+**Auto-Fix Features:**
+- ✅ Duplicate step pattern detection (prevents DuplicateStepDefinitionException)
+- ✅ Protected method auto-fix (changes to public)
+- ✅ BASE_URL() auto-fix (changes to getProperty("URL"))
+- ✅ Retry compilation up to 3 times with guided fixes
+- ✅ Retry test execution up to 3 times
+- ✅ Specific error detection and guidance
+
+### 🤖 Option 2: AI-Assisted (Inside CLI - RECOMMENDED for Enterprise)
+```bash
+generate-test.bat  # Choose option 2 from menu
+```
+OR direct access:
+```bash
+generate-test.bat cli
+# OR
+node automation-cli.js
+```
+
+**AI-Assisted menu options:**
+1. 🎥 Record & Auto-Generate
+2. 🎫 Generate from JIRA Story
+3. ✨ AI-Guided Interactive (answer questions)
+4. 📝 Update Existing Test
+5. 🔧 Generate individual components (Page Object, Feature, Steps)
+6. 🔍 Analyze Framework
+7. 📖 Quick Start Tutorial
+
+**Smart Generation Features:**
+- ✅ Analyzes requirements completely
+- ✅ Generates ALL identified actions (not just templates)
+- ✅ Creates proper locator constants for ALL elements
+- ✅ Implements ALL methods using utils.java
+- ✅ Maps ALL scenarios to complete implementations
+- ✅ Only TODO for business-specific verification logic
+
+**Perfect for:**
+- 📋 Tests with detailed JIRA requirements
+- 🏢 Enterprise workflows with documentation
+- ✅ Complete test coverage from acceptance criteria
+- 📊 Traceability to requirements
+- 🤝 Team collaboration with JIRA integration
+- ✨ Interactive test design without JIRA
+
+### ✅ Option 3: Validate & Run Tests
+```bash
+generate-test.bat  # Choose option 3 from menu
+```
+OR direct access:
+```bash
+generate-test.bat validate
+```
+
+**What it does:**
+- ✅ Analyzes project structure
+- ✅ Checks for common issues
+- ✅ Auto-fixes protected methods and BASE_URL()
+- ✅ Detects duplicate step patterns
+- ✅ Compiles with retry (up to 3 attempts)
+- ✅ Runs tests with retry (up to 3 attempts)
+- ✅ Generates reports
+
+**Perfect for:**
+- 🔍 Checking existing tests
+- 🛠️ Auto-fixing common issues
+- 📊 Running test suite with reports
+- ♻️ Retry logic for flaky builds
+
+---
+
+### 📝 Option 4: Manual Coding (For Advanced Users)
+Create files following the structure below.
+
+**Perfect for:**
+- 🧩 Complex business logic
+- 🔀 Custom validation scenarios
+- 🎨 Full control over implementation
+- 📚 Learning framework internals
+- ⚙️ Advanced customization needs
+
+---
+
+## 💡 Quick Decision Guide
+
+**Start with Unified CLI:**
+```bash
+generate-test.bat  # Shows menu with all options
+```
+
+**Choose Recording (Option 1) if:**
+- Need tests fast (< 30 minutes)
+- Have access to running application
+- Creating simple user workflows
+- Prototyping or POC
+
+**Choose AI/JIRA (Option 2) if:**
+- Have detailed JIRA stories
+- Need complete test coverage
+- Working in enterprise environment
+- Want JIRA integration/traceability
+- Want interactive guided generation
+
+**Choose Validation (Option 3) if:**
+- Already have tests
+- Need to check/fix existing code
+- Want to run test suite
+- Need compilation retry logic
+
+**Choose Manual (Option 4) if:**
+- Need complex logic/validation
+- Customizing framework behavior
+- Learning or training
+- Have specific technical requirements
+
+---
+
+## 🔄 Complete Workflows
+
+### Workflow 1: Unified CLI → Choose Method → Auto-Validate
+```
+1. generate-test.bat
+2. Choose option from menu:
+   - Option 1: Recording → Perform actions → Auto-generate + validate
+   - Option 2: AI/JIRA → Provide details → AI generates + validates
+   - Option 3: Validation → Check existing → Auto-fix + compile + run
+3. All options include:
+   ✓ Duplicate step pattern check
+   ✓ Auto-fix protected methods
+   ✓ Auto-fix BASE_URL() usage
+   ✓ Compile with retry (up to 3 attempts)
+   ✓ Run tests with retry (up to 3 attempts)
+4. Review reports and enhance if needed
+```
+
+### Workflow 2: Recording → Auto-Generate → AI Enhancement
+```
+1. generate-test.bat → Choose option 1
+   OR record-and-generate.bat
+2. Enter feature details (name, URL, JIRA)
+3. Perform actions in browser → close when done
+4. Auto-validation runs:
+   ✓ Duplicate step pattern check
+   ✓ Auto-fix protected methods
+   ✓ Auto-fix BASE_URL() usage
+   ✓ Compile with retry (up to 3 attempts)
+   ✓ Run tests with retry (up to 3 attempts)
+5. Files auto-generated with TODOs + validation passed
+6. AI prompt: "Enhance recorded {Feature} test by implementing TODOs"
+7. Re-run if needed: generate-test.bat validate
+```
+
+### Workflow 3: JIRA/AI → Validate → Run
+```
+1. generate-test.bat → Choose option 2
+   OR node automation-cli.js
+2. Select from AI menu:
+   - Generate from JIRA Story (option 2)
+   - AI-Guided Interactive (option 3)
+3. AI analyzes → generates all files
+4. Auto-validation runs
+5. Fix errors if any (guided prompts)
+6. Review reports
+```
+
+### Workflow 4: Validation Only
+```
+1. generate-test.bat → Choose option 3
+   OR generate-test.bat validate
+2. Auto-checks and fixes:
+   - Project structure
+   - Duplicate patterns
+   - Protected methods
+   - BASE_URL() usage
+3. Compile (retry up to 3x)
+4. Run tests (retry up to 3x)
+5. Review reports
+```
+
+### Workflow 5: Manual Development
+```
+1. Create Page Object (extend BasePage)
+2. Create Feature file (Gherkin syntax)
+3. Create Step Definitions (extend browserSelector)
+4. Run validation: generate-test.bat validate
+5. Fix and iterate
+```
+
+---
+
 ## 🎯 CRITICAL REMINDERS - Read This First!
 
 ### 📁 Folder Structure (NEVER Change This!)
@@ -142,6 +400,35 @@ Available test data in `src/test/resources/configurations.properties`:
 - `Headless_Mode` - Run in headless mode (true/false)
 - `DefaultTimeout`, `ElementWaitTimeout`, `PageLoadTimeout` - Timeouts
 - `Screenshots_Mode`, `Recording_Mode` - Reporting options
+- `JIRA_Integration` - Enable automated JIRA defect reporting (True/False)
+
+**📋 JIRA Integration Behavior:**
+
+```properties
+JIRA_Integration=True  # Enables automated defect reporting AFTER test execution
+```
+
+**How JIRA Integration Works:**
+
+1. ✅ Tests execute normally (login → run scenarios → assertions)
+2. ✅ Tests pass/fail based on assertions
+3. ✅ **AFTER test completes** → TestNG listener triggers
+4. ✅ Listener checks if JIRA_Integration=True
+5. ✅ If True → Adds pass/fail comment to JIRA issue
+6. ✅ If test failed → Attaches screenshot to JIRA issue
+
+**JIRA Integration does NOT:**
+
+- ❌ Prevent test execution
+- ❌ Skip login steps
+- ❌ Interfere with test flow
+- ❌ Create bugs during test execution
+
+**JIRA Integration DOES:**
+
+- ✅ Add comments to JIRA after test completes
+- ✅ Attach screenshots for failed tests
+- ✅ Track test results in JIRA automatically
 
 **❌ NEVER hardcode test data in page objects or step definitions!**
 
@@ -637,29 +924,93 @@ page.click(BUTTON);  // Let test reports handle logging
 
 ### ⚠️ CRITICAL: Cucumber Duplicate Step Definitions
 
-**❌ WRONG - This will cause DuplicateStepDefinitionException:**
+**What causes DuplicateStepDefinitionException:**
+
+1. ❌ Multiple @Given/@When/@Then annotations on same method
+2. ❌ **SAME PATTERN TEXT in different @Given/@When/@Then** (e.g., `@Given("user logs in")` and `@When("user logs in")`)
+3. ❌ Same pattern appearing multiple times across different step definition files
+
+**RULE: Each pattern text can appear ONLY ONCE across ALL @Given/@When/@Then annotations in entire project**
+
+**❌ WRONG - Multiple annotations on one method:**
 ```java
 @Given("user logs in as {string}")
 @When("user logs in as {string}")
 public void userLogsIn(String userName) {
-    // This creates TWO step definitions!
+    // This creates TWO step definitions with same pattern!
 }
 ```
 
-**✅ CORRECT - Create separate methods:**
+**❌ WRONG - Same pattern in different methods:**
+
 ```java
-@Given("user logs in as {string}")
-public void userLogsInGiven(String userName) {
-    login.loginWith(userName, "password123");
+@Given("user navigates to page")
+public void userNavigatesToPage() {
+    // First definition
 }
 
-@When("user logs in as {string}")  
-public void userLogsInWhen(String userName) {
-    login.loginWith(userName, "password123");
+@When("user navigates to page")
+public void userNavigatesToPageAgain() {
+    // Second definition - DUPLICATE PATTERN!
 }
 ```
 
-**Better Alternative - Use a common private method:**
+**✅ CORRECT - Different patterns or rename methods:**
+
+```java
+// Option 1: Different patterns
+@Given("user is on the page")
+public void userIsOnPage() {
+    navigateToPage();
+}
+
+@When("user navigates to the page")
+public void userNavigatesToPage() {
+    navigateToPage();
+}
+
+// Option 2: Rename with Given/When suffix
+@Given("user navigates to page")
+public void userNavigatesToPageGiven() {
+    performNavigation();
+}
+
+@When("user navigates to page")
+public void userNavigatesToPageWhen() {
+    performNavigation();
+}
+
+// Shared private helper
+private void performNavigation() {
+    // Actual implementation
+}
+```
+
+**✅ Project Status (Last Verified: 2025-12-23):**
+
+- ✅ **ZERO DUPLICATES** - All 105 step patterns are unique
+- ✅ No pattern text appears in multiple @Given/@When/@Then annotations
+- ✅ Breakdown:
+   - ProfileSteps.java: 6 unique patterns
+   - loginSteps.java: 32 unique patterns
+   - ImpersonateAccessGroupSteps.java: 67 unique patterns
+- ✅ Automated duplicate detection in generate-test.bat
+
+**How to prevent duplicates:**
+
+1. ✅ Each pattern text MUST be unique across ALL @Given/@When/@Then
+2. ✅ NEVER use same pattern text with different annotation types:
+   - ❌ WRONG: `@Given("user logs in")` and `@When("user logs in")`
+   - ✅ RIGHT: `@Given("user is logged in")` and `@When("user logs in")`
+3. ✅ If similar actions needed, use different wording OR suffix method names
+4. ✅ Always create private helper methods for shared implementation logic
+5. ✅ Run generate-test.bat - automatically detects ALL duplicate patterns before compilation {
+   MyPage.navigate(page);
+   }
+
+```
+
+**✅ BEST PRACTICE - Use private helper methods:**
 ```java
 @Given("user logs in as {string}")
 public void userLogsInGiven(String userName) {
@@ -675,6 +1026,21 @@ private void performLogin(String userName) {
     login.loginWith(userName, "password123");
 }
 ```
+
+**🔍 Auto-Detection:**
+Duplicate checking is built into generate-test.bat (Step 3)
+
+```bash
+generate-test.bat validate  # Includes automatic duplicate detection
+```
+
+**Prevention Checklist:**
+
+- [ ] Never use same pattern text in multiple annotations
+- [ ] Always rename methods with Given/When/Then suffix if patterns are similar
+- [ ] Use private helper methods for shared logic
+- [ ] Run `generate-test.bat validate` before every commit
+- [ ] Review feature files to avoid duplicate step text
 
 ---
 
@@ -727,6 +1093,12 @@ mvn test -Dcucumber.filter.tags="@YourTag"
 ## 🔄 Quick Reference Commands
 
 ```bash
+# Validate & Run (Full workflow with duplicate check built-in)
+generate-test.bat validate
+
+# Generate new test with auto-validation
+generate-test.bat
+
 # Clean build
 mvn clean
 
@@ -775,6 +1147,7 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 - [ ] Review `src\test\java\stepDefs\` for existing step definitions
 - [ ] Check `utils.java` for common methods
 - [ ] Identify patterns: BasePage, browserSelector, public static
+- [ ] Run: `generate-test.bat validate` (includes duplicate check)
 
 ### While Writing Code
 - [ ] Use `clickOnElement()`, `enterText()` from utils.java
@@ -783,24 +1156,339 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 - [ ] Use `public static` methods
 - [ ] Import configs.loadProps
 - [ ] ONE Cucumber annotation per method
+- [ ] UNIQUE pattern text for each @Given/@When/@Then
+- [ ] Use Given/When/Then suffix if patterns are similar
 
 ### After Writing Code
-- [ ] Run: `mvn clean compile test-compile`
+
+- [ ] Run: `generate-test.bat validate` (auto-checks duplicates, compiles, runs)
 - [ ] Fix any errors using error table above
-- [ ] Run: `mvn test -DsuiteXmlFile=src/test/testng.xml`
 - [ ] If failed, fix and repeat
 - [ ] Check reports in MRITestExecutionReports/
 
 ---
 
-## 🤖 AI Prompt Templates
+## 🤖 AI Prompt Templates - Work Everywhere!
 
-### JIRA-Based (Recommended)
+### 🌟 Universal AI Prompts (Use with GitHub Copilot, Claude, ChatGPT, etc.)
+
+**These prompts work in:**
+- ✅ GitHub Copilot Chat (VS Code, IntelliJ)
+- ✅ Claude Desktop (via MCP server)
+- ✅ ChatGPT / Claude Web
+- ✅ Any AI assistant with workspace access
+
+---
+
+### 🎥 Recording-Based Enhancement (After recording in CLI)
+
+```
+Enhance the recorded test for {FeatureName} by:
+
+1. Read generated files:
+   - src/main/java/pages/{FeatureName}.java
+   - src/test/java/features/{FeatureName}.feature
+   - src/test/java/stepDefs/{FeatureName}Steps.java
+   - temp_recording_*/recorded-actions.java
+
+2. Verify ALL actions are implemented:
+   - Check that EVERY recorded action has a page object method
+   - Verify EVERY method uses utils.java (clickOnElement, enterText, etc.)
+   - Ensure ALL feature steps are mapped to step definitions
+   - Confirm ALL step definitions call page object methods
+
+3. Implement ONLY remaining TODOs (verification logic):
+   - Add business-specific assertions
+   - Verify expected error messages
+   - Check database state if needed
+   - Validate business rules
+
+4. Follow project patterns from COMPLETE_TEST_GUIDE.md:
+   - Keep Page Objects extending BasePage
+   - Keep Step Definitions extending browserSelector
+   - ONE Cucumber annotation per method (no duplicates!)
+   - Use loadProps.getProperty() for test data
+
+5. Compile and verify:
+   mvn clean compile test-compile
+
+6. Run tests:
+   mvn test -DsuiteXmlFile=src/test/testng.xml
+
+CRITICAL: All framework actions (click, fill, select) should already be 
+implemented. Only business verification logic should need implementation.
+```
+
+---
+
+### 🎫 JIRA-Based Generation (Full test from scratch)
+
+```
+Generate complete test from JIRA story {ISSUE-KEY} following COMPLETE_TEST_GUIDE.md:
+
+STRICT WORKFLOW:
+1. ANALYZE FIRST:
+   - Review src/main/java/pages/ for existing patterns
+   - Review src/main/java/configs/utils.java for methods
+   - Check src/test/resources/configurations.properties for test data
+   - Review COMPLETE_TEST_GUIDE.md for patterns
+
+2. CREATE ONLY THESE 3 FILES (ALL FULLY IMPLEMENTED):
+   - src/main/java/pages/{Feature}.java
+   - src/test/java/features/{Feature}.feature
+   - src/test/java/stepDefs/{Feature}Steps.java
+
+3. MANDATORY PATTERNS (COMPLETE IMPLEMENTATION):
+   - Page objects: 
+     * Locator constant for EVERY element
+     * Method for EVERY action using utils.java
+     * Method for EVERY verification
+     * extend BasePage, import configs.loadProps, public static methods
+   
+   - Step definitions: 
+     * Method for EVERY feature step
+     * ALL methods call page object methods
+     * ALL methods fully implemented (no action TODOs)
+     * extend browserSelector (NOT base!), NO private Page page
+   
+   - Feature file:
+     * Step for EVERY user interaction
+     * Step for EVERY verification
+     * Complete scenarios
+   
+   - Use loadProps.getProperty("URL"), loadProps.getProperty("Username")
+   - ONE Cucumber annotation per method (NO @Given + @When on same method!)
+   - Each pattern text UNIQUE across ALL @Given/@When/@Then
+
+4. IMPLEMENTATION RULES:
+   - NEVER leave framework actions as TODO (click, fill, select, etc.)
+   - ALWAYS implement using utils.java: clickOnElement(), enterText(), selectDropDownValueByText()
+   - ONLY TODO for business-specific verification logic
+   - ALL actions = IMPLEMENTED
+   - ALL mappings = IMPLEMENTED
+   - ALL verifications = IMPLEMENTED with assertions
+
+5. COMPILE & VALIDATE:
+   - Run: mvn clean compile test-compile
+   - Fix ALL errors before proceeding
+   - Run: mvn test -DsuiteXmlFile=src/test/testng.xml
+   - Fix until ALL tests pass
+
+6. DO NOT:
+   - Create bugs/issues
+   - Create extra MD/BAT files
+   - Modify testng.xml, hooks, runner, configs
+   - Hardcode test data (use configurations.properties)
+   - Skip compilation
+   - Use multiple annotations on same method
+   - Leave framework actions as TODO
+
+CRITICAL: Generate COMPLETE implementations, not templates with TODOs!
+```
+
+---
+
+### ✨ Interactive Generation (No JIRA, describe manually)
+
+```
+Create {Feature} test following COMPLETE_TEST_GUIDE.md:
+
+FEATURE DETAILS:
+- Feature Name: {Name}
+- Page URL: {URL path}
+- Elements: {List elements with actions}
+- Scenarios: {List test scenarios}
+- Test Data: {Required from configurations.properties}
+
+FOLLOW WORKFLOW:
+1. Analyze existing patterns (pages/, stepDefs/, utils.java)
+2. Create 3 files (Page Object, Feature, Steps)
+3. Use mandatory patterns (extend BasePage/browserSelector, utils methods)
+4. Use loadProps.getProperty() for all test data
+5. ONE annotation per method, unique patterns only
+6. Compile: mvn clean compile test-compile
+7. Run: mvn test -DsuiteXmlFile=src/test/testng.xml
+8. Fix until tests pass
+
+DO NOT create bugs or extra files.
+```
+
+---
+
+### 🔄 Update Existing Test
+
+```
+Update {Feature} test to add:
+
+NEW REQUIREMENTS:
+- Additional scenarios: {list}
+- New elements: {list}
+- Additional validations: {list}
+
+FOLLOW WORKFLOW:
+1. Read existing files:
+   - src/main/java/pages/{Feature}.java
+   - src/test/java/features/{Feature}.feature
+   - src/test/java/stepDefs/{Feature}Steps.java
+
+2. Update files following existing patterns:
+   - Match locator naming (ELEMENT_X)
+   - Match method naming conventions
+   - Use same utils.java methods
+   - Keep same class structure
+
+3. CHECK FOR DUPLICATES:
+   - NO duplicate step patterns
+   - Each @Given/@When/@Then pattern must be UNIQUE
+   - Use different wording if similar actions
+
+4. Compile and test:
+   mvn clean compile test-compile
+   mvn test -DsuiteXmlFile=src/test/testng.xml
+```
+
+---
+
+### 🛠️ Fix Compilation Errors
+
+```
+Fix compilation errors in {Feature} test:
+
+COMMON ISSUES TO CHECK:
+1. Missing imports: Add "import configs.loadProps;"
+2. Wrong access: Change "protected static" to "public static"
+3. Wrong method: Use "getProperty("URL")" not "BASE_URL()"
+4. Duplicate steps: Check for same pattern in multiple @Given/@When/@Then
+5. Missing extensions: Ensure Page Objects extend BasePage
+6. Missing extensions: Ensure Step Defs extend browserSelector
+
+STEPS:
+1. Read error messages
+2. Apply fixes from COMPLETE_TEST_GUIDE.md error table
+3. Recompile: mvn clean compile test-compile
+4. Repeat until successful
+```
+
+---
+
+### 🧪 Fix Test Failures
+
+```
+Fix test failures in {Feature} test:
+
+ANALYZE:
+1. Read test execution logs/reports
+2. Identify failure type:
+   - DuplicateStepDefinitionException → Check for duplicate patterns
+   - NullPointerException → Check browserSelector extension
+   - Element not found → Check locators
+   - Assertion failed → Check expected vs actual
+
+FIX:
+1. Apply solution from COMPLETE_TEST_GUIDE.md
+2. Recompile if code changes
+3. Rerun: mvn test -DsuiteXmlFile=src/test/testng.xml
+4. Repeat until pass
+```
+
+---
+
+### 📊 Generate Test Report Summary
+
+```
+Analyze test reports and create summary:
+
+1. Read reports from:
+   MRITestExecutionReports/Version*/extentReports/
+
+2. Summarize:
+   - Total tests run
+   - Passed/Failed/Skipped
+   - Execution time
+   - Failed test details with errors
+   - Screenshot analysis if available
+
+3. Provide recommendations for fixes
+```
+
+---
+
+### 🎯 Complete AI Workflow Example
+
+```
+# 1. Start with CLI
+generate-test.bat
+
+# 2. Choose recording option
+# Record actions in browser
+
+# 3. After generation, enhance with AI
+"Enhance recorded Login test by implementing TODOs,
+following COMPLETE_TEST_GUIDE.md patterns"
+
+# 4. If compilation errors occur
+"Fix compilation errors in Login test following
+COMPLETE_TEST_GUIDE.md error guide"
+
+# 5. If test failures occur
+"Fix test failures in Login test by analyzing
+reports and updating code"
+
+# 6. Final validation
+generate-test.bat validate
+```
+
+---
+
+### ⚠️ CRITICAL: Universal Instructions (Include in EVERY AI request)
+
+**ALWAYS include these rules:**
+
+```
+Generate test from JIRA story {ISSUE-KEY} following these STRICT rules:
+
+1. ANALYZE FIRST:
+   - Review src/main/java/pages/ for existing patterns
+   - Review src/main/java/configs/utils.java for common methods
+   - Check configurations.properties for test data
+
+2. CREATE ONLY THESE FILES (no extras!):
+   - Page Object: src/main/java/pages/YourPage.java
+   - Feature File: src/test/java/features/YourTest.feature
+   - Step Definitions: src/test/java/stepDefs/YourSteps.java
+
+3. MANDATORY PATTERNS:
+   - Page objects: extend BasePage, import configs.loadProps, use public static
+   - Step definitions: extend browserSelector (NOT base!), NO private Page page
+   - Use utils.java methods: clickOnElement(), enterText(), etc.
+   - Use loadProps.getProperty("URL"), loadProps.getProperty("Username")
+   - ONE Cucumber annotation per method (NO duplicates!)
+
+4. COMPILE & VALIDATE:
+   - Run: mvn clean compile test-compile
+   - Fix ALL errors before proceeding
+   - Run: mvn test -DsuiteXmlFile=src/test/testng.xml
+   - Fix until ALL tests pass
+
+5. DO NOT:
+   - Create bugs/issues
+   - Create extra MD/BAT files
+   - Modify testng.xml, hooks, runner, or configs folder
+   - Hardcode test data (use configurations.properties)
+   - Skip compilation step
+   - Use multiple @Given/@When/@Then on same method
+```
+
+### JIRA-Based (Copy This Exact Template)
 ```
 Generate test from JIRA story {ISSUE-KEY} with:
 - All test parameters and scenarios
 - Proper locators using MCP server
 - Minimal logging
+- Use loadProps.getProperty() for all test data from configurations.properties
+- Follow folder structure: pages/, features/, stepDefs/
+- Compile and run testng.xml after creation
+- DO NOT create bugs or issues
 ```
 
 ### Manual Generation
@@ -809,6 +1497,11 @@ Using MCP server, create {feature} test with:
 Elements: {list elements}
 Scenarios: {list scenarios}
 Verification: functional + UI + performance
+Test Data: Use configurations.properties (loadProps.getProperty())
+Follow: COMPLETE_TEST_GUIDE.md workflow
+Compile: mvn clean compile test-compile
+Run: mvn test -DsuiteXmlFile=src/test/testng.xml
+DO NOT create bugs or issues
 ```
 
 ### Update Existing
@@ -816,6 +1509,9 @@ Verification: functional + UI + performance
 Update {feature} test to add:
 - New scenarios: {list}
 - Additional validation for {aspects}
+- Use existing patterns from COMPLETE_TEST_GUIDE.md
+- Compile and test after changes
+- DO NOT create bugs or issues
 ```
 
 ---
@@ -922,6 +1618,179 @@ TIMEOUT=30000
 
 ## 🚨 Troubleshooting
 
+### ❌ Login Steps Not Performed / JIRA Bugs Created Instead
+
+Tests Not Running / Steps Not Followed
+
+**Symptoms:**
+
+- Tests skip steps or run in wrong order
+- Random bugs being created instead of tests
+- Workflow not being followed
+
+**Root Causes & Fixes:**
+
+1. **AI Not Following Instructions**
+   - ✅ Use the EXACT prompt template from "AI Prompt Templates" section above
+   - ✅ Always include: "Follow COMPLETE_TEST_GUIDE.md workflow"
+   - ✅ Always include: "DO NOT create bugs or issues during test generation"
+   - ✅ Include all mandatory rules in every request
+
+2. **Missing Workflow Steps**
+   - ❌ Problem: Skipping ANALYZE step
+   - ✅ Fix: Always start with "ANALYZE project structure first"
+
+3. **Wrong File Locations**
+   - ❌ Problem: Files created in wrong folders
+   - ✅ Fix: Explicitly state folder paths in prompt
+   - ✅ Example: "Create page object in src/main/java/pages/"
+
+4. **Not Compiling Before Running**
+   - ❌ Problem: Running tests without compilation
+   - ✅ Fix: Add to prompt: "Compile: mvn clean compile test-compile"
+   - ✅ Add to prompt: "Then run: mvn test -DsuiteXmlFile=src/test/testng.xml"
+
+5. **Creating Extra Files**
+   - ❌ Problem: AI creates bugs, extra docs, or unnecessary files
+   - ✅ Fix: Explicitly state: "Create ONLY: PageObject.java, Feature.feature, Steps.java"
+   - ✅ Add: "DO NOT create bugs, issues, or extra documentation during generation"
+
+**Note:** JIRA_Integration=True is OK! It only adds comments to JIRA AFTER tests complete. It does NOT interfere with
+test execution.
+
+**Recommended Full Prompt:**
+
+```
+Generate test from JIRA story ECS-XXX following COMPLETE_TEST_GUIDE.md:
+
+STRICT WORKFLOW:
+1. ANALYZE: Review pages/, stepDefs/, utils.java, configurations.properties
+2. CREATE ONLY:
+   - src/main/java/pages/YourPage.java (extend BasePage, import loadProps)
+   - src/test/java/features/YourTest.feature
+   - src/test/java/stepDefs/YourSteps.java (extend browserSelector)
+3. USE: utils.java methods, loadProps.getProperty() for test data
+4. COMPILE: mvn clean compile test-compile (fix all errors)
+5. RUN: mvn test -DsuiteXmlFile=src/test/testng.xml
+6. REPEAT: Until all tests pass
+
+DO NOT:
+- Create bugs or issues during test generation
+- Create extra MD/BAT files
+- Modify testng.xml, hooks, runner
+- Skip compilation
+- Hardcode test data
+
+Note: JIRA_Integration=True adds comments AFTER test execution completes
+
+---
+
+## 🎥 Test Recording & Auto-Generation
+
+### Using record-and-generate.bat
+
+**What it does:**
+1. Opens Playwright Inspector browser
+2. Records all your actions (clicks, typing, navigation)
+3. Extracts locators automatically
+4. Generates Page Object, Feature file, and Step Definitions
+5. **Auto-validates & fixes common issues**
+6. **Compiles with retry logic (up to 3 attempts)**
+7. **Runs tests automatically (up to 3 attempts)**
+8. Provides detailed error guidance
+9. Ready to run immediately!
+
+**Auto-Validation Features:**
+- ✅ **Duplicate Step Pattern Detection**: Prevents DuplicateStepDefinitionException
+- ✅ **Auto-Fix Protected Methods**: Changes `protected static` to `public static`
+- ✅ **Auto-Fix BASE_URL()**: Changes to `getProperty("URL")`
+- ✅ **Compilation Retry**: Up to 3 attempts with guided fixes
+- ✅ **Test Execution Retry**: Up to 3 attempts with error detection
+- ✅ **Specific Error Guidance**: Detects and provides fixes for common errors
+
+**Usage:**
+```bash
+record-and-generate.bat
+```
+
+**Interactive Prompts:**
+```
+Feature Name: Login
+Page URL: /login
+JIRA Story: ECS-123
+```
+
+**Recording Process:**
+1. Browser opens with Playwright Inspector
+2. Perform your test actions:
+   - Navigate to pages
+   - Click buttons
+   - Fill form fields
+   - Select dropdowns
+3. Inspector records everything automatically
+4. Close browser when done
+5. **Auto-validation runs immediately**:
+   - Checks for duplicate step patterns
+   - Auto-fixes protected methods
+   - Auto-fixes BASE_URL() usage
+   - Compiles code (with retry)
+   - Runs tests (with retry)
+
+**Output Files:**
+- `src/main/java/pages/{FeatureName}.java` - Page Object with recorded locators
+- `src/test/java/features/{FeatureName}.feature` - Feature file with scenarios
+- `src/test/java/stepDefs/{FeatureName}Steps.java` - Step definitions (TODOs to implement)
+
+**Error Handling:**
+If compilation fails:
+- Script will auto-retry up to 3 times
+- Common issues are auto-fixed (protected methods, BASE_URL)
+- Provides specific guidance for manual fixes
+- Prompts to retry after manual fixes
+
+If tests fail:
+- Script will auto-retry up to 3 times
+- Detects specific errors (DuplicateStepDefinitionException, NullPointerException)
+- Provides targeted fix guidance
+- Prompts to retry after fixes
+
+**Enhancing Recorded Tests:**
+
+After recording, use AI to implement TODO sections:
+
+```
+Enhance the recorded {FeatureName} test:
+
+1. Read generated files and temp_recording_*/recorded-actions.java
+2. Implement all TODO sections in:
+   - Page Object action methods
+   - Step definitions
+   - Cucumber scenarios
+3. Add proper assertions and verifications
+4. Follow project patterns (utils.java, loadProps, BasePage)
+5. Compile and test: mvn clean compile test-compile
+```
+
+**Benefits:**
+- ⚡ Fastest test creation (minutes vs hours)
+- ✅ Accurate locators from real page
+- 🎯 No JIRA required for quick tests
+- 🔄 Easy to re-record if page changes
+- 🤖 AI enhances with proper patterns
+- 🛠️ **Auto-fixes common code issues**
+- ♻️ **Retry logic for compilation and tests**
+- 📋 **Detailed error guidance**
+
+**Tips:**
+- Record one complete user workflow per session
+- Keep recordings focused (one feature at a time)
+- Review generated locators - MCP server can optimize them
+- Use AI to add assertions and cleanup code
+- If validation fails, follow the guided fix suggestions
+- Check auto-fix results in generated files
+
+---
+
 ### Tests Not Running
 1. Check testng.xml path is correct
 2. Ensure runner class exists
@@ -961,6 +1830,62 @@ Open spark reports in browser:
 ```
 MRITestExecutionReports/Version*/extentReports/spark/spark_*.html
 ```
+
+---
+
+## 🌟 AI-Powered Test Generation Everywhere!
+
+### 🎯 One CLI, Multiple AI Options
+
+**Unified Entry Point:**
+```bash
+generate-test.bat  # Shows menu with all options
+```
+
+**AI Works in ALL These Places:**
+
+1. **🎥 Recording + AI Enhancement**
+   - Record in CLI → AI implements TODOs
+   - Use Copilot/Claude/ChatGPT to enhance
+
+2. **🎫 JIRA + AI Generation**
+   - CLI fetches JIRA → AI generates test
+   - Or use AI chat with JIRA story
+
+3. **✨ Interactive + AI Guidance**
+   - Answer CLI questions → AI generates
+   - Or describe to AI → AI generates
+
+4. **🔍 Validation + AI Fixes**
+   - CLI validates → AI fixes errors
+   - Or ask AI to fix specific issues
+
+### 🤖 AI Assistants Supported
+
+- ✅ **GitHub Copilot** (VS Code, IntelliJ)
+- ✅ **Claude Desktop** (via MCP server)
+- ✅ **ChatGPT / Claude Web** (copy/paste prompts)
+- ✅ **Any AI with file access**
+
+### 📋 Universal AI Workflow
+
+```
+1. Start:    generate-test.bat
+2. Choose:   Recording / JIRA / Interactive / Validation
+3. Generate: Files created with patterns
+4. Enhance:  Use AI prompt templates above
+5. Validate: Automatic in CLI or manual
+6. Fix:      AI-guided error resolution
+7. Run:      Automatic or manual execution
+```
+
+### 💡 Pro Tips
+
+- **Use CLI first** → Gets structure right
+- **Use AI second** → Enhances implementation
+- **Always validate** → Catches issues early
+- **Iterate with AI** → Fix until tests pass
+- **Reference guide** → Include COMPLETE_TEST_GUIDE.md in prompts
 
 ---
 

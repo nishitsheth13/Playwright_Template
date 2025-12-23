@@ -5,42 +5,104 @@
 
 ---
 
-## ⚡ AI-Powered Test Generation! 🤖
+## 🎯 Unified CLI - All Test Generation Methods in One Place!
 
-**Create complete test suites in 5 minutes with comprehensive verification**
-
-### Quick Start
+### 🚀 Single Command for Everything
 ```bash
-# 1. Navigate to project root
-cd c:\Users\nishit.sheth\IdeaProjects\Playwright_Template
-
-# 2. Setup (one-time)
-setup-mcp.bat          # Windows
-./setup-mcp.sh         # Mac/Linux
-
-# 3. Generate test (EASY - just double-click!)
-generate-test.bat      # Windows - Includes auto-validation!
-./generate-test.sh     # Mac/Linux
-
-# OR use command line:
-node automation-cli.js
-
-# 4. Build & Run (auto-done by generate-test.bat)
-mvn clean compile test
-
-# 📖 Complete Guide: COMPLETE_TEST_GUIDE.md
+generate-test.bat
 ```
 
-### Or use AI Chat
-```
-"Using MCP server, create login test with username, password fields and login button.
-Add verification: Functional, UI, Performance (<3s), Logging.
-Test valid and invalid scenarios."
+**Interactive menu with smart options:**
+1. 🎥 **Record & Auto-Generate** (Fastest - 5-10 min)
+2. 🤖 **AI-Assisted Interactive** (JIRA or guided questions)
+3. ✅ **Validate & Run Tests** (Check existing tests)
+
+**Why Unified CLI?**
+- ✅ One command for all methods
+- ✅ Guided menu - choose best option
+- ✅ Auto-validation in all modes
+- ✅ Built-in retry logic
+- ✅ Consistent experience
+
+---
+
+## ⚡ Three Ways to Create Tests
+
+### 🎥 Option 1: Record & Auto-Generate (FASTEST!)
+```bash
+generate-test.bat  # Choose option 1
+# OR direct: record-and-generate.bat
+
+# What happens:
+# 1. Opens browser with Playwright Inspector
+# 2. You perform actions (click, type, navigate)
+# 3. Auto-generates all files with validation
+# 4. Auto-fixes common issues
+# 5. Compiles with retry (up to 3x)
+# 6. Runs tests with retry (up to 3x)
+# 7. Shows reports
 ```
 
-**📘 Complete Guide:** [AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md) ← **Everything in ONE file!**
+**Perfect for:**
+- ⚡ Quick test creation (5-10 minutes)
+- 🎯 Visual test recording
+- ✅ Accurate locators from real page
+- 🔄 Easy to re-record if page changes
+- 🛠️ Auto-fixes compilation errors
 
-**🔧 Best Practices:** [TEST_GENERATION_BEST_PRACTICES.md](TEST_GENERATION_BEST_PRACTICES.md) ← **⚠️ MUST READ before generating tests!**
+### 🤖 Option 2: AI-Assisted Interactive
+```bash
+generate-test.bat  # Choose option 2
+# OR direct: node automation-cli.js
+
+# AI menu includes:
+# - Generate from JIRA Story
+# - AI-Guided Interactive (no JIRA needed)
+# - Update Existing Test
+# - Generate individual components
+# - Framework analysis
+```
+
+**Perfect for:**
+- 📋 JIRA-based test generation
+- ✨ Interactive guided creation
+- 🏢 Enterprise workflows
+- 🤝 Team collaboration
+
+### ✅ Option 3: Validate & Run
+```bash
+generate-test.bat  # Choose option 3
+# OR direct: generate-test.bat validate
+
+# Auto-checks:
+# - Duplicate step patterns
+# - Protected methods
+# - BASE_URL() usage
+# - Compiles + runs tests
+```
+
+### 📝 Option 4: Manual Coding
+Create files following patterns in [COMPLETE_TEST_GUIDE.md](COMPLETE_TEST_GUIDE.md)
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# RECOMMENDED: Use Unified CLI
+generate-test.bat
+
+# Traditional: Direct commands
+record-and-generate.bat         # Recording only
+node automation-cli.js          # AI menu only  
+generate-test.bat validate      # Validation only
+
+# Manual build & run
+mvn clean compile test-compile
+mvn test -DsuiteXmlFile=src/test/testng.xml
+
+# 📖 Complete Guide: COMPLETE_TEST_GUIDE.md (SINGLE source of truth)
+```
 
 ---
 

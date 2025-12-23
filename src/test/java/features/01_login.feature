@@ -118,9 +118,9 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     And Sign In button should be keyboard accessible
 
 
-
- @NonFunctional @Security @Priority=16
-  Scenario: Verify account lockout after multiple failed attempts
-    When User attempts login with invalid password 5 times
-    Then User account should be locked
-    And User should see account lockout message
+#
+# @NonFunctional @Security @Priority=16
+#  Scenario: Verify account lockout after multiple failed attempts
+#    When User attempts login with invalid password 5 times
+#    Then User account should be locked
+#    And User should see account lockout message

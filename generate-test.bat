@@ -1,23 +1,93 @@
 @echo off
 REM ============================================
-REM AI Test Generator with Auto-Validation
+REM Unified Test Generation CLI
 REM ============================================
-REM This script generates tests and validates them automatically
-REM Workflow: Generate → Analyze → Compile → Fix → Run → Repeat
+REM Single entry point for all test generation methods
+REM - Recording, AI/JIRA, Interactive, Validation
 
 cd /d "%~dp0"
 
 set "MODE=%1"
 
+REM If no argument, show menu
+if "%MODE%"=="" goto :show_menu
 if "%MODE%"=="validate" goto :validate_only
+if "%MODE%"=="cli" goto :launch_cli
+if "%MODE%"=="record" goto :launch_recording
+
+:show_menu
+echo.
+echo ╔════════════════════════════════════════════════════════════╗
+echo ║                                                            ║
+echo ║       🤖 AI Test Automation - Unified CLI 🚀             ║
+echo ║                                                            ║
+echo ║  Choose your test generation method:                      ║
+echo ║                                                            ║
+echo ╚════════════════════════════════════════════════════════════╝
+echo.
+echo  1. 🎥 Record & Auto-Generate (Fastest - 5-10 min)
+echo      └─ Record browser actions → Auto-generate all files
+echo.
+echo  2. 🤖 AI-Assisted Interactive (Full-featured CLI)
+echo      └─ Answer questions OR use JIRA → AI generates test
+echo.
+echo  3. ✅ Validate & Run Tests (Check existing tests)
+echo      └─ Compile → Validate → Run → Fix errors
+echo.
+echo  0. Exit
+echo.
+choice /C 1230 /N /M "👉 Enter your choice (0-3): "
+set CHOICE=%ERRORLEVEL%
+
+if %CHOICE%==1 goto :launch_recording
+if %CHOICE%==2 goto :launch_cli
+if %CHOICE%==3 goto :validate_only
+if %CHOICE%==4 exit /b 0
+goto :show_menu
+
+:launch_recording
+echo.
+echo ════════════════════════════════════════════════════════════
+echo 🎥 Starting Playwright Recording...
+echo ════════════════════════════════════════════════════════════
+echo.
+call record-and-generate.bat
+if errorlevel 1 (
+    echo.
+    echo ❌ Recording failed or was cancelled
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+echo ✅ Recording and generation completed!
+echo.
+pause
+exit /b 0
+
+:launch_cli
+echo.
+echo ════════════════════════════════════════════════════════════
+echo 🤖 Launching AI Interactive CLI...
+echo ════════════════════════════════════════════════════════════
+echo.
+node automation-cli.js
+if errorlevel 1 (
+    echo.
+    echo ❌ CLI execution failed
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+echo ✅ CLI completed!
+echo.
+pause
+exit /b 0
 
 :generate_mode
 echo.
-echo ============================================
-echo   AI Test Automation Generator
-echo ============================================
-echo.
-echo Starting Interactive CLI...
+echo Starting AI Interactive CLI...
 echo.
 
 node automation-cli.js
@@ -110,11 +180,40 @@ if errorlevel 1 (
     echo [OK] loadProps imports found
 )
 
-REM Check for duplicate annotations
+REM Check for duplicate step definitions
 echo.
-echo Checking for potential duplicate Cucumber annotations...
-findstr /S /C:"@Given" src\test\java\stepDefs\*.java | find /C "@Given" >nul
-echo [INFO] Review step definitions for duplicate annotations manually
+echo Checking for duplicate Cucumber step patterns...
+set "TEMP_FILE=%TEMP%\step_patterns_%RANDOM%.txt"
+set "TEMP_SORTED=%TEMP%\step_sorted_%RANDOM%.txt"
+
+REM Extract all step patterns from all step definition files
+for /R "src\test\java\stepDefs" %%f in (*.java) do (
+    for /F "tokens=*" %%a in ('findstr /C:"@Given" /C:"@When" /C:"@Then" "%%f" 2^>nul') do (
+        echo %%a >> "%TEMP_FILE%"
+    )
+)
+
+REM Sort and find duplicates
+if exist "%TEMP_FILE%" (
+    sort "%TEMP_FILE%" > "%TEMP_SORTED%"
+    
+    REM Check for duplicates using PowerShell
+    powershell -Command "$lines = Get-Content '%TEMP_SORTED%'; $patterns = @{}; foreach ($line in $lines) { if ($line -match '@(Given|When|Then)\(\"([^\"]+)\"\)') { $pattern = $matches[2]; if ($patterns.ContainsKey($pattern)) { $patterns[$pattern]++ } else { $patterns[$pattern] = 1 } } }; $dups = $patterns.GetEnumerator() | Where-Object { $_.Value -gt 1 }; if ($dups) { Write-Host '[ERROR] Duplicate patterns found:' -ForegroundColor Red; $dups | ForEach-Object { Write-Host ('  - \"' + $_.Key + '\" (' + $_.Value + ' times)') -ForegroundColor Yellow }; exit 1 } else { Write-Host '[OK] No duplicate step patterns detected' -ForegroundColor Green; exit 0 }"
+    
+    set "DUPLICATE_CHECK=%ERRORLEVEL%"
+    del "%TEMP_FILE%" 2>nul
+    del "%TEMP_SORTED%" 2>nul
+    
+    if %DUPLICATE_CHECK% NEQ 0 (
+        echo.
+        echo Fix: Rename duplicate methods with Given/When/Then suffix
+        echo See: COMPLETE_TEST_GUIDE.md for examples
+        pause
+        exit /b 1
+    )
+) else (
+    echo [OK] No step definition files found or no annotations to check
+)
 
 REM Auto-fix protected methods
 echo.
@@ -259,5 +358,8 @@ echo - MRITestExecutionReports\
 echo.
 echo Workflow Complete!
 echo.
+pause
+exit /b 0
+:end
 pause
 exit /b 0
