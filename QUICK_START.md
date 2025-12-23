@@ -6,7 +6,20 @@
 
 ## Option 1: Interactive CLI (Recommended for Beginners)
 
+### Easy Way (Just double-click!)
 ```bash
+# Windows: Double-click this file in Explorer
+generate-test.bat
+
+# Mac/Linux: Make executable first (one-time), then double-click
+chmod +x generate-test.sh
+./generate-test.sh
+```
+
+### Command Line Way
+```bash
+# Make sure you're in project root directory
+cd c:\Users\nishit.sheth\IdeaProjects\Playwright_Template
 node automation-cli.js
 ```
 
@@ -194,6 +207,9 @@ mvn test -Dcucumber.filter.tags="@Smoke and @Functional"
 ## 🔧 Commands
 
 ```bash
+# Navigate to project root (IMPORTANT!)
+cd c:\Users\nishit.sheth\IdeaProjects\Playwright_Template
+
 # Setup (one-time)
 setup-mcp.bat          # Windows
 ./setup-mcp.sh         # Mac/Linux
@@ -219,6 +235,31 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 - **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide
 - **[AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)** - Framework reference
 - **[README.md](README.md)** - Project overview
+
+---
+
+## 🔧 Troubleshooting Option 1
+
+**Error: Cannot find module 'automation-cli.js'**
+```bash
+# Solution: Navigate to project root first
+cd c:\Users\nishit.sheth\IdeaProjects\Playwright_Template
+node automation-cli.js
+```
+
+**CLI not responding:**
+```bash
+# Check Node.js version (must be 18+)
+node --version
+
+# If old version, update Node.js from nodejs.org
+```
+
+**Permission errors:**
+```bash
+# Run as administrator (Windows)
+# Right-click CMD → Run as administrator
+```
 
 ---
 

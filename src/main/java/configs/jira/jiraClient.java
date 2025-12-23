@@ -5,9 +5,7 @@ import io.restassured.RestAssured;
 import io.restassured.response.Response;
 
 import java.io.File;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * JIRA REST API client for automated defect management.
@@ -262,6 +260,226 @@ public class jiraClient {
             System.out.println("💬 Comment added to " + issueKey);
         } else {
             System.err.println("❌ Failed to add comment (" + response.statusCode() + "): " + response.getBody().asString());
+        }
+    }
+
+    /**
+     * Fetches a JIRA story/issue and returns its details.
+     * Useful for generating tests from JIRA requirements.
+     * 
+     * @param issueKey JIRA issue key (e.g., "ECS-123")
+     * @return JiraStory object with story details, or null if failed
+     */
+    public static JiraStory getJiraStory(String issueKey) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return null;
+        }
+
+        String authHeader = getAuthHeader();
+        if (authHeader == null) {
+            System.err.println("❌ Cannot fetch story - authentication failed");
+            return null;
+        }
+
+        try {
+            Response response = RestAssured
+                    .given()
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", "application/json")
+                    .get(baseUrl + "rest/api/3/issue/" + issueKey);
+
+            if (response.getStatusCode() == 200) {
+                // Parse response
+                String key = response.jsonPath().getString("key");
+                String summary = response.jsonPath().getString("fields.summary");
+                String issueType = response.jsonPath().getString("fields.issuetype.name");
+                String status = response.jsonPath().getString("fields.status.name");
+                String priority = response.jsonPath().getString("fields.priority.name");
+
+                // Parse description (ADF format)
+                String description = extractPlainTextFromADF(response.jsonPath().get("fields.description"));
+
+                // Extract acceptance criteria
+                List<String> acceptanceCriteria = extractAcceptanceCriteria(description);
+
+                JiraStory story = new JiraStory(key, summary, description, issueType, status, priority, acceptanceCriteria);
+
+                System.out.println("✅ Fetched JIRA story: " + key);
+                return story;
+
+            } else if (response.getStatusCode() == 404) {
+                System.err.println("❌ JIRA issue " + issueKey + " not found (404)");
+            } else if (response.getStatusCode() == 401) {
+                System.err.println("❌ JIRA authentication failed (401) - check credentials");
+            } else {
+                System.err.println("❌ Failed to fetch story (" + response.getStatusCode() + "): " + response.getBody().asString());
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching JIRA story: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    /**
+     * Extracts plain text from Atlassian Document Format (ADF).
+     * 
+     * @param adfObject ADF content object
+     * @return Plain text string
+     */
+    private static String extractPlainTextFromADF(Object adfObject) {
+        if (adfObject == null) {
+            return "";
+        }
+
+        StringBuilder text = new StringBuilder();
+
+        if (adfObject instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> adfMap = (Map<String, Object>) adfObject;
+
+            String type = (String) adfMap.get("type");
+
+            if ("text".equals(type)) {
+                String textContent = (String) adfMap.get("text");
+                if (textContent != null) {
+                    text.append(textContent);
+                }
+            } else if ("hardBreak".equals(type)) {
+                text.append("\n");
+            }
+
+            // Recursively process content array
+            Object content = adfMap.get("content");
+            if (content instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> contentList = (List<Object>) content;
+                for (Object item : contentList) {
+                    String childText = extractPlainTextFromADF(item);
+                    text.append(childText);
+                }
+
+                // Add paragraph breaks
+                if ("paragraph".equals(type) && text.length() > 0) {
+                    text.append("\n");
+                }
+            }
+        }
+
+        return text.toString();
+    }
+
+    /**
+     * Extracts acceptance criteria from story description.
+     * Looks for patterns like "Acceptance Criteria:", Given/When/Then, bullet points.
+     * 
+     * @param description Story description text
+     * @return List of acceptance criteria strings
+     */
+    private static List<String> extractAcceptanceCriteria(String description) {
+        List<String> criteria = new ArrayList<>();
+
+        if (description == null || description.trim().isEmpty()) {
+            return criteria;
+        }
+
+        // Split by lines
+        String[] lines = description.split("\n");
+
+        boolean inAcceptanceCriteria = false;
+        for (String line : lines) {
+            String trimmed = line.trim();
+
+            // Detect acceptance criteria section
+            if (trimmed.matches("(?i).*acceptance criteria.*")) {
+                inAcceptanceCriteria = true;
+                continue;
+            }
+
+            // Stop if we hit another section
+            if (inAcceptanceCriteria && trimmed.matches("(?i)^(description|notes|background):.*")) {
+                break;
+            }
+
+            // Extract criteria lines
+            if (inAcceptanceCriteria && !trimmed.isEmpty()) {
+                // Remove bullet points, numbers, dashes
+                String cleaned = trimmed.replaceFirst("^[•\\-*\\d+\\.\\)\\]]+\\s*", "");
+
+                // Check if it's a Given/When/Then pattern
+                if (cleaned.matches("(?i)^(given|when|then|and)\\s+.*")) {
+                    criteria.add(cleaned);
+                }
+                // Or a regular criteria statement
+                else if (cleaned.length() > 10) {
+                    criteria.add(cleaned);
+                }
+            }
+        }
+
+        return criteria;
+    }
+
+    /**
+     * JIRA Story data class.
+     */
+    public static class JiraStory {
+        public final String key;
+        public final String summary;
+        public final String description;
+        public final String issueType;
+        public final String status;
+        public final String priority;
+        public final List<String> acceptanceCriteria;
+
+        public JiraStory(String key, String summary, String description, String issueType,
+                         String status, String priority, List<String> acceptanceCriteria) {
+            this.key = key;
+            this.summary = summary;
+            this.description = description;
+            this.issueType = issueType;
+            this.status = status;
+            this.priority = priority;
+            this.acceptanceCriteria = acceptanceCriteria != null ? acceptanceCriteria : new ArrayList<>();
+        }
+
+        @Override
+        public String toString() {
+            return "JiraStory{" +
+                    "key='" + key + '\'' +
+                    ", summary='" + summary + '\'' +
+                    ", issueType='" + issueType + '\'' +
+                    ", status='" + status + '\'' +
+                    ", priority='" + priority + '\'' +
+                    ", acceptanceCriteria=" + acceptanceCriteria.size() + " items" +
+                    '}';
+        }
+
+        /**
+         * Prints formatted story details to console.
+         */
+        public void printDetails() {
+            System.out.println("\n📋 JIRA Story Details:");
+            System.out.println("  Key: " + key);
+            System.out.println("  Type: " + issueType);
+            System.out.println("  Status: " + status);
+            System.out.println("  Priority: " + priority);
+            System.out.println("  Summary: " + summary);
+
+            if (description != null && !description.isEmpty()) {
+                System.out.println("\n  Description:");
+                System.out.println("  " + description.replace("\n", "\n  "));
+            }
+
+            if (!acceptanceCriteria.isEmpty()) {
+                System.out.println("\n  Acceptance Criteria:");
+                for (int i = 0; i < acceptanceCriteria.size(); i++) {
+                    System.out.println("    " + (i + 1) + ". " + acceptanceCriteria.get(i));
+                }
+            }
+            System.out.println();
         }
     }
 

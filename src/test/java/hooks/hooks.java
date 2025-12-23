@@ -1,9 +1,7 @@
 package hooks;
 
 import configs.browserSelector;
-import io.cucumber.java.After;
 import io.cucumber.java.AfterAll;
-import io.cucumber.java.Before;
 import io.cucumber.java.BeforeAll;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;

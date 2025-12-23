@@ -11,15 +11,21 @@
 
 ### Quick Start
 ```bash
-# 1. Setup (one-time)
+# 1. Navigate to project root
+cd c:\Users\nishit.sheth\IdeaProjects\Playwright_Template
+
+# 2. Setup (one-time)
 setup-mcp.bat          # Windows
 ./setup-mcp.sh         # Mac/Linux
 
-# 2. Generate test with verification
-node automation-cli.js
-# Select verification: Functional, UI, UX, Performance, Logging
+# 3. Generate test (EASY - just double-click!)
+generate-test.bat      # Windows
+./generate-test.sh     # Mac/Linux
 
-# 3. Build & Run
+# OR use command line:
+node automation-cli.js
+
+# 4. Build & Run
 mvn clean compile test
 ```
 
@@ -74,7 +80,8 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 
 ## 📚 Documentation
 
-- **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide (Setup, prompts, verification, examples)
+- **[PROMPT_TEMPLATES.md](PROMPT_TEMPLATES.md)** - Quick-start templates (Copy-paste ready)
+- **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide (Setup, workflow, verification)
 - **[AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)** - Framework reference (Structure, configuration, manual coding)
 
 ---
@@ -116,12 +123,16 @@ See [AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)
 
 ```
 Playwright_Template/
-├── 🤖 AI Tools (NEW!)
-│   ├── mcp-server/              # MCP server for code generation
-│   ├── automation-cli.js        # Interactive CLI wizard  
-│   ├── AI_GUIDE.md             # Complete AI automation guide
-│   ├── AI_PROMPT_TEMPLATES.md  # Ready-to-use prompt library
-│   └── setup-mcp.bat/sh        # Automated setup scripts
+├── 🤖 AI Tools
+│   ├── automation-cli.js              # Main CLI (all features in ONE file)
+│   ├── AI_AUTOMATION_COMPLETE_GUIDE.md  # Complete guide (all-in-one)
+│   ├── setup-mcp.bat/.sh              # One-time setup
+│   ├── generate-test.bat/.sh          # Quick launcher
+│   └── mcp-server/                    # MCP server
+│
+├── 📚 Documentation (minimal)
+│   ├── QUICK_START.md                 # Quick reference
+│   └── AUTOMATION_FRAMEWORK_GUIDE.md  # Framework methods
 │
 ├── src/main/java/
 │   ├── configs/        # Framework utilities
@@ -135,6 +146,9 @@ Playwright_Template/
 ├── src/test/resources/
 │   └── configurations.properties  # Main config
 └── pom.xml             # Maven dependencies
+
+⚠️ POLICY: Keep structure minimal (8 support files max)
+   Add features to existing files, not new files.
 ```
 
 ---
