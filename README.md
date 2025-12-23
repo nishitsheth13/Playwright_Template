@@ -19,14 +19,16 @@ setup-mcp.bat          # Windows
 ./setup-mcp.sh         # Mac/Linux
 
 # 3. Generate test (EASY - just double-click!)
-generate-test.bat      # Windows
+generate-test.bat      # Windows - Includes auto-validation!
 ./generate-test.sh     # Mac/Linux
 
 # OR use command line:
 node automation-cli.js
 
-# 4. Build & Run
+# 4. Build & Run (auto-done by generate-test.bat)
 mvn clean compile test
+
+# 📖 Complete Guide: COMPLETE_TEST_GUIDE.md
 ```
 
 ### Or use AI Chat
@@ -37,6 +39,8 @@ Test valid and invalid scenarios."
 ```
 
 **📘 Complete Guide:** [AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md) ← **Everything in ONE file!**
+
+**🔧 Best Practices:** [TEST_GENERATION_BEST_PRACTICES.md](TEST_GENERATION_BEST_PRACTICES.md) ← **⚠️ MUST READ before generating tests!**
 
 ---
 
@@ -80,8 +84,8 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 
 ## 📚 Documentation
 
+- **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide with 19 auto-fix patterns
 - **[PROMPT_TEMPLATES.md](PROMPT_TEMPLATES.md)** - Quick-start templates (Copy-paste ready)
-- **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide (Setup, workflow, verification)
 - **[AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)** - Framework reference (Structure, configuration, manual coding)
 
 ---

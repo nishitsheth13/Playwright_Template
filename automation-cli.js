@@ -198,7 +198,8 @@ async function getJiraStory(issueKey) {
     
     const config = {};
     configContent.split('\n').forEach(line => {
-      const [key, ...valueParts] = line.split('=');
+      const trimmedLine = line.trim().replace(/\r$/,''); // Remove carriage returns
+      const [key, ...valueParts] = trimmedLine.split('=');
       if (key && valueParts.length > 0) {
         config[key.trim()] = valueParts.join('=').trim();
       }
@@ -499,6 +500,74 @@ async function generateCompleteTestSuite() {
 }
 
 /**
+ * Validate and fix Page Object code before writing to disk
+ * Prevents common compilation errors by ensuring required imports and declarations
+ */
+function validateAndFixPageObject(code, className) {
+  let fixedCode = code;
+  
+  // VALIDATION 1: Ensure Logger import and instance if log.* methods are used
+  if ((fixedCode.includes('log.info') || fixedCode.includes('log.error') || fixedCode.includes('log.warn'))) {
+    
+    // Remove incorrect log imports
+    fixedCode = fixedCode.replace(/import log;?\s*\n/g, '');
+    fixedCode = fixedCode.replace(/import log\.\*;?\s*\n/g, '');
+    
+    // Add Logger import
+    if (!fixedCode.includes('import java.util.logging.Logger')) {
+      const packageMatch = fixedCode.match(/package\s+[\w.]+;\s*\n/);
+      if (packageMatch) {
+        const insertPoint = packageMatch.index + packageMatch[0].length;
+        fixedCode = fixedCode.slice(0, insertPoint) + 'import java.util.logging.Logger;\n' + fixedCode.slice(insertPoint);
+      }
+    }
+    
+    // Add static getLogger import
+    if (!fixedCode.includes('import static java.util.logging.Logger.getLogger')) {
+      const lastImport = fixedCode.lastIndexOf('import ');
+      if (lastImport !== -1) {
+        const nextLine = fixedCode.indexOf('\n', lastImport) + 1;
+        fixedCode = fixedCode.slice(0, nextLine) + 'import static java.util.logging.Logger.getLogger;\n' + fixedCode.slice(nextLine);
+      }
+    }
+    
+    // Add Logger instance
+    if (!fixedCode.includes('private static final Logger log')) {
+      const classMatch = fixedCode.match(/public class (\w+)(?:\s+extends\s+\w+)?\s*\{/);
+      if (classMatch) {
+        const insertPoint = classMatch.index + classMatch[0].length;
+        fixedCode = fixedCode.slice(0, insertPoint) + 
+          '\n    private static final Logger log = getLogger(' + className + '.class.getName());\n' +
+          fixedCode.slice(insertPoint);
+      }
+    }
+  }
+  
+  // VALIDATION 2: Check for method parameter issues
+  // Find methods with selectDropDownValueByText that use 'text' parameter
+  const dropdownMethodRegex = /protected\s+static\s+void\s+(\w+)\s*\(\s*String\s+locator\s*\)\s*\{[^}]*selectDropDownValueByText\s*\([^,]+,\s*text\s*\)[^}]*\}/g;
+  let match;
+  
+  while ((match = dropdownMethodRegex.exec(fixedCode)) !== null) {
+    const methodName = match[1];
+    const oldSignature = `protected static void ${methodName}(String locator)`;
+    const newSignature = `protected static void ${methodName}(String locator, String text)`;
+    fixedCode = fixedCode.replace(oldSignature, newSignature);
+  }
+  
+  // VALIDATION 3: Ensure TimeoutConfig import if used
+  if (fixedCode.includes('TimeoutConfig.') && !fixedCode.includes('import configs.TimeoutConfig')) {
+    const packageMatch = fixedCode.match(/package\s+[\w.]+;\s*\n/);
+    if (packageMatch) {
+      const insertPoint = packageMatch.index + packageMatch[0].length;
+      fixedCode = fixedCode.slice(0, insertPoint) + 'import configs.TimeoutConfig;\n' + fixedCode.slice(insertPoint);
+    }
+  }
+  
+  return fixedCode;
+}
+
+/**
  * Update Existing Test
  */
 async function updateExistingTest() {
@@ -725,6 +794,145 @@ async function generatePageObject() {
   });
   
   console.log(colors.green + result + colors.reset);
+  
+  // Auto-compile and fix any errors
+  console.log(colors.cyan + '\n🔄 Starting auto-compile and fix cycle...\n' + colors.reset);
+  await autoCompileTestAndFix(pageName, elements, [], { logging: true, functional: false, ui: false, ux: false, performance: false }, 3000);
+}
+
+/**
+ * Generate Feature File
+ */
+async function generateFeatureFile() {
+  console.log(colors.green + '\n📝 Feature File Generator\n' + colors.reset);
+  
+  const featureName = await question(colors.cyan + 'Feature name: ' + colors.reset);
+  const description = await question(colors.cyan + 'Description: ' + colors.reset);
+  
+  console.log(colors.yellow + '\nDefine scenarios:' + colors.reset);
+  const scenarios = [];
+  let addMore = true;
+  let scenarioCount = 1;
+  
+  while (addMore) {
+    console.log(colors.magenta + `\nScenario ${scenarioCount}:` + colors.reset);
+    const scenarioName = await question(colors.cyan + '  Scenario name: ' + colors.reset);
+    
+    if (!scenarioName.trim()) {
+      break;
+    }
+    
+    console.log(colors.yellow + '  Add steps (Given/When/Then). Press Enter on empty line to finish:' + colors.reset);
+    const steps = [];
+    let stepNum = 1;
+    
+    while (true) {
+      const step = await question(colors.cyan + `    Step ${stepNum}: ` + colors.reset);
+      if (!step.trim()) break;
+      
+      steps.push(step.trim());
+      stepNum++;
+    }
+    
+    if (steps.length > 0) {
+      scenarios.push({
+        name: scenarioName,
+        steps: steps
+      });
+    }
+    
+    scenarioCount++;
+    const more = await question(colors.cyan + '  Add another scenario? (y/n): ' + colors.reset);
+    addMore = more.toLowerCase() === 'y';
+  }
+  
+  if (scenarios.length === 0) {
+    console.log(colors.red + '❌ No scenarios defined. Feature file not generated.\n' + colors.reset);
+    return;
+  }
+  
+  console.log(colors.green + '\n🚀 Generating feature file...\n' + colors.reset);
+  const result = await callMCPTool('generate-feature', {
+    featureName,
+    description,
+    scenarios
+  });
+  
+  console.log(colors.green + result + colors.reset);
+  
+  // Auto-compile and fix any errors
+  console.log(colors.cyan + '\n🔄 Starting auto-compile and fix cycle...\n' + colors.reset);
+  await autoCompileTestAndFix(featureName, [], scenarios, { logging: true, functional: true, ui: false, ux: false, performance: false }, 3000);
+}
+
+/**
+ * Generate Step Definitions
+ */
+async function generateStepDefinitions() {
+  console.log(colors.green + '\n🔧 Step Definitions Generator\n' + colors.reset);
+  
+  const testName = await question(colors.cyan + 'Test name (must match existing Page Object): ' + colors.reset);
+  
+  // Verify Page Object exists
+  const pageFile = path.join(process.cwd(), 'src/main/java/pages', `${testName}Page.java`);
+  try {
+    await fs.access(pageFile);
+  } catch (error) {
+    console.log(colors.red + `❌ Page Object not found: ${testName}Page.java\n` + colors.reset);
+    console.log(colors.yellow + 'Generate Page Object first (Option 3) or use complete test suite (Option 1)\n' + colors.reset);
+    return;
+  }
+  
+  console.log(colors.green + `✅ Found Page Object: ${testName}Page.java\n` + colors.reset);
+  
+  // Check for existing feature file
+  const featureFile = path.join(process.cwd(), 'src/test/java/features', `${testName.toLowerCase()}.feature`);
+  let featureExists = false;
+  try {
+    await fs.access(featureFile);
+    featureExists = true;
+    console.log(colors.green + `✅ Found Feature File: ${testName.toLowerCase()}.feature\n` + colors.reset);
+  } catch (error) {
+    console.log(colors.yellow + `⚠️ Feature file not found. Will generate step definitions without feature context.\n` + colors.reset);
+  }
+  
+  console.log(colors.yellow + '\nDefine steps to implement:' + colors.reset);
+  const steps = [];
+  let addMore = true;
+  let stepNum = 1;
+  
+  while (addMore) {
+    const step = await question(colors.cyan + `  Step ${stepNum} (Cucumber format): ` + colors.reset);
+    
+    if (!step.trim()) {
+      break;
+    }
+    
+    steps.push(step.trim());
+    stepNum++;
+    
+    const more = await question(colors.cyan + '  Add another step? (y/n): ' + colors.reset);
+    addMore = more.toLowerCase() === 'y';
+  }
+  
+  if (steps.length === 0) {
+    console.log(colors.red + '❌ No steps defined. Step definitions not generated.\n' + colors.reset);
+    return;
+  }
+  
+  console.log(colors.green + '\n🚀 Generating step definitions...\n' + colors.reset);
+  const result = await callMCPTool('generate-step-definitions', {
+    testName,
+    steps,
+    hasFeatureFile: featureExists
+  });
+  
+  console.log(colors.green + result + colors.reset);
+  
+  // Auto-compile and fix any errors
+  console.log(colors.cyan + '\n🔄 Starting auto-compile and fix cycle...\n' + colors.reset);
+  const scenarios = steps.length > 0 ? [{ name: 'Generated Steps', steps: steps }] : [];
+  await autoCompileTestAndFix(testName, [], scenarios, { logging: true, functional: true, ui: false, ux: false, performance: false }, 3000);
 }
 
 /**
@@ -764,10 +972,11 @@ async function generateTestFromJiraStory() {
   console.log(colors.green + '\n📋 Generate Test from JIRA Story\n' + colors.reset);
   
   // Get JIRA issue key
-  const issueKey = await question(colors.cyan + '🎫 Enter JIRA Story/Issue key (e.g., ECS-123): ' + colors.reset);
+  const issueKey = await question(colors.cyan + '🎫 Enter JIRA Story/Issue key (e.g., ECS-123, or press Enter to skip): ' + colors.reset);
   
   if (!issueKey.trim()) {
-    console.log(colors.red + '❌ Issue key is required\n' + colors.reset);
+    console.log(colors.yellow + '\n⚠️ No JIRA key provided. Switching to manual test generation...\n' + colors.reset);
+    await generateCompleteTestSuite();
     return;
   }
   
@@ -777,7 +986,22 @@ async function generateTestFromJiraStory() {
   const story = await getJiraStory(issueKey.trim());
   
   if (!story) {
-    console.log(colors.red + '❌ Failed to fetch JIRA story. Please check the issue key and your JIRA configuration.\n' + colors.reset);
+    console.log(colors.red + '❌ Failed to fetch JIRA story "' + issueKey + '".\n' + colors.reset);
+    console.log(colors.yellow + '   Possible reasons:' + colors.reset);
+    console.log(colors.yellow + '   • Issue does not exist' + colors.reset);
+    console.log(colors.yellow + '   • No permission to access issue' + colors.reset);
+    console.log(colors.yellow + '   • Invalid JIRA configuration' + colors.reset);
+    console.log(colors.yellow + '   • No issues in the ECS project\n' + colors.reset);
+    
+    // Smart fallback: Ask user if they want to proceed manually
+    const fallback = await question(colors.cyan + '🔄 Would you like to create the test manually instead? (y/n): ' + colors.reset);
+    
+    if (fallback.toLowerCase() === 'y') {
+      console.log(colors.green + '\n✨ Switching to manual test generation...\n' + colors.reset);
+      await generateCompleteTestSuite();
+    } else {
+      console.log(colors.yellow + '\nTest generation cancelled.\n' + colors.reset);
+    }
     return;
   }
   
@@ -1006,11 +1230,6 @@ async function generateTestFromJiraStory() {
     console.log(colors.yellow + 'Generation cancelled.\n' + colors.reset);
   }
 }
-
-/**
- * Quick Start Tutorial
- */
-async function quickStartTutorial() {
 
 /**
  * Detect UI elements from story text using keyword analysis
@@ -1464,8 +1683,11 @@ async function callMCPTool(toolName, args) {
       
       const pageContent = `package pages;\n\nimport configs.TimeoutConfig;${imports}\n\n/**\n * ${description || className + ' Page Object'}\n * Generated by AI Automation CLI\n */\npublic class ${className} extends BasePage {${loggerDecl}\n\n    public ${className}() {\n        super();\n    }\n\n${elementMethods}${verificationMethods}\n}\n`;
       
+      // VALIDATE AND FIX before writing to disk
+      const validatedPageContent = validateAndFixPageObject(pageContent, className);
+      
       await fs.mkdir(pagesDir, { recursive: true });
-      await fs.writeFile(pageFile, pageContent, 'utf-8');
+      await fs.writeFile(pageFile, validatedPageContent, 'utf-8');
       
       // Generate Feature File
       const featureFile = path.join(featuresDir, `${testName}.feature`);
@@ -1703,6 +1925,349 @@ async function callMCPTool(toolName, args) {
         }
       }
       
+      // Fix 8: Deprecated Runtime.exec() - Replace with ProcessBuilder
+      if (error.includes('Runtime') && (error.includes('deprecated') || error.includes('exec'))) {
+        console.log(colors.yellow + '    Fixing deprecated Runtime.exec() calls...\n' + colors.reset);
+        
+        // Fix Windows command
+        fixedCode = fixedCode.replace(
+          /Runtime\.getRuntime\(\)\.exec\("cmd\s+\/c\s+start\s+"\s*\+\s*(\w+)\)/g,
+          'new ProcessBuilder("cmd", "/c", "start", $1).start()'
+        );
+        
+        // Fix Mac command
+        fixedCode = fixedCode.replace(
+          /Runtime\.getRuntime\(\)\.exec\("open\s+"\s*\+\s*(\w+)\)/g,
+          'new ProcessBuilder("open", $1).start()'
+        );
+        
+        // Fix Linux command
+        fixedCode = fixedCode.replace(
+          /Runtime\.getRuntime\(\)\.exec\("xdg-open\s+"\s*\+\s*(\w+)\)/g,
+          'new ProcessBuilder("xdg-open", $1).start()'
+        );
+      }
+      
+      // Fix 9: Missing Logger instance in Page Object (ENHANCED - More robust detection)
+      if (error.includes('log') && (error.includes('cannot be resolved') || error.includes('cannot find symbol') || error.includes('package log does not exist'))) {
+        console.log(colors.yellow + '    Adding Logger instance...\n' + colors.reset);
+        
+        // Remove any incorrect log imports
+        fixedCode = fixedCode.replace(/import log;?\s*\n/g, '');
+        fixedCode = fixedCode.replace(/import log\.\*;?\s*\n/g, '');
+        
+        // Add Logger import if not present
+        if (!fixedCode.includes('import java.util.logging.Logger')) {
+          // Find the package statement and add import after it
+          const packageMatch = fixedCode.match(/package\s+[\w.]+;\s*\n/);
+          if (packageMatch) {
+            const insertPoint = packageMatch.index + packageMatch[0].length;
+            fixedCode = fixedCode.slice(0, insertPoint) + 'import java.util.logging.Logger;\n' + fixedCode.slice(insertPoint);
+          }
+        }
+        
+        // Add static Logger.getLogger import
+        if (!fixedCode.includes('import static java.util.logging.Logger.getLogger')) {
+          const lastImport = fixedCode.lastIndexOf('import ');
+          if (lastImport !== -1) {
+            const nextLine = fixedCode.indexOf('\n', lastImport) + 1;
+            fixedCode = fixedCode.slice(0, nextLine) + 'import static java.util.logging.Logger.getLogger;\n' + fixedCode.slice(nextLine);
+          }
+        }
+        
+        // Add Logger instance to class if using log.info, log.error, etc.
+        if ((fixedCode.includes('log.info') || fixedCode.includes('log.error') || fixedCode.includes('log.warn')) && 
+            !fixedCode.includes('private static final Logger log')) {
+          const classMatch = fixedCode.match(/public class (\w+)(?:\s+extends\s+\w+)?\s*\{/);
+          if (classMatch) {
+            const className = classMatch[1];
+            const insertPoint = classMatch.index + classMatch[0].length;
+            fixedCode = fixedCode.slice(0, insertPoint) + 
+              '\n    private static final Logger log = getLogger(' + className + '.class.getName());\n' +
+              fixedCode.slice(insertPoint);
+          }
+        }
+      }
+      
+      // Fix 10: Missing method parameters (ENHANCED - Better parameter detection)
+      if (error.includes('cannot resolve to a variable') || error.includes('cannot find symbol: variable') || error.includes('cannot find symbol')) {
+        const varMatch = error.match(/symbol:\s+variable\s+(\w+)/);
+        const varName = varMatch ? varMatch[1] : null;
+        
+        if (varName && varName !== 'log') { // Skip if it's log (handled by Fix 9)
+          console.log(colors.yellow + `    Adding missing parameter: ${varName}\n` + colors.reset);
+          
+          // Find ALL methods that use this variable
+          const lines = fixedCode.split('\n');
+          const errorLineMatch = error.match(/\[(\d+),/);
+          let targetLine = errorLineMatch ? parseInt(errorLineMatch[1]) : -1;
+          
+          // Find the method containing the error line
+          let methodStartLine = -1;
+          let methodEndLine = -1;
+          let bracketCount = 0;
+          
+          for (let i = targetLine - 1; i >= 0; i--) {
+            if (lines[i].includes('protected static void') || lines[i].includes('public static void') || 
+                lines[i].includes('protected void') || lines[i].includes('public void')) {
+              methodStartLine = i;
+              break;
+            }
+          }
+          
+          if (methodStartLine !== -1) {
+            // Find method end
+            for (let i = methodStartLine; i < lines.length; i++) {
+              for (const char of lines[i]) {
+                if (char === '{') bracketCount++;
+                if (char === '}') bracketCount--;
+                if (bracketCount === 0 && i > methodStartLine) {
+                  methodEndLine = i;
+                  break;
+                }
+              }
+              if (methodEndLine !== -1) break;
+            }
+            
+            // Extract method
+            const methodLines = lines.slice(methodStartLine, methodEndLine + 1);
+            const methodCode = methodLines.join('\n');
+            
+            // Determine parameter type
+            let paramType = 'String';
+            if (methodCode.includes('selectDropDownValueByText') || methodCode.includes('sendKeys') || methodCode.includes('enterText')) {
+              paramType = 'String';
+            } else if (methodCode.includes('Integer') || methodCode.includes('parseInt')) {
+              paramType = 'int';
+            }
+            
+            // Update method signature
+            const signatureLine = lines[methodStartLine];
+            if (!signatureLine.includes(`, ${paramType} ${varName}`) && !signatureLine.includes(`${paramType} ${varName},`)) {
+              const updatedSignature = signatureLine.replace(
+                /(\w+\s+\w+\s+void\s+\w+)\(([^)]*)\)/,
+                (match, prefix, params) => {
+                  if (params.trim() === '') {
+                    return `${prefix}(String locator, ${paramType} ${varName})`;
+                  } else {
+                    return `${prefix}(${params}, ${paramType} ${varName})`;
+                  }
+                }
+              );
+              lines[methodStartLine] = updatedSignature;
+              fixedCode = lines.join('\n');
+            }
+          }
+        }
+      }
+      
+      // Fix 11: Unused imports
+      if (error.includes('is never used') && error.includes('import')) {
+        const unusedImport = error.match(/import\s+([\w.]+)/)?.[1];
+        if (unusedImport) {
+          console.log(colors.yellow + `    Removing unused import: ${unusedImport}\n` + colors.reset);
+          const importLine = new RegExp(`import\\s+${unusedImport.replace('.', '\\.')}.*;?\\n`, 'g');
+          fixedCode = fixedCode.replace(importLine, '');
+        }
+      }
+      
+      // Fix 12: Unused variables/fields (rename to follow conventions)
+      if (error.includes('is not used') && error.includes('field')) {
+        const fieldMatch = error.match(/field\s+\w+\.(\w+)/)?.[1];
+        if (fieldMatch && fieldMatch.charAt(0) === fieldMatch.charAt(0).toUpperCase()) {
+          console.log(colors.yellow + `    Renaming field to follow Java conventions: ${fieldMatch}\n` + colors.reset);
+          
+          // Convert PascalCase to camelCase
+          const newFieldName = fieldMatch.charAt(0).toLowerCase() + fieldMatch.slice(1);
+          
+          // Replace field declaration
+          fixedCode = fixedCode.replace(
+            new RegExp(`(private\\s+\\w+\\s+)${fieldMatch}(\\s*=)`, 'g'),
+            `$1${newFieldName}$2`
+          );
+          
+          // Replace field usage
+          fixedCode = fixedCode.replace(
+            new RegExp(`\\b${fieldMatch}\\.`, 'g'),
+            `${newFieldName}.`
+          );
+          
+          // Update comments
+          fixedCode = fixedCode.replace(
+            new RegExp(`//\\s*${fieldMatch}`, 'g'),
+            `// ${newFieldName}`
+          );
+        }
+      }
+      
+      // Fix 13: Missing @FindBy annotation for WebElements
+      if (error.includes('cannot find symbol') && file.includes('Page.java')) {
+        const elementMatch = error.match(/symbol:\s+variable\s+(\w+Element)/i);
+        if (elementMatch) {
+          const elementName = elementMatch[1];
+          console.log(colors.yellow + `    Adding @FindBy annotation for: ${elementName}\n` + colors.reset);
+          
+          // Add @FindBy import if missing
+          if (!fixedCode.includes('import org.openqa.selenium.support.FindBy')) {
+            const packageLineEnd = fixedCode.indexOf(';') + 1;
+            fixedCode = fixedCode.slice(0, packageLineEnd) + '\n\nimport org.openqa.selenium.support.FindBy;\nimport org.openqa.selenium.WebElement;' + fixedCode.slice(packageLineEnd);
+          }
+          
+          // Add WebElement declaration with @FindBy
+          const classBodyMatch = fixedCode.match(/public class \w+Page[^{]*\{/);
+          if (classBodyMatch && !fixedCode.includes(`${elementName};`)) {
+            const insertPoint = classBodyMatch.index + classBodyMatch[0].length;
+            const selector = elementName.replace(/Element$/, '').replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+            fixedCode = fixedCode.slice(0, insertPoint) + 
+              `\n    @FindBy(id = "${selector}")\n    private WebElement ${elementName};\n` +
+              fixedCode.slice(insertPoint);
+          }
+        }
+      }
+      
+      // Fix 14: WebDriver type mismatch (ChromeDriver/FirefoxDriver → WebDriver)
+      if (error.includes('incompatible types') && (error.includes('ChromeDriver') || error.includes('FirefoxDriver'))) {
+        console.log(colors.yellow + '    Fixing WebDriver type mismatch...\n' + colors.reset);
+        
+        // Replace ChromeDriver with WebDriver
+        fixedCode = fixedCode.replace(/ChromeDriver\s+(\w+)\s*=\s*new\s+ChromeDriver/g, 'WebDriver $1 = new ChromeDriver');
+        fixedCode = fixedCode.replace(/FirefoxDriver\s+(\w+)\s*=\s*new\s+FirefoxDriver/g, 'WebDriver $1 = new FirefoxDriver');
+        
+        // Add WebDriver import if missing
+        if (!fixedCode.includes('import org.openqa.selenium.WebDriver')) {
+          const packageLineEnd = fixedCode.indexOf(';') + 1;
+          fixedCode = fixedCode.slice(0, packageLineEnd) + '\n\nimport org.openqa.selenium.WebDriver;' + fixedCode.slice(packageLineEnd);
+        }
+      }
+      
+      // Fix 15: Duplicate class name in package
+      if (error.includes('duplicate class') || error.includes('class is public, should be declared')) {
+        const classMatch = error.match(/class\s+(\w+)/)?.[1];
+        const fileMatch = file.match(/([^\\/]+)\.java$/)?.[1];
+        
+        if (classMatch && fileMatch && classMatch !== fileMatch) {
+          console.log(colors.yellow + `    Renaming class ${classMatch} to match file ${fileMatch}\n` + colors.reset);
+          
+          // Rename class to match filename
+          fixedCode = fixedCode.replace(
+            new RegExp(`public class ${classMatch}`, 'g'),
+            `public class ${fileMatch}`
+          );
+          
+          // Update constructor name
+          fixedCode = fixedCode.replace(
+            new RegExp(`public ${classMatch}\\(`, 'g'),
+            `public ${fileMatch}(`
+          );
+          
+          // Update logger reference
+          fixedCode = fixedCode.replace(
+            new RegExp(`getLogger\\(${classMatch}\\.class`, 'g'),
+            `getLogger(${fileMatch}.class`
+          );
+        }
+      }
+      
+      // Fix 16: Missing @CucumberOptions annotation in runner
+      if (error.includes('No features found') && file.includes('runner') || file.includes('Runner')) {
+        console.log(colors.yellow + '    Adding @CucumberOptions annotation...\n' + colors.reset);
+        
+        if (!fixedCode.includes('@CucumberOptions')) {
+          // Add CucumberOptions import
+          if (!fixedCode.includes('import io.cucumber.testng.CucumberOptions')) {
+            const packageLineEnd = fixedCode.indexOf(';') + 1;
+            fixedCode = fixedCode.slice(0, packageLineEnd) + 
+              '\n\nimport io.cucumber.testng.CucumberOptions;\nimport io.cucumber.testng.AbstractTestNGCucumberTests;' + 
+              fixedCode.slice(packageLineEnd);
+          }
+          
+          // Add annotation before class
+          fixedCode = fixedCode.replace(
+            /(public class \w+)/,
+            `@CucumberOptions(\n    features = "src/test/java/features",\n    glue = {"stepDefs", "hooks"},\n    plugin = {"pretty", "html:target/cucumber-reports.html"}\n)\n$1`
+          );
+          
+          // Ensure class extends AbstractTestNGCucumberTests
+          if (!fixedCode.includes('extends AbstractTestNGCucumberTests')) {
+            fixedCode = fixedCode.replace(
+              /(public class \w+)(?:\s*\{)/,
+              '$1 extends AbstractTestNGCucumberTests {'
+            );
+          }
+        }
+      }
+      
+      // Fix 17: Incorrect assertion method (assertEquals vs assertTrue)
+      if (error.includes('cannot find symbol') && error.includes('assertEquals')) {
+        console.log(colors.yellow + '    Adding Assert import...\n' + colors.reset);
+        
+        if (!fixedCode.includes('import org.testng.Assert')) {
+          const packageLineEnd = fixedCode.indexOf(';') + 1;
+          fixedCode = fixedCode.slice(0, packageLineEnd) + '\n\nimport org.testng.Assert;' + fixedCode.slice(packageLineEnd);
+        }
+        
+        // Fix standalone assertEquals calls
+        fixedCode = fixedCode.replace(/\bassertEquals\(/g, 'Assert.assertEquals(');
+        fixedCode = fixedCode.replace(/\bassertTrue\(/g, 'Assert.assertTrue(');
+        fixedCode = fixedCode.replace(/\bassertFalse\(/g, 'Assert.assertFalse(');
+        fixedCode = fixedCode.replace(/\bassertNotNull\(/g, 'Assert.assertNotNull(');
+      }
+      
+      // Fix 18: Missing test data parameter in Cucumber steps
+      if (error.includes('cannot find symbol') && file.includes('Steps.java') && error.includes('variable')) {
+        const varMatch = error.match(/symbol:\s+variable\s+(\w+)/)?.[1];
+        if (varMatch && !['driver', 'log', 'logger'].includes(varMatch)) {
+          console.log(colors.yellow + `    Converting hardcoded value to Cucumber parameter: ${varMatch}\n` + colors.reset);
+          
+          // Find the step definition that uses this variable
+          const stepMatch = fixedCode.match(/@(Given|When|Then)\("([^"]+)"\)[^{]+\{[^}]*\b${varMatch}\b/s);
+          if (stepMatch) {
+            const annotation = stepMatch[1];
+            const stepText = stepMatch[2];
+            
+            // Add parameter placeholder to step regex
+            const newStepText = stepText + ' {string}';
+            fixedCode = fixedCode.replace(
+              `@${annotation}("${stepText}")`,
+              `@${annotation}("${newStepText}")`
+            );
+            
+            // Add parameter to method signature
+            const methodMatch = fixedCode.match(new RegExp(`@${annotation}\\("${newStepText.replace(/[{}]/g, '\\$&')}"\\)[^(]+\\(([^)]*)\\)`));
+            if (methodMatch) {
+              const params = methodMatch[1];
+              const newParams = params ? `${params}, String ${varMatch}` : `String ${varMatch}`;
+              fixedCode = fixedCode.replace(
+                new RegExp(`(@${annotation}\\("${newStepText.replace(/[{}]/g, '\\$&')}"\\)[^(]+\\()${params}(\\))`),
+                `$1${newParams}$2`
+              );
+            }
+          }
+        }
+      }
+      
+      // Fix 19: IOException not handled (add throws or try-catch)
+      if (error.includes('unreported exception') && error.includes('IOException')) {
+        console.log(colors.yellow + '    Adding IOException handling...\n' + colors.reset);
+        
+        // Find method with IOException
+        const methodMatch = fixedCode.match(/(public|protected|private)\s+(static\s+)?\w+\s+(\w+)\s*\([^)]*\)(?!\s*throws)/g);
+        if (methodMatch) {
+          methodMatch.forEach(method => {
+            fixedCode = fixedCode.replace(
+              method + ' {',
+              method + ' throws IOException {'
+            );
+          });
+        }
+        
+        // Add IOException import
+        if (!fixedCode.includes('import java.io.IOException')) {
+          const packageLineEnd = fixedCode.indexOf(';') + 1;
+          fixedCode = fixedCode.slice(0, packageLineEnd) + '\n\nimport java.io.IOException;' + fixedCode.slice(packageLineEnd);
+        }
+      }
+      
       // Fix 8: Type mismatch
       if (error.includes('incompatible types')) {
         // Fix common type mismatches
@@ -1841,6 +2406,11 @@ async function autoCompileTestAndFix(testName, elements, scenarios, verification
   } else {
     console.log(colors.bright + colors.red + '  ❌ FAILED after ' + maxAttempts + ' attempts' + colors.reset);
     console.log(colors.yellow + '  Please review the errors manually.' + colors.reset);
+    console.log(colors.red + '\n  🛑 Terminating session due to unresolved compilation/test errors.\n' + colors.reset);
+    console.log(colors.magenta + `${'='.repeat(60)}\n` + colors.reset);
+    
+    // Exit the process with error code
+    process.exit(1);
   }
   console.log(colors.magenta + `${'='.repeat(60)}\n` + colors.reset);
 }
@@ -2069,10 +2639,10 @@ async function main() {
         await generatePageObject();
         break;
       case '4':
-        console.log(colors.yellow + '\nFeature generation - Coming soon!' + colors.reset);
+        await generateFeatureFile();
         break;
       case '5':
-        console.log(colors.yellow + '\nStep definition generation - Coming soon!' + colors.reset);
+        await generateStepDefinitions();
         break;
       case '6':
         await analyzeFramework();

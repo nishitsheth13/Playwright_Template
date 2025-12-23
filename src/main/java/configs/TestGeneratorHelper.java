@@ -724,11 +724,11 @@ public class TestGeneratorHelper {
             
             try {
                 if (isWindows()) {
-                    Runtime.getRuntime().exec("cmd /c start " + reportPath);
+                    new ProcessBuilder("cmd", "/c", "start", reportPath).start();
                 } else if (isMac()) {
-                    Runtime.getRuntime().exec("open " + reportPath);
+                    new ProcessBuilder("open", reportPath).start();
                 } else {
-                    Runtime.getRuntime().exec("xdg-open " + reportPath);
+                    new ProcessBuilder("xdg-open", reportPath).start();
                 }
             } catch (IOException e) {
                 System.err.println("❌ Failed to open report: " + e.getMessage());
