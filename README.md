@@ -5,40 +5,38 @@
 
 ---
 
-## ⚡ NEW: AI-Powered Test Generation! 🤖
+## ⚡ AI-Powered Test Generation! 🤖
 
-**Create complete test suites in minutes - no manual coding required!**
+**Create complete test suites in 5 minutes with comprehensive verification**
 
-### Quick Start (5 minutes)
+### Quick Start
 ```bash
-# 1. One-time setup
+# 1. Setup (one-time)
 setup-mcp.bat          # Windows
 ./setup-mcp.sh         # Mac/Linux
 
-# 2. Generate your first test
+# 2. Generate test with verification
 node automation-cli.js
+# Select verification: Functional, UI, UX, Performance, Logging
 
-# 3. Compile and run
+# 3. Build & Run
 mvn clean compile test
 ```
 
-### Or use AI Chat (GitHub Copilot/Claude)
+### Or use AI Chat
 ```
-"Using MCP server, create a login test with username, password fields and login button.
-Test both valid login and invalid credentials scenarios."
+"Using MCP server, create login test with username, password fields and login button.
+Add verification: Functional, UI, Performance (<3s), Logging.
+Test valid and invalid scenarios."
 ```
 
-**📘 Complete Guide:** [AI_GUIDE.md](AI_GUIDE.md) ← **Read this for AI-powered testing**
+**📘 Complete Guide:** [AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md) ← **Everything in ONE file!**
 
 ---
 
-## 🚀 Quick Start (Traditional)
+## 🚀 Traditional Approach
 
 ```bash
-# Clone and setup
-git clone <repository-url>
-cd Playwright_Template
-
 # Compile
 mvn clean compile test-compile
 
@@ -55,9 +53,50 @@ mvn test -Dcucumber.filter.tags="@Smoke"
 
 ## 📦 What's Included
 
-### 🤖 AI-Powered Features (NEW!)
-✅ **MCP Server** - Intelligent code generation engine  
-✅ **Interactive CLI** - User-friendly wizard for test creation  
+### 🤖 AI-Powered Features
+✅ **MCP Server** - Intelligent code generation  
+✅ **Interactive CLI** - Wizard for test creation  
+✅ **Verification Options** - Functional, UI, UX, Performance, Logging  
+✅ **GitHub Copilot Integration** - AI chat support  
+✅ **Claude Desktop Support** - Alternative AI integration  
+✅ **Auto-generation** - Page Objects, Features, Step Definitions
+
+### 🔧 Framework Features
+✅ **Playwright** - Modern browser automation  
+✅ **Cucumber** - BDD with Gherkin syntax  
+✅ **TestNG** - Powerful test execution  
+✅ **Page Object Model** - Maintainable code structure  
+✅ **ExtentReports** - Beautiful HTML reports with screenshots  
+✅ **Auto-retry** - Retry failed tests automatically  
+✅ **Centralized Config** - Easy configuration management  
+
+---
+
+## 📚 Documentation
+
+- **[AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)** - Complete AI guide (Setup, prompts, verification, examples)
+- **[AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)** - Framework reference (Structure, configuration, manual coding)
+
+---
+
+## 🎯 Create Your First Test
+
+### Option 1: Interactive CLI (Easiest)
+```bash
+node automation-cli.js
+```
+
+### Option 2: AI Chat
+```
+Using MCP server, create [feature] test with [elements].
+Add verification: Functional, UI, Performance (<3s), Logging.
+Test [scenarios].
+```
+
+### Option 3: Manual Coding
+See [AUTOMATION_FRAMEWORK_GUIDE.md](AUTOMATION_FRAMEWORK_GUIDE.md)
+
+---
 ✅ **AI Integration** - Works with GitHub Copilot, Claude  
 ✅ **5 MCP Tools** - Generate page objects, features, steps  
 ✅ **90% Time Savings** - 5 minutes vs 2 hours per test suite  

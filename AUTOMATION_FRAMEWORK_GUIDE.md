@@ -9,16 +9,18 @@
 1. [Overview](#-overview)
 2. [Project Structure](#-project-structure)
 3. [Prerequisites](#-prerequisites)
-4. [Test Execution](#-test-execution)
-5. [Configuration Reference](#-configuration-reference)
-6. [Best Practices](#-best-practices)
+4. [Manual Test Creation](#-manual-test-creation)
+5. [Test Execution](#-test-execution)
+6. [Configuration Reference](#-configuration-reference)
+7. [Best Practices](#-best-practices)
+8. [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## 🎯 Overview
 
 ### 🤖 Want AI-Generated Tests? 
-**📘 See [AI_GUIDE.md](AI_GUIDE.md) - Create tests in 5 minutes with zero coding!**
+**📘 See [AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md) - Create tests in 5 minutes with verification!**
 
 ### Framework Features
 - **Playwright** for browser automation
@@ -630,7 +632,7 @@ Location: `src/test/testng.xml`
 
 ## 📚 Additional Resources
 
-- **🤖 AI-Powered Testing:** [AI_GUIDE.md](AI_GUIDE.md)
+- **🤖 AI-Powered Testing:** [AI_AUTOMATION_COMPLETE_GUIDE.md](AI_AUTOMATION_COMPLETE_GUIDE.md)
 - **📁 Reports:** `MRITestExecutionReports/`
 - **⚙️ Config:** `src/test/resources/configurations.properties`
 

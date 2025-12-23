@@ -154,23 +154,57 @@ async function generateCompleteTestSuite() {
     addMoreScenarios = more.toLowerCase() === 'y';
   }
   
+  // Step 5: Verification Options (NEW)
+  console.log(colors.yellow + '\n✅ Add Verification & Assertions?' + colors.reset);
+  
+  const addFunctional = await question(colors.cyan + '  Functional verification (business logic, assertions)? (y/n): ' + colors.reset);
+  const addUI = await question(colors.cyan + '  UI verification (element states, visibility)? (y/n): ' + colors.reset);
+  const addUX = await question(colors.cyan + '  UX verification (transitions, user experience)? (y/n): ' + colors.reset);
+  const addPerformance = await question(colors.cyan + '  Performance verification (timing, thresholds)? (y/n): ' + colors.reset);
+  const addLogging = await question(colors.cyan + '  Detailed logging (step-by-step logs)? (y/n): ' + colors.reset);
+  
+  const verification = {
+    functional: addFunctional.toLowerCase() === 'y',
+    ui: addUI.toLowerCase() === 'y',
+    ux: addUX.toLowerCase() === 'y',
+    performance: addPerformance.toLowerCase() === 'y',
+    logging: addLogging.toLowerCase() === 'y'
+  };
+  
+  // Performance threshold if enabled
+  let performanceThreshold = 3000; // default 3 seconds
+  if (verification.performance) {
+    const threshold = await question(colors.cyan + '  Performance threshold in seconds (default 3): ' + colors.reset);
+    if (threshold.trim()) {
+      performanceThreshold = parseInt(threshold) * 1000;
+    }
+  }
+  
   // Confirm and generate
   console.log(colors.yellow + '\n📊 Summary:' + colors.reset);
   console.log(`  Test: ${testName}`);
   console.log(`  Elements: ${elements.length}`);
   console.log(`  Scenarios: ${scenarios.length}`);
+  console.log(colors.cyan + '  Verification:' + colors.reset);
+  console.log(`    • Functional: ${verification.functional ? '✅' : '❌'}`);
+  console.log(`    • UI: ${verification.ui ? '✅' : '❌'}`);
+  console.log(`    • UX: ${verification.ux ? '✅' : '❌'}`);
+  console.log(`    • Performance: ${verification.performance ? '✅ (<' + (performanceThreshold/1000) + 's)' : '❌'}`);
+  console.log(`    • Logging: ${verification.logging ? '✅' : '❌'}`);
   
   const confirm = await question(colors.cyan + '\n✨ Generate test suite? (y/n): ' + colors.reset);
   
   if (confirm.toLowerCase() === 'y') {
-    console.log(colors.green + '\n🚀 Generating your test suite...\n' + colors.reset);
+    console.log(colors.green + '\n🚀 Generating your test suite with verification...\n' + colors.reset);
     
     // Call MCP server tool (simulated here, actual implementation would use MCP SDK)
     const result = await callMCPTool('generate-complete-test-suite', {
       testName,
       description,
       pageElements: elements,
-      scenarios
+      scenarios,
+      verification,
+      performanceThreshold
     });
     
     console.log(colors.green + result + colors.reset);

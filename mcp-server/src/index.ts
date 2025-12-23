@@ -165,39 +165,142 @@ async function analyzeFeatures(): Promise<any> {
  * Tool: Generate Page Object
  */
 async function generatePageObject(args: any): Promise<string> {
-  const { pageName, elements, description } = args;
+  const { pageName, elements, description, verification } = args;
   
   const className = pageName.charAt(0).toUpperCase() + pageName.slice(1);
   const fileName = `${className}.java`;
   const filePath = path.join(PAGES_DIR, fileName);
   
-  // Generate element methods
+  const enableLogging = verification?.logging ?? false;
+  const enableAssertions = verification?.functional ?? false;
+  const enablePerformance = verification?.performance ?? false;
+  
+  // Generate element methods matching existing project pattern (using utils methods)
   const elementMethods = elements.map((el: any) => {
     const methodName = el.name.replace(/\s+/g, '');
     const action = el.action || 'click';
     
-    return `    /**
+    let methodCode = `    /**
      * ${el.description || `Interact with ${el.name}`}
      * @param locator The element locator
      */
-    protected static void ${methodName}(String locator) {
-        System.out.println("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");
-        ${action === 'click' ? 'clickElement(locator);' : 
-          action === 'type' ? 'fillText(locator, text);' :
-          action === 'select' ? 'selectDropdown(locator, value);' :
-          'interactWithElement(locator);'}
-        TimeoutConfig.shortWait();
-        System.out.println("✅ ${el.name} action completed");
-    }`;
+    protected static void ${methodName}(String locator${action === 'type' ? ', String text' : ''}) {`;
+    
+    if (enableLogging) {
+      methodCode += `\n        log.info("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+    } else {
+      methodCode += `\n        System.out.println("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+    }
+    
+    if (enablePerformance) {
+      methodCode += `\n        long startTime = System.currentTimeMillis();`;
+    }
+    
+    // Use actual project methods from utils class
+    methodCode += `\n        ${action === 'click' ? 'clickOnElement(locator);' : 
+          action === 'type' ? 'enterText(locator, text);' :
+          action === 'select' ? 'selectDropDownValueByText(locator, text);' :
+          'clickOnElement(locator);'}`;
+    
+    if (enablePerformance) {
+      methodCode += `\n        long duration = System.currentTimeMillis() - startTime;`;
+      methodCode += `\n        log.info("⏱️ ${el.name} action completed in " + duration + "ms");`;
+    }
+    
+    methodCode += `\n        TimeoutConfig.shortWait();`;
+    
+    if (enableLogging) {
+      methodCode += `\n        log.info("✅ ${el.name} action completed successfully");`;
+    } else {
+      methodCode += `\n        System.out.println("✅ ${el.name} action completed");`;
+    }
+    
+    methodCode += `\n    }`;
+    return methodCode;
   }).join('\n\n');
+  
+  // Add verification methods if enabled
+  let verificationMethods = '';
+  
+  if (enableAssertions) {
+    verificationMethods += `\n\n    /**
+     * Verify element is present and visible
+     * @param locator The element locator
+     * @param elementName Name for logging
+     */
+    protected static void verifyElementVisible(String locator, String elementName) {
+        log.info("🔍 Verifying " + elementName + " is visible");
+        Assert.assertTrue(isElementPresent(locator), 
+            elementName + " is not visible");
+        log.info("✓ " + elementName + " verification passed");
+    }`;
+    
+    verificationMethods += `\n\n    /**
+     * Verify page is loaded successfully
+     * @param expectedUrlPart Expected URL substring
+     */
+    protected static void verifyPageLoaded(String expectedUrlPart) {
+        log.info("🔍 Verifying page loaded with URL: " + expectedUrlPart);
+        Assert.assertTrue(isUrlContains(expectedUrlPart), 
+            "Page URL does not contain: " + expectedUrlPart);
+        log.info("✓ Page loaded successfully");
+    }`;
+  }
+  
+  if (enablePerformance) {
+    verificationMethods += `\n\n    /**
+     * Measure and verify page load time
+     * @param expectedTimeMs Expected time in milliseconds
+     * @return Actual load time
+     */
+    protected static long measurePageLoadTime(long expectedTimeMs) {
+        long startTime = System.currentTimeMillis();
+        waitForPageLoad();
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("⏱️ Page load time: " + duration + "ms");
+        Assert.assertTrue(duration < expectedTimeMs, 
+            "Page load too slow: " + duration + "ms (expected < " + expectedTimeMs + "ms)");
+        return duration;
+    }`;
+  }
+  
+  const imports = enableLogging || enableAssertions ? 
+    `\nimport org.testng.Assert;\nimport java.util.logging.Logger;` : '';
+  
+  const loggerDeclaration = enableLogging ? 
+    `\n    private static final Logger log = Logger.getLogger(${className}.class.getName());` : '';
   
   const pageContent = `package pages;
 
-import com.microsoft.playwright.Page;
-import configs.TimeoutConfig;
+import configs.TimeoutConfig;${imports}
 
 /**
  * ${description || `${className} Page Object`}
+ * 
+ * This page object handles interactions with the ${className} page.
+ * Extends BasePage to inherit common utilities and methods.
+ * ${verification?.functional ? '\n * Includes functional verification and assertions.' : ''}
+ * ${verification?.performance ? '\n * Includes performance monitoring.' : ''}
+ * 
+ * @author Automation Team (AI Generated)
+ * @version 1.0
+ */
+public class ${className} extends BasePage {${loggerDeclaration}
+    
+    /**
+     * Constructor
+     */
+    public ${className}() {
+        super();
+    }
+    
+    // ============================================================
+    // PAGE INTERACTIONS
+    // ============================================================
+    
+${elementMethods}${verificationMethods}
+    
+}
  * 
  * This page object handles interactions with the ${className} page.
  * All methods follow the Page Object Model pattern and extend BasePage.
