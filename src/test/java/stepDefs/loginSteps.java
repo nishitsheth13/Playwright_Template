@@ -345,23 +345,28 @@ public class loginSteps extends browserSelector {
     @Then("Username field should have proper label")
     public void usernameFieldShouldHaveProperLabel() {
         System.out.println("🔹 Step: Verifying username field accessibility");
-        asserts.assertTrue(login.isUsernameFieldVisible(), "Username field should have proper label");
+        SoftAssert localAsserts = new SoftAssert();
+        localAsserts.assertTrue(login.isUsernameFieldVisible(), "Username field should have proper label");
         System.out.println("✅ Username field has proper label");
+        localAsserts.assertAll();
     }
 
     @And("Password field should have proper label")
     public void passwordFieldShouldHaveProperLabel() {
         System.out.println("🔹 Step: Verifying password field accessibility");
-        asserts.assertTrue(login.isPasswordFieldVisible(), "Password field should have proper label");
+        SoftAssert localAsserts = new SoftAssert();
+        localAsserts.assertTrue(login.isPasswordFieldVisible(), "Password field should have proper label");
         System.out.println("✅ Password field has proper label");
+        localAsserts.assertAll();
     }
 
     @And("Sign In button should be keyboard accessible")
     public void signInButtonShouldBeKeyboardAccessible() {
         System.out.println("🔹 Step: Verifying Sign In button accessibility");
-        asserts.assertTrue(login.isSignInButtonVisible(), "Sign In button should be keyboard accessible");
+        SoftAssert localAsserts = new SoftAssert();
+        localAsserts.assertTrue(login.isSignInButtonVisible(), "Sign In button should be keyboard accessible");
         System.out.println("✅ Sign In button is keyboard accessible");
-        asserts.assertAll();
+        localAsserts.assertAll();
     }
 
     @Then("Version information should be displayed in footer")

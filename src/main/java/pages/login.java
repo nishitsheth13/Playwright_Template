@@ -32,7 +32,7 @@ public class login extends utils {
     public static final String SignInButton = "//button[@name='button']";
     public static final String UserIcon = "//span[@class='menu_user_title']";
     public static final String logoutButton = "//a[contains(@href, 'Logout') or contains(text(), 'Logout') or @id='Logout']//span";
-    public static final String rememberMeCheckbox = "//input[@id='RememberLogin' or @name='RememberLogin' or (@type='checkbox' and contains(@class, 'checkbox'))]";
+    public static final String rememberMeCheckbox = "//input[@id='RememberLogin' and @type='checkbox']";
     public static final String forgotUsernameLink = "//a[contains(text(), 'Forgot Username')]";
     public static final String forgotPasswordLink = "//a[contains(text(), 'Forgot Password')]";
     public static final String errorMessage = "//div[contains(@class, 'alert') or contains(@class, 'error')]";

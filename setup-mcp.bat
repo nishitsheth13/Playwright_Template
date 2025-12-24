@@ -100,19 +100,19 @@ set PROJECT_ROOT=%CD%
 set PROJECT_ROOT=%PROJECT_ROOT:\=\\%
 
 (
-echo {
-echo   "mcpServers": {
-echo     "playwright-automation": {
+echo ^{
+echo   "mcpServers": ^{
+echo     "playwright-automation": ^{
 echo       "command": "node",
 echo       "args": [
 echo         "%PROJECT_ROOT%\\mcp-server\\dist\\index.js"
 echo       ],
-echo       "env": {
+echo       "env": ^{
 echo         "PROJECT_ROOT": "%PROJECT_ROOT%"
-echo       }
-echo     }
-echo   }
-echo }
+echo       ^}
+echo     ^}
+echo   ^}
+echo ^}
 ) > .vscode\mcp-settings.json
 
 echo [OK] VS Code MCP configuration created

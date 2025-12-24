@@ -13,7 +13,7 @@ import configs.utils;
  */
 public abstract class BasePage extends utils {
     
-    protected static Page page;
+    public static Page page;
     
     /**
      * Constructor to initialize page instance
@@ -30,7 +30,7 @@ public abstract class BasePage extends utils {
      * Navigate to specific URL with wait
      * @param url The URL to navigate to
      */
-    protected static void navigateTo(String url) {
+    public static void navigateTo(String url) {
         System.out.println("🌐 Navigating to: " + url);
         page.navigate(url);
         page.waitForLoadState();
@@ -41,7 +41,7 @@ public abstract class BasePage extends utils {
     /**
      * Refresh current page
      */
-    protected static void refreshPage() {
+    public static void refreshPage() {
         System.out.println("🔄 Refreshing page...");
         page.reload();
         TimeoutConfig.mediumWait();
@@ -51,7 +51,7 @@ public abstract class BasePage extends utils {
     /**
      * Navigate back to previous page
      */
-    protected static void goBack() {
+    public static void goBack() {
         System.out.println("◀️ Navigating back...");
         page.goBack();
         TimeoutConfig.shortWait();
@@ -60,7 +60,7 @@ public abstract class BasePage extends utils {
     /**
      * Navigate forward to next page
      */
-    protected static void goForward() {
+    public static void goForward() {
         System.out.println("▶️ Navigating forward...");
         page.goForward();
         TimeoutConfig.shortWait();
@@ -74,7 +74,7 @@ public abstract class BasePage extends utils {
      * Get current page title
      * @return Page title as String
      */
-    protected static String getPageTitle() {
+    public static String getPageTitle() {
         return page.title();
     }
     
@@ -82,7 +82,7 @@ public abstract class BasePage extends utils {
      * Get current page URL
      * @return Current URL as String
      */
-    protected static String getCurrentUrl() {
+    public static String getCurrentUrl() {
         return page.url();
     }
     
@@ -91,7 +91,7 @@ public abstract class BasePage extends utils {
      * @param expectedTitle Text to check in title
      * @return true if title contains expected text, false otherwise
      */
-    protected static boolean isTitleContains(String expectedTitle) {
+    public static boolean isTitleContains(String expectedTitle) {
         String actualTitle = getPageTitle();
         boolean contains = actualTitle.contains(expectedTitle);
         System.out.println("📋 Title check: Expected='" + expectedTitle + "', Actual='" + actualTitle + "', Result=" + contains);
@@ -103,7 +103,7 @@ public abstract class BasePage extends utils {
      * @param expectedUrlPart Text to check in URL
      * @return true if URL contains expected text, false otherwise
      */
-    protected static boolean isUrlContains(String expectedUrlPart) {
+    public static boolean isUrlContains(String expectedUrlPart) {
         String actualUrl = getCurrentUrl();
         boolean contains = actualUrl.contains(expectedUrlPart);
         System.out.println("🔗 URL check: Expected='" + expectedUrlPart + "', Actual='" + actualUrl + "', Result=" + contains);
@@ -116,7 +116,7 @@ public abstract class BasePage extends utils {
      * @param timeoutInSeconds Maximum wait time
      * @return true if title contains text within timeout
      */
-    protected static boolean waitForTitle(String expectedTitle, int timeoutInSeconds) {
+    public static boolean waitForTitle(String expectedTitle, int timeoutInSeconds) {
         System.out.println("⏳ Waiting for title to contain: " + expectedTitle);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (timeoutInSeconds * 1000);
@@ -140,7 +140,7 @@ public abstract class BasePage extends utils {
     /**
      * Scroll to top of page
      */
-    protected static void scrollToTop() {
+    public static void scrollToTop() {
         System.out.println("⬆️ Scrolling to top");
         page.evaluate("window.scrollTo(0, 0)");
         TimeoutConfig.shortWait();
@@ -149,7 +149,7 @@ public abstract class BasePage extends utils {
     /**
      * Scroll to bottom of page
      */
-    protected static void scrollToBottom() {
+    public static void scrollToBottom() {
         System.out.println("⬇️ Scrolling to bottom");
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)");
         TimeoutConfig.shortWait();
@@ -159,7 +159,7 @@ public abstract class BasePage extends utils {
      * Scroll to specific element
      * @param locator Element locator
      */
-    protected static void scrollToElement(String locator) {
+    public static void scrollToElement(String locator) {
         System.out.println("🎯 Scrolling to element: " + locator);
         page.locator(locator).scrollIntoViewIfNeeded();
         TimeoutConfig.shortWait();
@@ -170,7 +170,7 @@ public abstract class BasePage extends utils {
      * @param screenshotName Name for the screenshot file
      * @return Screenshot file path
      */
-    protected static String takeScreenshot(String screenshotName) {
+    public static String takeScreenshot(String screenshotName) {
         try {
             System.out.println("📸 Taking screenshot: " + screenshotName);
             // Screenshot logic handled by utils class
@@ -188,7 +188,7 @@ public abstract class BasePage extends utils {
     /**
      * Accept browser alert
      */
-    protected static void acceptAlert() {
+    public static void acceptAlert() {
         System.out.println("✅ Accepting alert");
         page.onDialog(dialog -> {
             System.out.println("⚠️ Alert text: " + dialog.message());
@@ -199,7 +199,7 @@ public abstract class BasePage extends utils {
     /**
      * Dismiss browser alert
      */
-    protected static void dismissAlert() {
+    public static void dismissAlert() {
         System.out.println("❌ Dismissing alert");
         page.onDialog(dialog -> {
             System.out.println("⚠️ Alert text: " + dialog.message());
@@ -214,7 +214,7 @@ public abstract class BasePage extends utils {
     /**
      * Wait for page to be fully loaded
      */
-    protected static void waitForPageLoad() {
+    public static void waitForPageLoad() {
         System.out.println("⏳ Waiting for page to load...");
         page.waitForLoadState();
         TimeoutConfig.mediumWait();
@@ -224,7 +224,7 @@ public abstract class BasePage extends utils {
     /**
      * Wait for network to be idle
      */
-    protected static void waitForNetworkIdle() {
+    public static void waitForNetworkIdle() {
         System.out.println("⏳ Waiting for network idle...");
         page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE);
         System.out.println("✅ Network idle");
@@ -239,7 +239,7 @@ public abstract class BasePage extends utils {
      * @param locators Array of locators to check
      * @return true if all elements are present
      */
-    protected static boolean isPageLoaded(String... locators) {
+    public static boolean isPageLoaded(String... locators) {
         System.out.println("🔍 Verifying page loaded...");
         for (String locator : locators) {
             if (!isElementPresent(locator)) {
@@ -257,7 +257,7 @@ public abstract class BasePage extends utils {
      * @param expectedTitle Expected title substring
      * @return true if both URL and title match
      */
-    protected static boolean isCurrentPage(String expectedUrl, String expectedTitle) {
+    public static boolean isCurrentPage(String expectedUrl, String expectedTitle) {
         boolean urlMatch = isUrlContains(expectedUrl);
         boolean titleMatch = isTitleContains(expectedTitle);
         return urlMatch && titleMatch;

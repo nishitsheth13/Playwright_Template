@@ -35,29 +35,34 @@ echo.
 
 REM Check if running from CLI with pre-set variables
 if not "%FEATURE_NAME%"=="" (
-    echo Feature Name: %FEATURE_NAME% (from CLI)
-    echo Page URL: %PAGE_URL% (from CLI)
-    echo JIRA Story: %JIRA_STORY% (from CLI)
+    echo Feature Name: %FEATURE_NAME% ^(from CLI^)
+    echo Page URL: %PAGE_URL% ^(from CLI^)
+    echo JIRA Story: %JIRA_STORY% ^(from CLI^)
     echo.
 ) else (
-    set /p FEATURE_NAME="Feature Name (e.g., Login, Profile): "
+    set /p FEATURE_NAME="Feature Name ^(e.g., Login, Profile^): "
     
     echo.
     echo [URL OPTIONS]
-    echo 1. Use default URL from configurations.properties + path
-    echo 2. Enter custom full URL
+    echo 1. Use config URL + path ^(Config: https://uksestdevtest02.ukest.lan/MRIEnergy/^)
+    echo 2. Enter completely custom full URL
     echo.
-    set /p URL_CHOICE="Choose option (1 or 2, default=1): "
+    set /p URL_CHOICE="Choose option ^(1 or 2, default=1^): "
     
     if "%URL_CHOICE%"=="2" (
-        set /p CUSTOM_URL="Enter full URL (e.g., https://example.com/login): "
+        echo.
+        echo Enter COMPLETE URL including https://
+        set /p CUSTOM_URL="Full URL: "
         set PAGE_URL=
     ) else (
-        set /p PAGE_URL="Page URL path (e.g., /login, /profile): "
+        echo.
+        echo Enter ONLY the path to append to config URL
+        echo Examples: /start-page, /login, /profile, or press Enter for /
+        set /p PAGE_URL="Path only: "
         set CUSTOM_URL=
     )
     
-    set /p JIRA_STORY="JIRA Story ID (optional, press Enter to skip): "
+    set /p JIRA_STORY="JIRA Story ID ^(optional, press Enter to skip^): "
 )
 
 REM Validate inputs
@@ -96,23 +101,20 @@ echo.
 REM Determine recording URL
 if not "%CUSTOM_URL%"=="" (
     set "RECORDING_URL=%CUSTOM_URL%"
-    echo Recording URL: %RECORDING_URL% (custom URL)
+    echo Recording URL: %RECORDING_URL% ^(custom URL^)
 ) else (
-    REM Get base URL from configurations.properties and remove escaped backslashes
+    REM Get base URL from configurations.properties using PowerShell
     set "BASE_URL="
-    for /f "tokens=1,* delims==" %%a in ('findstr /i "^URL=" src\test\resources\configurations.properties 2^>nul') do (
-        set "BASE_URL=%%b"
-    )
-    
-    REM Remove escaped backslashes from Java properties format
-    set "BASE_URL=%BASE_URL:\:=:%"
+    for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "$props = Get-Content 'src\test\resources\configurations.properties'; $urlLine = $props ^| Where-Object { $_ -match '^URL=' }; if ($urlLine) { ($urlLine -split '=', 2)[1] -replace '\\:', ':' }"`) do set "BASE_URL=%%a"
     
     if "%BASE_URL%"=="" (
+        echo [WARNING] Could not read URL from configurations.properties
         set "BASE_URL=http://localhost:8080"
     )
     
     set "RECORDING_URL=%BASE_URL%%PAGE_URL%"
-    echo Recording URL: %RECORDING_URL% (from config + path)
+    echo Recording URL: %RECORDING_URL% ^(from config + path^)
+    echo Base URL read: %BASE_URL%
 )
 
 echo Output: %RECORDING_DIR%\recorded-actions.java
@@ -147,7 +149,11 @@ if not exist "%RECORDING_DIR%\recorded-actions.java" (
 if not exist "%RECORDING_DIR%\recorded-actions.java" (
     echo [ERROR] Recording failed. Please ensure Playwright is installed.
     pause
-    rd /s /q %RECORDING_DIR% 2>nul
+    if defined RECORDING_DIR (
+        if exist "%RECORDING_DIR%" (
+            rd /s /q "%RECORDING_DIR%" 2>nul
+        )
+    )
     exit /b 1
 )
 
@@ -172,8 +178,8 @@ echo $counter = 1
 echo.
 echo foreach ^($line in $lines^) {
 echo     # Match various Playwright actions with their selectors
-echo     if ^($line -match 'page\\.click\\^("^([^"]+^)"^)'^) {
-echo         $selector = $matches[2]
+echo     if ^($line -match 'page\.click\^("^([^^"]+^)"\^)'^) {
+echo         $selector = $matches[1]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'click'
@@ -182,9 +188,9 @@ echo             methodName = 'clickElement' + $counter
 echo             stepText = 'user clicks on element'
 echo         }
 echo     }
-echo     elseif ^($line -match 'page\\.fill\\^("^([^"]+^)"^,^s*"^([^"]+^)"^)'^) {
-echo         $selector = $matches[2]
-echo         $value = $matches[3]
+echo     elseif ^($line -match 'page\.fill\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
+echo         $selector = $matches[1]
+echo         $value = $matches[2]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'fill'
@@ -194,9 +200,9 @@ echo             methodName = 'fillElement' + $counter
 echo             stepText = 'user enters text into element'
 echo         }
 echo     }
-echo     elseif ^($line -match 'page\\.selectOption\\^("^([^"]+^)"^,^s*"^([^"]+^)"^)'^) {
-echo         $selector = $matches[2]
-echo         $value = $matches[3]
+echo     elseif ^($line -match 'page\.selectOption\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
+echo         $selector = $matches[1]
+echo         $value = $matches[2]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'select'
@@ -206,8 +212,8 @@ echo             methodName = 'selectOption' + $counter
 echo             stepText = 'user selects option from dropdown'
 echo         }
 echo     }
-echo     elseif ^($line -match 'page\\.check\\^("^([^"]+^)"^)'^) {
-echo         $selector = $matches[2]
+echo     elseif ^($line -match 'page\.check\^("^([^^"]+^)"\^)'^) {
+echo         $selector = $matches[1]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'check'
@@ -216,9 +222,9 @@ echo             methodName = 'checkElement' + $counter
 echo             stepText = 'user checks checkbox'
 echo         }
 echo     }
-echo     elseif ^($line -match 'page\\.press\\^("^([^"]+^)"^,^s*"^([^"]+^)"^)'^) {
-echo         $selector = $matches[2]
-echo         $key = $matches[3]
+echo     elseif ^($line -match 'page\.press\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
+echo         $selector = $matches[1]
+echo         $key = $matches[2]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'press'
@@ -228,8 +234,8 @@ echo             methodName = 'pressKey' + $counter
 echo             stepText = 'user presses key on element'
 echo         }
 echo     }
-echo     elseif ^($line -match 'page\\.navigate\\^("^([^"]+^)"^)'^) {
-echo         $url = $matches[2]
+echo     elseif ^($line -match 'page\.navigate\^("^([^^"]+^)"\^)'^) {
+echo         $url = $matches[1]
 echo         $actions += @{
 echo             id = $counter++
 echo             action = 'navigate'
@@ -250,8 +256,91 @@ echo Write-Host "Actions breakdown:" -ForegroundColor Yellow
 echo $actions ^| Group-Object action ^| ForEach-Object { Write-Host "  - $^($_.Name^): $^($_.Count^)" -ForegroundColor Cyan }
 ) > "%PS_SCRIPT%"
 
-powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
+REM Execute PowerShell script with error handling
+echo [INFO] Running smart action extraction...
+powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%" >"%TEMP%\ps_output_%RANDOM%.log" 2>&1
+set PS_EXIT_CODE=%ERRORLEVEL%
+
+if %PS_EXIT_CODE% NEQ 0 (
+    echo.
+    echo [WARNING] Smart extraction encountered an error. Using fallback method...
+    echo.
+    
+    REM Fallback: Simple extraction using basic pattern matching
+    set "FALLBACK_SCRIPT=%TEMP%\fallback_extract_%RANDOM%.ps1"
+    (
+        echo $recording = Get-Content '%RECORDING_DIR%\recorded-actions.java' -Raw
+        echo $actions = @^(^)
+        echo $counter = 1
+        echo.
+        echo # Simple extraction - find click and fill patterns
+        echo $recording -split "`n" ^| ForEach-Object {
+        echo     $line = $_
+        echo     if ^($line -match 'page\.click'^^) {
+        echo         if ^($line -match '\"^([^^\"]+^)\"'^^) {
+        echo             $actions += @{
+        echo                 id = $counter++
+        echo                 action = 'click'
+        echo                 selector = $matches[1]
+        echo                 methodName = 'clickElement' + $counter
+        echo                 stepText = 'user clicks element'
+        echo             }
+        echo         }
+        echo     }
+        echo     elseif ^($line -match 'page\.fill'^^) {
+        echo         if ^($line -match '\"^([^^\"]+^)\".*\"^([^^\"]+^)\"'^^) {
+        echo             $actions += @{
+        echo                 id = $counter++
+        echo                 action = 'fill'
+        echo                 selector = $matches[1]
+        echo                 value = $matches[2]
+        echo                 methodName = 'fillElement' + $counter
+        echo                 stepText = 'user fills element'
+        echo             }
+        echo         }
+        echo     }
+        echo }
+        echo.
+        echo if ^($actions.Count -eq 0^^) {
+        echo     $actions += @{
+        echo         id = 1
+        echo         action = 'navigate'
+        echo         url = '%PAGE_URL%'
+        echo         methodName = 'navigateTo'
+        echo         stepText = 'user navigates'
+        echo     }
+        echo }
+        echo.
+        echo $json = $actions ^| ConvertTo-Json -Depth 10
+        echo $json ^| Out-File '%RECORDING_DIR%\actions.json' -Encoding utf8
+        echo Write-Host "[INFO] Extracted $^($actions.Count^^) actions using fallback method" -ForegroundColor Yellow
+    ) > "%FALLBACK_SCRIPT%"
+    
+    powershell -ExecutionPolicy Bypass -File "%FALLBACK_SCRIPT%" 2>nul
+    del "%FALLBACK_SCRIPT%" 2>nul
+    
+    echo [INFO] Fallback extraction completed
+)
+
 del "%PS_SCRIPT%" 2>nul
+
+REM Validate that actions.json was created
+if not exist "%RECORDING_DIR%\actions.json" (
+    echo.
+    echo [WARNING] No actions extracted. Creating minimal structure...
+    (
+        echo [
+        echo   ^{
+        echo     "id": 1,
+        echo     "action": "navigate",
+        echo     "url": "%PAGE_URL%",
+        echo     "methodName": "navigateTo",
+        echo     "stepText": "user navigates to page"
+        echo   ^}
+        echo ]
+    ) > "%RECORDING_DIR%\actions.json"
+    echo [INFO] Created minimal actions structure
+)
 
 echo.
 echo ════════════════════════════════════════════════════════════════
@@ -487,13 +576,66 @@ echo console.log^('[INFO] Feature File: src/test/java/features/' + className + '
 echo console.log^('[INFO] Step Definitions: src/test/java/stepDefs/' + className + 'Steps.java'^);
 ) > "%GEN_SCRIPT%"
 
-node "%GEN_SCRIPT%" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%" "%RECORDING_DIR%"
-if errorlevel 1 (
-    echo [ERROR] File generation failed!
-    del "%GEN_SCRIPT%" 2>nul
+echo [INFO] Generating test files from extracted actions...
+node "%GEN_SCRIPT%" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%" "%RECORDING_DIR%" 2>"%TEMP%\gen_error_%RANDOM%.log"
+set GEN_EXIT_CODE=%ERRORLEVEL%
+
+if %GEN_EXIT_CODE% NEQ 0 (
+    echo.
+    echo [ERROR] File generation encountered an error.
+    echo [INFO] Checking for common issues...
+    
+    REM Check if Node.js had syntax errors
+    if exist "%TEMP%\gen_error_*.log" (
+        echo [INFO] Error details found in temporary log
+    )
+    
+    REM Validate JSON file exists and is valid
+    if not exist "%RECORDING_DIR%\actions.json" (
+        echo [ERROR] Actions JSON file not found!
+        echo [FIX] Creating minimal JSON structure...
+        (
+            echo [^{"id":1,"action":"navigate","url":"%PAGE_URL%","methodName":"navigateTo","stepText":"user navigates"^}]
+        ) > "%RECORDING_DIR%\actions.json"
+    ) else (
+        REM Try to validate JSON
+        node -e "try^{require('./%RECORDING_DIR%/actions.json'^);console.log('[OK] JSON is valid'^);^}catch^(e^)^{console.log('[ERROR] Invalid JSON:',e.message^);^}" 2>nul
+    )
+    
+    echo [INFO] Retrying file generation with error recovery...
+    node "%GEN_SCRIPT%" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%" "%RECORDING_DIR%" 2>nul
+    
+    if errorlevel 1 (
+        echo [ERROR] File generation failed after retry!
+        echo [INFO] Please check the recording and try again.
+        del "%GEN_SCRIPT%" 2>nul
+        goto :error
+    )
+)
+
+del "%GEN_SCRIPT%" 2>nul
+del "%TEMP%\gen_error_*.log" 2>nul
+
+REM Validate generated files exist
+set "FILES_MISSING=0"
+if not exist "src\main\java\pages\%FEATURE_NAME%.java" (
+    echo [WARNING] Page Object not generated!
+    set FILES_MISSING=1
+)
+if not exist "src\test\java\features\%FEATURE_NAME%.feature" (
+    echo [WARNING] Feature file not generated!
+    set FILES_MISSING=1
+)
+if not exist "src\test\java\stepDefs\%FEATURE_NAME%Steps.java" (
+    echo [WARNING] Step Definitions not generated!
+    set FILES_MISSING=1
+)
+
+if %FILES_MISSING% EQU 1 (
+    echo.
+    echo [ERROR] Some files were not generated. Check for errors above.
     goto :error
 )
-del "%GEN_SCRIPT%" 2>nul
 
 echo.
 echo ✅ Files generated successfully!
@@ -502,6 +644,42 @@ echo.
 echo ════════════════════════════════════════════════════════════════
 echo ✅ Step 4: AUTO-VALIDATION AND FIXING
 echo ════════════════════════════════════════════════════════════════
+echo.
+
+echo [STEP 4.0] Post-generation validation...
+
+REM Auto-fix common syntax issues in generated files
+echo [INFO] Checking for common syntax issues...
+
+REM Fix 1: Check for escaped characters that shouldn't be escaped
+for %%f in ("src\main\java\pages\%FEATURE_NAME%.java" "src\test\java\stepDefs\%FEATURE_NAME%Steps.java") do (
+    if exist %%f (
+        powershell -Command "$content = Get-Content '%%f' -Raw; $fixed = $content -replace '\\\\n', [Environment]::NewLine; if ($content -ne $fixed) { Set-Content '%%f' -Value $fixed -NoNewline; Write-Host '[FIX] Fixed newline characters in %%f' -ForegroundColor Yellow }"
+    )
+)
+
+REM Fix 2: Check for missing imports
+if exist "src\main\java\pages\%FEATURE_NAME%.java" (
+    findstr /C:"import configs.loadProps" "src\main\java\pages\%FEATURE_NAME%.java" >nul 2>&1
+    if errorlevel 1 (
+        echo [FIX] Adding missing loadProps import to Page Object...
+        powershell -Command "$file = 'src\main\java\pages\%FEATURE_NAME%.java'; $content = Get-Content $file -Raw; if ($content -notmatch 'import configs.loadProps') { $content = $content -replace '(package pages;)', ('$1' + [Environment]::NewLine + [Environment]::NewLine + 'import configs.loadProps;'); Set-Content $file -Value $content -NoNewline; Write-Host '[OK] Added loadProps import' -ForegroundColor Green }"
+    )
+)
+
+REM Fix 3: Ensure proper method visibility
+for %%f in ("src\main\java\pages\%FEATURE_NAME%.java") do (
+    if exist %%f (
+        findstr /C:"protected static" %%f >nul 2>&1
+        if not errorlevel 1 (
+            echo [FIX] Changing protected methods to public in %%f...
+            powershell -Command "(Get-Content '%%f') -replace 'protected static', 'public static' | Set-Content '%%f'"
+            echo [OK] Fixed method visibility
+        )
+    )
+)
+
+echo [OK] Post-generation validation completed
 echo.
 
 echo [STEP 4.1] Checking duplicate step patterns...
@@ -519,8 +697,9 @@ REM Check for duplicates
 if exist "%TEMP_FILE%" (
     sort "%TEMP_FILE%" > "%TEMP_SORTED%"
     powershell -Command "$lines = Get-Content '%TEMP_SORTED%'; $patterns = @{}; foreach ($line in $lines) { if ($line -match '@(Given|When|Then)\(\"([^\"]+)\"\)') { $pattern = $matches[2]; if ($patterns.ContainsKey($pattern)) { $patterns[$pattern]++ } else { $patterns[$pattern] = 1 } } }; $dups = $patterns.GetEnumerator() | Where-Object { $_.Value -gt 1 }; if ($dups) { Write-Host '[ERROR] Duplicate step patterns found:' -ForegroundColor Red; $dups | ForEach-Object { Write-Host ('  - \"' + $_.Key + '\" (' + $_.Value + ' times)') -ForegroundColor Yellow }; exit 1 } else { Write-Host '[OK] No duplicate step patterns' -ForegroundColor Green; exit 0 }"
+    set DUP_CHECK_RESULT=%ERRORLEVEL%
     
-    if !ERRORLEVEL! NEQ 0 (
+    if %DUP_CHECK_RESULT% NEQ 0 (
         echo.
         echo [ERROR] Fix duplicates by renaming methods with Given/When/Then suffix
         del "%TEMP_FILE%" 2>nul
@@ -724,12 +903,17 @@ echo.
 
 :CLEANUP
 echo.
-set /p KEEP_RECORDING="Keep recording file? (y/N): "
+set /p KEEP_RECORDING="Keep recording file? ^(y/N^): "
 if /i "%KEEP_RECORDING%"=="y" (
     echo Recording saved in: %RECORDING_DIR%
 ) else (
-    rd /s /q %RECORDING_DIR% 2>nul
-    echo Recording files cleaned up.
+    if defined RECORDING_DIR (
+        if exist "%RECORDING_DIR%" (
+            echo [INFO] Cleaning up temporary files in: %RECORDING_DIR%
+            rd /s /q "%RECORDING_DIR%" 2>nul
+            echo Recording files cleaned up.
+        )
+    )
 )
 
 echo.
