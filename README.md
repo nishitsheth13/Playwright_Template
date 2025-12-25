@@ -5,6 +5,12 @@
 
 ---
 
+## � **NEW: Node.js Optional!** 
+Recording feature now uses **Pure Java** - no Node.js needed for Options 1 & 3!  
+Only Option 2 (AI/JIRA features) requires Node.js. See [COMPLETE_TEST_GUIDE.md](COMPLETE_TEST_GUIDE.md) for details.
+
+---
+
 ## 🎯 Unified CLI - All Test Generation Methods in One Place!
 
 ### 🚀 Single Command for Everything
@@ -13,9 +19,9 @@ generate-test.bat
 ```
 
 **Interactive menu with smart options:**
-1. 🎥 **Record & Auto-Generate** (Fastest - 5-10 min)
-2. 🤖 **AI-Assisted Interactive** (JIRA or guided questions)
-3. ✅ **Validate & Run Tests** (Check existing tests)
+1. 🎥 **Record & Auto-Generate** (Fastest - 5-10 min) - **NO Node.js needed!**
+2. 🤖 **AI-Assisted Interactive** (JIRA or guided questions) - *Requires Node.js*
+3. ✅ **Validate & Run Tests** (Check existing tests) - **NO Node.js needed!**
 
 **Why Unified CLI?**
 - ✅ One command for all methods
@@ -23,6 +29,7 @@ generate-test.bat
 - ✅ Auto-validation in all modes
 - ✅ Built-in retry logic
 - ✅ Consistent experience
+- ✅ Pure Java implementation for recording
 
 ---
 

@@ -14,6 +14,21 @@
  * 
  * Documentation: See AI_AUTOMATION_COMPLETE_GUIDE.md (single consolidated guide)
  * 
+ * TODO BEFORE USING:
+ *   [ ] Run setup-mcp.bat once to install dependencies
+ *   [ ] Ensure Maven & Node.js installed
+ *   [ ] Update configurations.properties
+ *   [ ] Prepare JIRA credentials (optional)
+ * 
+ * TODO USAGE:
+ *   [ ] Choose input method: Manual OR JIRA Story
+ *   [ ] Provide detailed test requirements
+ *   [ ] Review AI-generated code
+ *   [ ] Check auto-fix reports
+ *   [ ] Run validation tests
+ * 
+ * Full TODO checklist: See WORKFLOW_TODOS.md
+ * 
  * ⚠️ DEVELOPMENT POLICY:
  * - DO NOT create separate script files for new features - add functions here
  * - DO NOT create new markdown files - update AI_AUTOMATION_COMPLETE_GUIDE.md

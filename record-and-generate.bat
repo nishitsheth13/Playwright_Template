@@ -1,7 +1,29 @@
 @echo off
+setlocal enabledelayedexpansion
 REM ============================================================================
 REM AI-Powered Test Recorder & Auto-Generator
 REM Records user actions and generates Page Objects, Features, Step Definitions
+REM ============================================================================
+REM
+REM TODO BEFORE RECORDING:
+REM   [ ] Maven installed and in PATH
+REM   [ ] Node.js installed (v18+)
+REM   [ ] configurations.properties updated with base URL
+REM   [ ] Know the feature name you want to record
+REM   [ ] Decide URL mode: config+path OR custom URL
+REM
+REM TODO DURING RECORDING:
+REM   [ ] Wait for browser to open
+REM   [ ] Perform all actions you want to test
+REM   [ ] Close browser when done recording
+REM
+REM TODO AFTER RECORDING:
+REM   [ ] Review generated files in pages/, features/, stepDefs/
+REM   [ ] Check auto-fix report for syntax/cleanup
+REM   [ ] Review code review warnings
+REM   [ ] Run validation tests
+REM
+REM Full TODO checklist: See WORKFLOW_TODOS.md
 REM ============================================================================
 
 setlocal enabledelayedexpansion
@@ -20,13 +42,9 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-REM Check if Node.js is installed
-where node >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Node.js not found. Please install Node.js first.
-    pause
-    exit /b 1
-)
+REM Node.js no longer required - Using Pure Java generator
+echo [INFO] Using Pure Java file generator (Node.js not required)
+echo.
 
 REM Get test details from user or environment variables
 echo.
@@ -53,13 +71,15 @@ if not "%FEATURE_NAME%"=="" (
         echo.
         echo Enter COMPLETE URL including https://
         set /p CUSTOM_URL="Full URL: "
-        set PAGE_URL=
+        REM Clear PAGE_URL when custom URL is used
+        set "PAGE_URL="
     ) else (
         echo.
         echo Enter ONLY the path to append to config URL
-        echo Examples: /start-page, /login, /profile, or press Enter for /
+        echo Examples: /start-page, /login, /profile, or press Enter to skip
         set /p PAGE_URL="Path only: "
-        set CUSTOM_URL=
+        REM Clear CUSTOM_URL when using config URL
+        set "CUSTOM_URL="
     )
     
     set /p JIRA_STORY="JIRA Story ID ^(optional, press Enter to skip^): "
@@ -68,12 +88,8 @@ if not "%FEATURE_NAME%"=="" (
 REM Validate inputs
 if "%FEATURE_NAME%"=="" (
     echo [ERROR] Feature name is required
-    pause
+3    pause
     exit /b 1
-)
-
-if "%PAGE_URL%"=="" if "%CUSTOM_URL%"=="" (
-    set PAGE_URL=/
 )
 
 if "%JIRA_STORY%"=="" (
@@ -82,7 +98,15 @@ if "%JIRA_STORY%"=="" (
 
 REM Create output directory for recording
 set RECORDING_DIR=temp_recording_%RANDOM%
-mkdir %RECORDING_DIR% 2>nul
+mkdir "%RECORDING_DIR%" 2>nul
+
+if not exist "%RECORDING_DIR%" (
+    echo [ERROR] Failed to create recording directory: %RECORDING_DIR%
+    pause
+    exit /b 1
+)
+
+echo [DEBUG] Recording directory created: %RECORDING_DIR%
 
 echo.
 echo ════════════════════════════════════════════════════════════════
@@ -99,541 +123,452 @@ echo Starting Playwright Codegen Recorder...
 echo.
 
 REM Determine recording URL
+echo.
+echo ════════════════════════════════════════════════════════════════
+echo [INFO] URL Configuration Setup
+echo ════════════════════════════════════════════════════════════════
+
 if not "%CUSTOM_URL%"=="" (
+    REM Option 2: User provided custom URL
     set "RECORDING_URL=%CUSTOM_URL%"
-    echo Recording URL: %RECORDING_URL% ^(custom URL^)
+    echo   Mode: Custom URL
+    echo   Recording URL: %RECORDING_URL%
 ) else (
-    REM Get base URL from configurations.properties using PowerShell
-    set "BASE_URL="
-    for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "$props = Get-Content 'src\test\resources\configurations.properties'; $urlLine = $props ^| Where-Object { $_ -match '^URL=' }; if ($urlLine) { ($urlLine -split '=', 2)[1] -replace '\\:', ':' }"`) do set "BASE_URL=%%a"
+    REM Option 1: Use config URL + optional path
+    echo   Mode: Config URL + Path
+    echo.
+    echo   [Step 1] Extracting base URL from configurations.properties...
     
-    if "%BASE_URL%"=="" (
-        echo [WARNING] Could not read URL from configurations.properties
+    set "BASE_URL="
+    set "URL_TEMP=%TEMP%\url_%RANDOM%.txt"
+    set "SCRIPT_DIR=%~dp0"
+    
+    REM Check if script exists
+    if exist "%SCRIPT_DIR%scripts\extract-url.ps1" (
+        echo   [INFO] Using PowerShell script method...
+        
+        REM Extract URL using PowerShell script
+        powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\extract-url.ps1" > "%URL_TEMP%" 2>&1
+        
+        REM Read the URL from temp file
+        if exist "%URL_TEMP%" (
+            set /p BASE_URL=<"%URL_TEMP%"
+            echo   [DEBUG] Raw value from file: [!BASE_URL!]
+            del "%URL_TEMP%" 2>nul
+        )
+        
+        REM Check if extraction was successful
+        if not "!BASE_URL!"=="" (
+            echo   [OK] URL extracted via PowerShell: !BASE_URL!
+        ) else (
+            echo   [WARNING] PowerShell method returned empty, trying fallback...
+        )
+    )
+    
+    REM Fallback: Read directly from properties file if PowerShell failed
+    if "!BASE_URL!"=="" (
+        echo   [INFO] Using direct file read method...
+        
+        for /f "usebackq tokens=2 delims==" %%a in (`findstr /b "URL=" "%SCRIPT_DIR%src\test\resources\configurations.properties" 2^>nul`) do (
+            set "BASE_URL=%%a"
+        )
+        
+        REM Replace escaped colon
+        if not "!BASE_URL!"=="" (
+            set "BASE_URL=!BASE_URL:\:=:!"
+            echo   [OK] URL extracted directly: !BASE_URL!
+        )
+    )
+    
+    REM Final fallback if all methods failed
+    if "!BASE_URL!"=="" (
+        echo   [WARNING] Could not read URL from configurations.properties
+        echo   [WARNING] Using fallback URL: http://localhost:8080
         set "BASE_URL=http://localhost:8080"
     )
     
-    set "RECORDING_URL=%BASE_URL%%PAGE_URL%"
-    echo Recording URL: %RECORDING_URL% ^(from config + path^)
-    echo Base URL read: %BASE_URL%
+    echo.
+    echo   [Step 2] Processing path...
+    
+    REM Remove trailing slash from BASE_URL if exists
+    if not "!BASE_URL!"=="" (
+        if "!BASE_URL:~-1!"=="/" (
+            set "BASE_URL=!BASE_URL:~0,-1!"
+            echo   [INFO] Removed trailing slash from base URL
+        )
+    )
+    
+    REM Process PAGE_URL if provided
+    if not "!PAGE_URL!"=="" (
+        REM Trim spaces by removing all spaces
+        set "PAGE_URL=!PAGE_URL: =!"
+        
+        REM Add leading slash if missing
+        if not "!PAGE_URL:~0,1!"=="/" set "PAGE_URL=/!PAGE_URL!"
+        
+        echo   [OK] Path provided: !PAGE_URL!
+        set "RECORDING_URL=!BASE_URL!!PAGE_URL!"
+    ) else (
+        echo   [INFO] No path provided - using base URL only
+        set "RECORDING_URL=!BASE_URL!"
+    )
+    
+    echo.
+    echo   [Step 3] Final URL constructed
 )
+
+echo ════════════════════════════════════════════════════════════════
+echo   ✅ RECORDING URL: !RECORDING_URL!
+echo ════════════════════════════════════════════════════════════════
+echo.
 
 echo Output: %RECORDING_DIR%\recorded-actions.java
 echo.
-echo [INFO] Installing Playwright if needed...
-call npx -y playwright install chromium >nul 2>&1
-
-echo [INFO] Opening browser for recording...
-echo [INFO] Perform your actions in the browser
-echo [INFO] Close the browser window when done recording
+echo ════════════════════════════════════════════════════════════════
+echo [INFO] Installing Playwright Browsers (Java)
+echo ════════════════════════════════════════════════════════════════
+echo.
+echo This uses Maven to install Playwright browsers for Java...
 echo.
 
-REM Use npx playwright codegen directly (more reliable than Maven)
-call npx playwright codegen --target java -o "%RECORDING_DIR%\recorded-actions.java" "%RECORDING_URL%"
+REM Use Maven to install Playwright browsers
+call mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium" -D exec.cleanupDaemonThreads=false
 
 if errorlevel 1 (
-    echo [WARN] npx execution had issues, trying Maven method...
     echo.
-    call mvn exec:java -Dexec.mainClass="com.microsoft.playwright.CLI" ^
-        -Dexec.args="codegen --target java %RECORDING_URL% --output %RECORDING_DIR%\recorded-actions.java"
-)
-
-if not exist "%RECORDING_DIR%\recorded-actions.java" (
-    echo.
-    echo [INFO] No recording file generated. Trying alternative method...
+    echo [WARNING] Maven install had issues, trying fallback method...
     echo.
     
-    REM Alternative: Use npx playwright codegen with correct URL
-    call npx playwright codegen --target java "%RECORDING_URL%" > "%RECORDING_DIR%\recorded-actions.java" 2>&1
+    REM Alternative: Use the Playwright JAR directly
+    for /f "delims=" %%i in ('dir /s /b "%USERPROFILE%\.m2\repository\com\microsoft\playwright\playwright\*\playwright-*.jar" 2^>nul') do (
+        set "PLAYWRIGHT_JAR=%%i"
+        goto :found_jar
+    )
+    
+    :found_jar
+    if defined PLAYWRIGHT_JAR (
+        echo Found Playwright JAR: !PLAYWRIGHT_JAR!
+        echo Installing browsers...
+        java -cp "!PLAYWRIGHT_JAR!" com.microsoft.playwright.CLI install chromium
+    ) else (
+        echo [ERROR] Could not find Playwright JAR. Running Maven compile first...
+        call mvn clean compile
+        call mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium" -D exec.cleanupDaemonThreads=false
+    )
 )
 
-if not exist "%RECORDING_DIR%\recorded-actions.java" (
-    echo [ERROR] Recording failed. Please ensure Playwright is installed.
+echo.
+echo ════════════════════════════════════════════════════════════════
+echo [INFO] Starting Playwright Recorder
+echo ════════════════════════════════════════════════════════════════
+echo.
+echo Opening browser for recording...
+echo - Perform your test actions (click, type, navigate)
+echo - The browser inspector will record all actions
+echo - Close the browser window when done to save recording
+echo.
+echo Recording URL: !RECORDING_URL!
+echo Output file: %RECORDING_DIR%\recorded-actions.java
+echo.
+pause
+echo.
+echo Launching Playwright Inspector (Java)...
+echo.
+
+REM Validate URL before launching
+if "!RECORDING_URL!"=="" (
+    echo [ERROR] Recording URL is empty! Cannot start recorder.
+    echo.
     pause
-    if defined RECORDING_DIR (
-        if exist "%RECORDING_DIR%" (
-            rd /s /q "%RECORDING_DIR%" 2>nul
+    exit /b 1
+)
+
+REM Use Maven to run Playwright codegen
+echo [DEBUG] Using Maven exec plugin to run Playwright CLI
+echo [DEBUG] Command: mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="codegen --target java -o %RECORDING_DIR%\recorded-actions.java !RECORDING_URL!"
+echo.
+
+call mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="codegen --target java -o %RECORDING_DIR%\recorded-actions.java !RECORDING_URL!" -D exec.cleanupDaemonThreads=false
+
+set CODEGEN_EXIT=%ERRORLEVEL%
+
+echo.
+echo [DEBUG] Playwright codegen exit code: %CODEGEN_EXIT%
+echo.
+
+REM Check if recording file was created
+if exist "%RECORDING_DIR%\recorded-actions.java" (
+    echo [SUCCESS] Recording file created: %RECORDING_DIR%\recorded-actions.java
+    dir "%RECORDING_DIR%\recorded-actions.java" | findstr "recorded"
+) else (
+    echo [WARNING] Recording file not found: %RECORDING_DIR%\recorded-actions.java
+    echo [INFO] Checking if recording directory exists...
+    if exist "%RECORDING_DIR%" (
+        echo [OK] Recording directory exists
+        dir "%RECORDING_DIR%" /b
+    ) else (
+        echo [ERROR] Recording directory does not exist!
+    )
+)
+echo.
+
+if %CODEGEN_EXIT% NEQ 0 (
+    echo [ERROR] Maven exec failed with exit code: %CODEGEN_EXIT%
+    echo.
+    echo Trying alternative: Direct JAR execution...
+    echo.
+    
+    REM Find Playwright JAR
+    for /f "delims=" %%i in ('dir /s /b "%USERPROFILE%\.m2\repository\com\microsoft\playwright\playwright\*\playwright-*.jar" 2^>nul') do (
+        set "PLAYWRIGHT_JAR=%%i"
+        goto :run_jar
+    )
+    
+    :run_jar
+    if defined PLAYWRIGHT_JAR (
+        echo Using JAR: !PLAYWRIGHT_JAR!
+        java -cp "!PLAYWRIGHT_JAR!" com.microsoft.playwright.CLI codegen --target java -o "%RECORDING_DIR%\recorded-actions.java" "!RECORDING_URL!"
+        set JAR_EXIT=%ERRORLEVEL%
+        
+        if !JAR_EXIT! EQU 0 (
+            echo [SUCCESS] JAR execution completed
+        ) else (
+            echo [ERROR] JAR execution failed with exit code: !JAR_EXIT!
+        )
+    ) else (
+        echo [ERROR] Could not find Playwright JAR in Maven repository
+        echo [ERROR] Please run: mvn clean compile
+        pause
+        goto :error
+    )
+)
+
+echo.
+echo [DIAGNOSTIC] Checking recording output...
+echo.
+
+if exist "%RECORDING_DIR%\recorded-actions.java" (
+    echo [SUCCESS] ✅ Recording file found: %RECORDING_DIR%\recorded-actions.java
+    
+    REM Show file size and first few lines
+    for %%A in ("%RECORDING_DIR%\recorded-actions.java") do (
+        echo [INFO] File size: %%~zA bytes
+        if %%~zA LSS 50 (
+            echo [WARNING] File is very small - recording may have failed
         )
     )
-    exit /b 1
+    
+    echo.
+    echo [INFO] First 10 lines of recording:
+    echo ═══════════════════════════════════════
+    powershell -Command "Get-Content '%RECORDING_DIR%\recorded-actions.java' -First 10"
+    echo ═══════════════════════════════════════
+    echo.
+    
+) else (
+    echo [ERROR] ❌ Recording file NOT found!
+    echo.
+    echo [DIAGNOSTIC] Checking recording directory contents:
+    if exist "%RECORDING_DIR%" (
+        echo [INFO] Directory exists: %RECORDING_DIR%
+        echo [INFO] Contents:
+        dir "%RECORDING_DIR%" /b
+    ) else (
+        echo [ERROR] Directory does not exist: %RECORDING_DIR%
+    )
+    echo.
+    echo [SOLUTION] Possible causes:
+    echo   1. Browser was closed without performing actions
+    echo   2. Playwright codegen failed to start
+    echo   3. Permission issues writing to directory
+    echo   4. Maven/Java path issues
+    echo.
+    echo [NEXT STEPS]:
+    echo   - Try running manually: mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="codegen"
+    echo   - Check if browser opens at all
+    echo   - Verify Maven and Java are in PATH
+    echo.
+    pause
+    goto :error
 )
 
 echo.
 echo ✅ Recording completed successfully!
 echo.
+echo ════════════════════════════════════════════════════════════════
+echo 📋 Recording Summary
+echo ════════════════════════════════════════════════════════════════
+for %%A in ("%RECORDING_DIR%\recorded-actions.java") do (
+    echo   File: recorded-actions.java
+    echo   Size: %%~zA bytes
+    echo   Location: %RECORDING_DIR%
+)
+echo ════════════════════════════════════════════════════════════════
+echo.
 
 echo.
 echo ════════════════════════════════════════════════════════════════
-echo 🤖 Step 2: AI ANALYSIS OF RECORDED ACTIONS
+echo 🤖 Step 2: COMPILE JAVA GENERATOR (One-time)
 echo ════════════════════════════════════════════════════════════════
 echo.
 
-REM Extract locators and actions from recording - Create temp PowerShell script
-echo [INFO] Analyzing recorded actions intelligently...
-set "PS_SCRIPT=%TEMP%\extract_locators_%RANDOM%.ps1"
-(
-echo $recording = Get-Content '%RECORDING_DIR%\recorded-actions.java' -Raw
-echo $actions = @^(^)
-echo $lines = $recording -split "`n"
-echo $counter = 1
+echo [INFO] Ensuring Java generator is compiled...
+if not exist "target\classes\configs\TestGeneratorHelper.class" (
+    echo [INFO] Compiling TestGeneratorHelper.java...
+    call mvn compile -q -Dcheckstyle.skip=true
+    if errorlevel 1 (
+        echo [ERROR] Failed to compile Java generator
+        pause
+        goto :error
+    )
+    echo [SUCCESS] Java generator compiled
+) else (
+    echo [OK] Java generator already compiled
+)
 echo.
-echo foreach ^($line in $lines^) {
-echo     # Match various Playwright actions with their selectors
-echo     if ^($line -match 'page\.click\^("^([^^"]+^)"\^)'^) {
-echo         $selector = $matches[1]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'click'
-echo             selector = $selector
-echo             methodName = 'clickElement' + $counter
-echo             stepText = 'user clicks on element'
-echo         }
-echo     }
-echo     elseif ^($line -match 'page\.fill\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
-echo         $selector = $matches[1]
-echo         $value = $matches[2]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'fill'
-echo             selector = $selector
-echo             value = $value
-echo             methodName = 'fillElement' + $counter
-echo             stepText = 'user enters text into element'
-echo         }
-echo     }
-echo     elseif ^($line -match 'page\.selectOption\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
-echo         $selector = $matches[1]
-echo         $value = $matches[2]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'select'
-echo             selector = $selector
-echo             value = $value
-echo             methodName = 'selectOption' + $counter
-echo             stepText = 'user selects option from dropdown'
-echo         }
-echo     }
-echo     elseif ^($line -match 'page\.check\^("^([^^"]+^)"\^)'^) {
-echo         $selector = $matches[1]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'check'
-echo             selector = $selector
-echo             methodName = 'checkElement' + $counter
-echo             stepText = 'user checks checkbox'
-echo         }
-echo     }
-echo     elseif ^($line -match 'page\.press\^("^([^^"]+^)", *"^([^^"]+^)"\^)'^) {
-echo         $selector = $matches[1]
-echo         $key = $matches[2]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'press'
-echo             selector = $selector
-echo             value = $key
-echo             methodName = 'pressKey' + $counter
-echo             stepText = 'user presses key on element'
-echo         }
-echo     }
-echo     elseif ^($line -match 'page\.navigate\^("^([^^"]+^)"\^)'^) {
-echo         $url = $matches[1]
-echo         $actions += @{
-echo             id = $counter++
-echo             action = 'navigate'
-echo             url = $url
-echo             methodName = 'navigateTo'
-echo             stepText = 'user navigates to page'
-echo         }
-echo     }
-echo }
-echo.
-echo # Save as JSON with proper formatting
-echo $json = $actions ^| ConvertTo-Json -Depth 10
-echo $json ^| Out-File '%RECORDING_DIR%\actions.json' -Encoding utf8
-echo Write-Host "[INFO] Extracted $^($actions.Count^) actions from recording" -ForegroundColor Cyan
-echo.
-echo # Display summary
-echo Write-Host "Actions breakdown:" -ForegroundColor Yellow
-echo $actions ^| Group-Object action ^| ForEach-Object { Write-Host "  - $^($_.Name^): $^($_.Count^)" -ForegroundColor Cyan }
-) > "%PS_SCRIPT%"
 
-REM Execute PowerShell script with error handling
-echo [INFO] Running smart action extraction...
-powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%" >"%TEMP%\ps_output_%RANDOM%.log" 2>&1
-set PS_EXIT_CODE=%ERRORLEVEL%
+echo ════════════════════════════════════════════════════════════════
+echo 📄 Step 3: GENERATE TEST FILES (Pure Java)
+echo ════════════════════════════════════════════════════════════════
+echo.
 
-if %PS_EXIT_CODE% NEQ 0 (
+REM Verify recording file exists before proceeding
+if not exist "%RECORDING_DIR%\recorded-actions.java" (
+    echo [CRITICAL ERROR] Cannot proceed - recording file not found!
     echo.
-    echo [WARNING] Smart extraction encountered an error. Using fallback method...
+    echo Expected file: %RECORDING_DIR%\recorded-actions.java
     echo.
-    
-    REM Fallback: Simple extraction using basic pattern matching
-    set "FALLBACK_SCRIPT=%TEMP%\fallback_extract_%RANDOM%.ps1"
-    (
-        echo $recording = Get-Content '%RECORDING_DIR%\recorded-actions.java' -Raw
-        echo $actions = @^(^)
-        echo $counter = 1
-        echo.
-        echo # Simple extraction - find click and fill patterns
-        echo $recording -split "`n" ^| ForEach-Object {
-        echo     $line = $_
-        echo     if ^($line -match 'page\.click'^^) {
-        echo         if ^($line -match '\"^([^^\"]+^)\"'^^) {
-        echo             $actions += @{
-        echo                 id = $counter++
-        echo                 action = 'click'
-        echo                 selector = $matches[1]
-        echo                 methodName = 'clickElement' + $counter
-        echo                 stepText = 'user clicks element'
-        echo             }
-        echo         }
-        echo     }
-        echo     elseif ^($line -match 'page\.fill'^^) {
-        echo         if ^($line -match '\"^([^^\"]+^)\".*\"^([^^\"]+^)\"'^^) {
-        echo             $actions += @{
-        echo                 id = $counter++
-        echo                 action = 'fill'
-        echo                 selector = $matches[1]
-        echo                 value = $matches[2]
-        echo                 methodName = 'fillElement' + $counter
-        echo                 stepText = 'user fills element'
-        echo             }
-        echo         }
-        echo     }
-        echo }
-        echo.
-        echo if ^($actions.Count -eq 0^^) {
-        echo     $actions += @{
-        echo         id = 1
-        echo         action = 'navigate'
-        echo         url = '%PAGE_URL%'
-        echo         methodName = 'navigateTo'
-        echo         stepText = 'user navigates'
-        echo     }
-        echo }
-        echo.
-        echo $json = $actions ^| ConvertTo-Json -Depth 10
-        echo $json ^| Out-File '%RECORDING_DIR%\actions.json' -Encoding utf8
-        echo Write-Host "[INFO] Extracted $^($actions.Count^^) actions using fallback method" -ForegroundColor Yellow
-    ) > "%FALLBACK_SCRIPT%"
-    
-    powershell -ExecutionPolicy Bypass -File "%FALLBACK_SCRIPT%" 2>nul
-    del "%FALLBACK_SCRIPT%" 2>nul
-    
-    echo [INFO] Fallback extraction completed
+    echo This means the recording step failed. Common causes:
+    echo   1. Browser closed immediately without recording
+    echo   2. Playwright codegen command failed
+    echo   3. File permission issues
+    echo.
+    pause
+    goto :error
 )
 
-del "%PS_SCRIPT%" 2>nul
-
-REM Validate that actions.json was created
-if not exist "%RECORDING_DIR%\actions.json" (
-    echo.
-    echo [WARNING] No actions extracted. Creating minimal structure...
-    (
-        echo [
-        echo   ^{
-        echo     "id": 1,
-        echo     "action": "navigate",
-        echo     "url": "%PAGE_URL%",
-        echo     "methodName": "navigateTo",
-        echo     "stepText": "user navigates to page"
-        echo   ^}
-        echo ]
-    ) > "%RECORDING_DIR%\actions.json"
-    echo [INFO] Created minimal actions structure
-)
-
+echo [INFO] ✅ Recording file verified: %RECORDING_DIR%\recorded-actions.java
 echo.
-echo ════════════════════════════════════════════════════════════════
-echo 📄 Step 3: GENERATE TEST FILES
-echo ════════════════════════════════════════════════════════════════
+echo [INFO] Generating test files using Pure Java generator...
+echo [DEBUG] Recording file: %RECORDING_DIR%\recorded-actions.java
+echo [DEBUG] Feature name: %FEATURE_NAME%
+echo [DEBUG] Page URL: %PAGE_URL%
+echo [DEBUG] JIRA Story: %JIRA_STORY%
 echo.
 
-REM Generate files using a temporary JavaScript file with smart action parsing
-echo [INFO] Generating intelligent test files from recorded actions...
-set "GEN_SCRIPT=%TEMP%\generate_files_%RANDOM%.js"
-(
-echo const fs = require('fs'^);
-echo const path = require('path'^);
-echo const featureName = process.argv[2];
-echo const pageUrl = process.argv[3];
-echo const jiraStory = process.argv[4];
-echo const recordingDir = process.argv[5];
-echo.
-echo // Load recorded actions
-echo let actions = [];
-echo try {
-echo   const content = fs.readFileSync^(path.join^(recordingDir, 'actions.json'^), 'utf8'^);
-echo   actions = JSON.parse^(content^);
-echo   if ^(!Array.isArray^(actions^)^) actions = [actions];
-echo   console.log^(`[INFO] Loaded ${actions.length} actions from recording`^);
-echo } catch^(e^) {
-echo   console.log^('[WARN] No actions.json found, generating basic template'^);
-echo }
-echo.
-echo const className = featureName.charAt^(0^).toUpperCase^(^) + featureName.slice^(1^);
-echo.
-echo // Generate locator constants from actions
-echo function generateLocators^(^) {
-echo   if ^(actions.length === 0^) return [];
-echo   const locators = [];
-echo   actions.forEach^(^(action, idx^) =^> {
-echo     if ^(action.selector^) {
-echo       const name = `ELEMENT_${idx + 1}`;
-echo       locators.push^(`    private static final String ${name} = "${action.selector}";`^);
-echo     }
-echo   }^);
-echo   return locators;
-echo }
-echo.
-echo // Generate page object methods from actions
-echo function generateMethods^(^) {
-echo   if ^(actions.length === 0^) {
-echo     return ['    public static void navigateTo^(Page page^) {',
-echo             '        page.navigate^(loadProps.getProperty^("URL"^) + PAGE_PATH^);',
-echo             '    }'];
-echo   }
-echo   const methods = ['    public static void navigateTo^(Page page^) {',
-echo                     '        page.navigate^(loadProps.getProperty^("URL"^) + PAGE_PATH^);',
-echo                     '    }', ''];
-echo   actions.forEach^(^(action, idx^) =^> {
-echo     const locatorVar = `ELEMENT_${idx + 1}`;
-echo     methods.push^(`    // TODO: Implement ${action.action} action`^);
-echo     switch^(action.action^) {
-echo       case 'click':
-echo         methods.push^(`    public static void ${action.methodName}^(Page page^) {`^);
-echo         methods.push^(`        clickOnElement^(${locatorVar}^);`^);
-echo         methods.push^(`    }`, ''^);
-echo         break;
-echo       case 'fill':
-echo         methods.push^(`    public static void ${action.methodName}^(Page page, String text^) {`^);
-echo         methods.push^(`        enterText^(${locatorVar}, text^);`^);
-echo         methods.push^(`    }`, ''^);
-echo         break;
-echo       case 'select':
-echo         methods.push^(`    public static void ${action.methodName}^(Page page, String option^) {`^);
-echo         methods.push^(`        selectDropDownValueByText^(${locatorVar}, option^);`^);
-echo         methods.push^(`    }`, ''^);
-echo         break;
-echo       case 'check':
-echo         methods.push^(`    public static void ${action.methodName}^(Page page^) {`^);
-echo         methods.push^(`        clickOnElement^(${locatorVar}^);`^);
-echo         methods.push^(`    }`, ''^);
-echo         break;
-echo       case 'press':
-echo         methods.push^(`    public static void ${action.methodName}^(Page page^) {`^);
-echo         methods.push^(`        page.locator^(${locatorVar}^).press^("${action.value}"^);`^);
-echo         methods.push^(`    }`, ''^);
-echo         break;
-echo     }
-echo   }^);
-echo   return methods;
-echo }
-echo.
-echo // Generate Page Object
-echo const locators = generateLocators^(^);
-echo const methods = generateMethods^(^);
-echo const pageObject = [
-echo   'package pages;',
-echo   'import com.microsoft.playwright.Page;',
-echo   'import configs.loadProps;',
-echo   'import static configs.utils.*;',
-echo   '',
-echo   '/**',
-echo   ' * Page Object for ' + className,
-echo   ' * Auto-generated from Playwright recording',
-echo   ' * @story ' + jiraStory,
-echo   ' */',
-echo   'public class ' + className + ' extends BasePage {',
-echo   '    private static final String PAGE_PATH = "' + pageUrl + '";',
-echo   '',
-echo   ...locators,
-echo   '',
-echo   ...methods,
-echo   '}'
-echo ].join^('\n'^);
-echo.
-echo // Generate step texts from actions
-echo function generateStepTexts^(^) {
-echo   if ^(actions.length === 0^) {
-echo     return ['    Given user navigates to ' + className + ' page'];
-echo   }
-echo   const steps = ['    Given user navigates to ' + className + ' page'];
-echo   actions.forEach^(^(action, idx^) =^> {
-echo     switch^(action.action^) {
-echo       case 'click':
-echo         steps.push^(`    When user clicks on element ${idx + 1}`^);
-echo         break;
-echo       case 'fill':
-echo         steps.push^(`    And user enters "{string}" into element ${idx + 1}`^);
-echo         break;
-echo       case 'select':
-echo         steps.push^(`    And user selects "{string}" from dropdown ${idx + 1}`^);
-echo         break;
-echo       case 'check':
-echo         steps.push^(`    And user checks checkbox ${idx + 1}`^);
-echo         break;
-echo       case 'press':
-echo         steps.push^(`    And user presses key on element ${idx + 1}`^);
-echo         break;
-echo     }
-echo   }^);
-echo   steps.push^('    Then page should be updated'^);
-echo   return steps;
-echo }
-echo.
-echo // Generate Feature File
-echo const stepTexts = generateStepTexts^(^);
-echo const featureFile = [
-echo   '@' + jiraStory + ' @' + className,
-echo   'Feature: ' + className + ' Test',
-echo   '  ',
-echo   '  Scenario: Complete ' + className + ' workflow',
-echo   ...stepTexts
-echo ].join^('\n'^);
-echo.
-echo // Generate step definitions from actions
-echo function generateStepDefs^(^) {
-echo   if ^(actions.length === 0^) {
-echo     return ['    @Given^("user navigates to ' + className + ' page"^)',
-echo             '    public void navigateTo^(^) {',
-echo             '        ' + className + '.navigateTo^(page^);',
-echo             '    }'];
-echo   }
-echo   const steps = ['    @Given^("user navigates to ' + className + ' page"^)',
-echo                   '    public void navigateTo^(^) {',
-echo                   '        ' + className + '.navigateTo^(page^);',
-echo                   '    }', ''];
-echo   actions.forEach^(^(action, idx^) =^> {
-echo     steps.push^(`    // TODO: Implement step for ${action.action} action`^);
-echo     switch^(action.action^) {
-echo       case 'click':
-echo         steps.push^(`    @When^("user clicks on element ${idx + 1}"^)`^);
-echo         steps.push^(`    public void clickElement${idx + 1}^(^) {`^);
-echo         steps.push^(`        ${className}.${action.methodName}^(page^);`^);
-echo         steps.push^(`    }`, ''^);
-echo         break;
-echo       case 'fill':
-echo         steps.push^(`    @And^("user enters {string} into element ${idx + 1}"^)`^);
-echo         steps.push^(`    public void fillElement${idx + 1}^(String text^) {`^);
-echo         steps.push^(`        ${className}.${action.methodName}^(page, text^);`^);
-echo         steps.push^(`    }`, ''^);
-echo         break;
-echo       case 'select':
-echo         steps.push^(`    @And^("user selects {string} from dropdown ${idx + 1}"^)`^);
-echo         steps.push^(`    public void selectOption${idx + 1}^(String option^) {`^);
-echo         steps.push^(`        ${className}.${action.methodName}^(page, option^);`^);
-echo         steps.push^(`    }`, ''^);
-echo         break;
-echo       case 'check':
-echo         steps.push^(`    @And^("user checks checkbox ${idx + 1}"^)`^);
-echo         steps.push^(`    public void checkElement${idx + 1}^(^) {`^);
-echo         steps.push^(`        ${className}.${action.methodName}^(page^);`^);
-echo         steps.push^(`    }`, ''^);
-echo         break;
-echo       case 'press':
-echo         steps.push^(`    @And^("user presses key on element ${idx + 1}"^)`^);
-echo         steps.push^(`    public void pressKey${idx + 1}^(^) {`^);
-echo         steps.push^(`        ${className}.${action.methodName}^(page^);`^);
-echo         steps.push^(`    }`, ''^);
-echo         break;
-echo     }
-echo   }^);
-echo   steps.push^('    @Then^("page should be updated"^)'^);
-echo   steps.push^('    public void verifyPageUpdated^(^) {'^);
-echo   steps.push^('        // TODO: Add verification logic'^);
-echo   steps.push^('    }'^);
-echo   return steps;
-echo }
-echo.
-echo // Generate Step Definitions
-echo const stepMethods = generateStepDefs^(^);
-echo const stepDefs = [
-echo   'package stepDefs;',
-echo   'import configs.browserSelector;',
-echo   'import io.cucumber.java.en.*;',
-echo   'import pages.' + className + ';',
-echo   '',
-echo   '/**',
-echo   ' * Step Definitions for ' + className,
-echo   ' * Auto-generated from Playwright recording',
-echo   ' * @story ' + jiraStory,
-echo   ' */',
-echo   'public class ' + className + 'Steps extends browserSelector {',
-echo   '',
-echo   ...stepMethods,
-echo   '}'
-echo ].join^('\n'^);
-echo.
-echo.
-echo // Write files
-echo fs.writeFileSync^('src/main/java/pages/' + className + '.java', pageObject^);
-echo fs.writeFileSync^('src/test/java/features/' + className + '.feature', featureFile^);
-echo fs.writeFileSync^('src/test/java/stepDefs/' + className + 'Steps.java', stepDefs^);
-echo.
-echo console.log^('[SUCCESS] Generated test files with ' + actions.length + ' recorded actions'^);
-echo console.log^('[INFO] Page Object: src/main/java/pages/' + className + '.java'^);
-echo console.log^('[INFO] Feature File: src/test/java/features/' + className + '.feature'^);
-echo console.log^('[INFO] Step Definitions: src/test/java/stepDefs/' + className + 'Steps.java'^);
-) > "%GEN_SCRIPT%"
+REM Run Java generator
+java -cp "target/classes;%USERPROFILE%\.m2\repository\com\microsoft\playwright\playwright\1.49.0\playwright-1.49.0.jar" ^
+    configs.TestGeneratorHelper "%RECORDING_DIR%\recorded-actions.java" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%"
 
-echo [INFO] Generating test files from extracted actions...
-node "%GEN_SCRIPT%" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%" "%RECORDING_DIR%" 2>"%TEMP%\gen_error_%RANDOM%.log"
 set GEN_EXIT_CODE=%ERRORLEVEL%
 
+echo.
+echo [DEBUG] File generation exit code: %GEN_EXIT_CODE%
+echo.
+
 if %GEN_EXIT_CODE% NEQ 0 (
+    echo [ERROR] Java file generation failed!
     echo.
-    echo [ERROR] File generation encountered an error.
-    echo [INFO] Checking for common issues...
-    
-    REM Check if Node.js had syntax errors
-    if exist "%TEMP%\gen_error_*.log" (
-        echo [INFO] Error details found in temporary log
-    )
-    
-    REM Validate JSON file exists and is valid
-    if not exist "%RECORDING_DIR%\actions.json" (
-        echo [ERROR] Actions JSON file not found!
-        echo [FIX] Creating minimal JSON structure...
-        (
-            echo [^{"id":1,"action":"navigate","url":"%PAGE_URL%","methodName":"navigateTo","stepText":"user navigates"^}]
-        ) > "%RECORDING_DIR%\actions.json"
+    echo [DIAGNOSTIC] Checking if generator class exists...
+    if not exist "target\classes\configs\TestGeneratorHelper.class" (
+        echo [ERROR] Generator class not compiled!
+        echo [FIX] Compiling generator...
+        call mvn compile -q
+        
+        echo [INFO] Retrying file generation...
+        java -cp "target/classes;%USERPROFILE%\.m2\repository\com\microsoft\playwright\playwright\1.49.0\playwright-1.49.0.jar" ^
+            configs.TestGeneratorHelper "%RECORDING_DIR%\recorded-actions.java" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%"
+        
+        if errorlevel 1 (
+            echo [ERROR] File generation still failed after retry!
+            pause
+            goto :error
+        )
     ) else (
-        REM Try to validate JSON
-        node -e "try^{require('./%RECORDING_DIR%/actions.json'^);console.log('[OK] JSON is valid'^);^}catch^(e^)^{console.log('[ERROR] Invalid JSON:',e.message^);^}" 2>nul
-    )
-    
-    echo [INFO] Retrying file generation with error recovery...
-    node "%GEN_SCRIPT%" "%FEATURE_NAME%" "%PAGE_URL%" "%JIRA_STORY%" "%RECORDING_DIR%" 2>nul
-    
-    if errorlevel 1 (
-        echo [ERROR] File generation failed after retry!
-        echo [INFO] Please check the recording and try again.
-        del "%GEN_SCRIPT%" 2>nul
+        echo [ERROR] Generator class exists but execution failed
+        echo [INFO] Check the recording file format
+        pause
         goto :error
     )
 )
 
-del "%GEN_SCRIPT%" 2>nul
-del "%TEMP%\gen_error_*.log" 2>nul
+echo.
+echo [SUCCESS] ✅ Test files generated successfully by Pure Java generator!
+echo.
 
 REM Validate generated files exist
+echo ════════════════════════════════════════════════════════════════
+echo 📋 Step 4: VALIDATION
+echo ════════════════════════════════════════════════════════════════
+echo [VALIDATION] Checking generated files...
+echo.
+
 set "FILES_MISSING=0"
-if not exist "src\main\java\pages\%FEATURE_NAME%.java" (
-    echo [WARNING] Page Object not generated!
+set "PAGE_CLASS=%FEATURE_NAME:~0,1%"
+set "PAGE_CLASS=!PAGE_CLASS:a=A!"
+set "PAGE_CLASS=!PAGE_CLASS:b=B!"
+set "PAGE_CLASS=!PAGE_CLASS:c=C!"
+set "PAGE_CLASS=!PAGE_CLASS:d=D!"
+set "PAGE_CLASS=!PAGE_CLASS:e=E!"
+set "PAGE_CLASS=!PAGE_CLASS:f=F!"
+set "PAGE_CLASS=!PAGE_CLASS:g=G!"
+set "PAGE_CLASS=!PAGE_CLASS:h=H!"
+set "PAGE_CLASS=!PAGE_CLASS:i=I!"
+set "PAGE_CLASS=!PAGE_CLASS:j=J!"
+set "PAGE_CLASS=!PAGE_CLASS:k=K!"
+set "PAGE_CLASS=!PAGE_CLASS:l=L!"
+set "PAGE_CLASS=!PAGE_CLASS:m=M!"
+set "PAGE_CLASS=!PAGE_CLASS:n=N!"
+set "PAGE_CLASS=!PAGE_CLASS:o=O!"
+set "PAGE_CLASS=!PAGE_CLASS:p=P!"
+set "PAGE_CLASS=!PAGE_CLASS:q=Q!"
+set "PAGE_CLASS=!PAGE_CLASS:r=R!"
+set "PAGE_CLASS=!PAGE_CLASS:s=S!"
+set "PAGE_CLASS=!PAGE_CLASS:t=T!"
+set "PAGE_CLASS=!PAGE_CLASS:u=U!"
+set "PAGE_CLASS=!PAGE_CLASS:v=V!"
+set "PAGE_CLASS=!PAGE_CLASS:w=W!"
+set "PAGE_CLASS=!PAGE_CLASS:x=X!"
+set "PAGE_CLASS=!PAGE_CLASS:y=Y!"
+set "PAGE_CLASS=!PAGE_CLASS:z=Z!"
+set "PAGE_CLASS=!PAGE_CLASS!!FEATURE_NAME:~1!"
+
+echo [INFO] Looking for files with name pattern: %PAGE_CLASS%
+echo.
+
+if not exist "src\main\java\pages\%PAGE_CLASS%.java" (
+    echo [ERROR] ❌ Page Object not generated: src\main\java\pages\%PAGE_CLASS%.java
     set FILES_MISSING=1
+) else (
+    echo [SUCCESS] ✅ Page Object: src\main\java\pages\%PAGE_CLASS%.java
+    for %%A in ("src\main\java\pages\%PAGE_CLASS%.java") do echo [INFO]    Size: %%~zA bytes
 )
-if not exist "src\test\java\features\%FEATURE_NAME%.feature" (
-    echo [WARNING] Feature file not generated!
+
+if not exist "src\test\java\features\%PAGE_CLASS%.feature" (
+    echo [ERROR] ❌ Feature file not generated: src\test\java\features\%PAGE_CLASS%.feature
     set FILES_MISSING=1
+) else (
+    echo [SUCCESS] ✅ Feature File: src\test\java\features\%PAGE_CLASS%.feature
+    for %%A in ("src\test\java\features\%PAGE_CLASS%.feature") do echo [INFO]    Size: %%~zA bytes
 )
-if not exist "src\test\java\stepDefs\%FEATURE_NAME%Steps.java" (
-    echo [WARNING] Step Definitions not generated!
+
+if not exist "src\test\java\stepDefs\%PAGE_CLASS%Steps.java" (
+    echo [ERROR] ❌ Step Definitions not generated: src\test\java\stepDefs\%PAGE_CLASS%Steps.java
     set FILES_MISSING=1
+) else (
+    echo [SUCCESS] ✅ Step Definitions: src\test\java\stepDefs\%PAGE_CLASS%Steps.java
+    for %%A in ("src\test\java\stepDefs\%PAGE_CLASS%Steps.java") do echo [INFO]    Size: %%~zA bytes
 )
+echo.
 
 if %FILES_MISSING% EQU 1 (
     echo.
-    echo [ERROR] Some files were not generated. Check for errors above.
+    echo [CRITICAL ERROR] Some files were not generated!
+    echo.
+    echo [DEBUG] Recording directory contents:
+    dir "%RECORDING_DIR%" /b
+    echo.
+    pause
     goto :error
 )
 
@@ -654,7 +589,7 @@ echo [INFO] Checking for common syntax issues...
 REM Fix 1: Check for escaped characters that shouldn't be escaped
 for %%f in ("src\main\java\pages\%FEATURE_NAME%.java" "src\test\java\stepDefs\%FEATURE_NAME%Steps.java") do (
     if exist %%f (
-        powershell -Command "$content = Get-Content '%%f' -Raw; $fixed = $content -replace '\\\\n', [Environment]::NewLine; if ($content -ne $fixed) { Set-Content '%%f' -Value $fixed -NoNewline; Write-Host '[FIX] Fixed newline characters in %%f' -ForegroundColor Yellow }"
+        powershell -Command "$content = Get-Content '%%f' -Raw; $fixed = $content -replace '\\n', [Environment]::NewLine; if ($content -ne $fixed) { Set-Content '%%f' -Value $fixed -NoNewline; Write-Host '[FIX] Fixed newline characters in %%f' -ForegroundColor Yellow }" 2>nul || echo [WARNING] Newline fix skipped for %%f
     )
 )
 
@@ -663,7 +598,7 @@ if exist "src\main\java\pages\%FEATURE_NAME%.java" (
     findstr /C:"import configs.loadProps" "src\main\java\pages\%FEATURE_NAME%.java" >nul 2>&1
     if errorlevel 1 (
         echo [FIX] Adding missing loadProps import to Page Object...
-        powershell -Command "$file = 'src\main\java\pages\%FEATURE_NAME%.java'; $content = Get-Content $file -Raw; if ($content -notmatch 'import configs.loadProps') { $content = $content -replace '(package pages;)', ('$1' + [Environment]::NewLine + [Environment]::NewLine + 'import configs.loadProps;'); Set-Content $file -Value $content -NoNewline; Write-Host '[OK] Added loadProps import' -ForegroundColor Green }"
+        powershell -Command "$file = 'src\main\java\pages\%FEATURE_NAME%.java'; $content = Get-Content $file -Raw; if ($content -notmatch 'import configs.loadProps') { $content = $content -replace '(package pages;)', ('$1' + [Environment]::NewLine + [Environment]::NewLine + 'import configs.loadProps;'); Set-Content $file -Value $content -NoNewline; Write-Host '[OK] Added loadProps import' -ForegroundColor Green }" 2>nul || echo [WARNING] Import fix skipped
     )
 )
 
@@ -673,7 +608,7 @@ for %%f in ("src\main\java\pages\%FEATURE_NAME%.java") do (
         findstr /C:"protected static" %%f >nul 2>&1
         if not errorlevel 1 (
             echo [FIX] Changing protected methods to public in %%f...
-            powershell -Command "(Get-Content '%%f') -replace 'protected static', 'public static' | Set-Content '%%f'"
+            powershell -Command "(Get-Content '%%f') -replace 'protected static', 'public static' | Set-Content '%%f'" 2>nul || echo [WARNING] Visibility fix skipped for %%f
             echo [OK] Fixed method visibility
         )
     )
@@ -696,10 +631,10 @@ for /R "src\test\java\stepDefs" %%f in (*.java) do (
 REM Check for duplicates
 if exist "%TEMP_FILE%" (
     sort "%TEMP_FILE%" > "%TEMP_SORTED%"
-    powershell -Command "$lines = Get-Content '%TEMP_SORTED%'; $patterns = @{}; foreach ($line in $lines) { if ($line -match '@(Given|When|Then)\(\"([^\"]+)\"\)') { $pattern = $matches[2]; if ($patterns.ContainsKey($pattern)) { $patterns[$pattern]++ } else { $patterns[$pattern] = 1 } } }; $dups = $patterns.GetEnumerator() | Where-Object { $_.Value -gt 1 }; if ($dups) { Write-Host '[ERROR] Duplicate step patterns found:' -ForegroundColor Red; $dups | ForEach-Object { Write-Host ('  - \"' + $_.Key + '\" (' + $_.Value + ' times)') -ForegroundColor Yellow }; exit 1 } else { Write-Host '[OK] No duplicate step patterns' -ForegroundColor Green; exit 0 }"
-    set DUP_CHECK_RESULT=%ERRORLEVEL%
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\check-duplicates.ps1" -InputFile "%TEMP_SORTED%"
+    set DUP_CHECK_RESULT=!ERRORLEVEL!
     
-    if %DUP_CHECK_RESULT% NEQ 0 (
+    if !DUP_CHECK_RESULT! NEQ 0 (
         echo.
         echo [ERROR] Fix duplicates by renaming methods with Given/When/Then suffix
         del "%TEMP_FILE%" 2>nul
@@ -720,20 +655,18 @@ REM Check for protected methods
 findstr /S /M "protected static" src\main\java\pages\*.java >nul 2>&1
 if not errorlevel 1 (
     echo [FOUND] Protected methods detected - Auto-fixing...
-    powershell -Command "(Get-ChildItem -Path 'src\main\java\pages\*.java' -Recurse) | ForEach-Object { (Get-Content $_.FullName) -replace 'protected static', 'public static' | Set-Content $_.FullName }"
-    echo [OK] Fixed protected methods to public
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\fix-protected-methods.ps1" -SearchPath "src\main\java\pages\*.java" 2>nul || echo [WARNING] Protected method fix encountered an issue, continuing...
 ) else (
     echo [OK] No protected methods found
 )
 
-REM Check for BASE_URL() usage
-findstr /S /M "BASE_URL()" src\main\java\pages\*.java >nul 2>&1
+REM Check for BASE_URL patterns
+findstr /S /M "BASE_URL" src\main\java\pages\*.java >nul 2>&1
 if not errorlevel 1 (
-    echo [FOUND] Incorrect BASE_URL() usage - Auto-fixing...
-    powershell -Command "(Get-ChildItem -Path 'src\main\java\pages\*.java' -Recurse) | ForEach-Object { (Get-Content $_.FullName) -replace 'BASE_URL\(\)', 'getProperty(\"URL\")' | Set-Content $_.FullName }"
-    echo [OK] Fixed BASE_URL() to getProperty("URL")
+    echo [FOUND] Potential BASE_URL pattern - Auto-fixing...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\fix-base-url.ps1" -SearchPath "src\main\java\pages\*.java" 2>nul || echo [WARNING] BASE_URL fix encountered an issue, continuing...
 ) else (
-    echo [OK] No BASE_URL() issues found
+    echo [OK] No BASE_URL issues found
 )
 
 echo.
@@ -760,11 +693,11 @@ if %ERRORLEVEL% NEQ 0 (
     if %COMPILE_ATTEMPT% LSS %MAX_COMPILE_ATTEMPTS% (
         echo Common fixes applied automatically:
         echo   ✓ Changed protected to public
-        echo   ✓ Fixed BASE_URL() usage
+        echo   ✓ Fixed BASE_URL usage
         echo.
         echo Additional manual fixes may be needed:
         echo   1. Missing imports: Add 'import configs.loadProps;'
-        echo   2. Wrong login: Use 'login.loginWith()' not 'loginToApplication()'
+        echo   2. Wrong login: Use 'login.loginWith' not 'loginToApplication'
         echo   3. Check locators: Verify element selectors are correct
         echo.
         echo See COMPLETE_TEST_GUIDE.md for details
@@ -879,7 +812,7 @@ echo.
 echo Auto-Validation Results:
 echo   ✓ Duplicate step patterns checked
 echo   ✓ Protected methods auto-fixed
-echo   ✓ BASE_URL() usage auto-fixed
+echo   ✓ BASE_URL usage auto-fixed
 echo   ✓ Compilation validated
 echo   ✓ Tests executed
 echo.
@@ -889,7 +822,7 @@ echo.
 
 echo Next Steps:
 echo   1. Review generated files and add TODO implementations
-echo   2. Update locators if needed (use MCP Locator Finder tool)
+echo   2. Update locators if needed ^(use MCP Locator Finder tool^)
 echo   3. Add detailed step definitions based on recorded actions
 echo   4. Enhance with AI: "Enhance recorded %FEATURE_NAME% test following COMPLETE_TEST_GUIDE.md"
 echo   5. Re-run tests: mvn test -DsuiteXmlFile=src/test/testng.xml

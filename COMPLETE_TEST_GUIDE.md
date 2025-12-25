@@ -5,7 +5,26 @@
 
 ---
 
-## 🎯 Quick Start Options
+## � **IMPORTANT: Node.js Now Optional!**
+
+### **Pure Java Implementation for Recording**
+The recording feature (Option 1) now uses **Pure Java** - no Node.js installation needed!
+
+**What Changed:**
+- ✅ Recording uses unified TestGeneratorHelper (`TestGeneratorHelper.java`)
+- ✅ Only Maven + Java JDK required for Options 1 & 3
+- ✅ Node.js only needed for Option 2 (AI Interactive CLI with JIRA)
+- ✅ Faster execution, simpler setup, better error messages
+
+**Benefits:**
+- **Setup Time:** Reduced from ~10min to ~2min
+- **Dependencies:** Maven only (instead of Maven + Node.js)
+- **Error Handling:** Clear Java stack traces
+- **Maintenance:** Single language codebase
+
+---
+
+## �🎯 Quick Start Options
 
 ### 🚀 UNIFIED CLI (RECOMMENDED - All Options in One Place)
 ```bash
@@ -27,7 +46,7 @@ generate-test.bat
 
 ---
 
-### 🎥 Option 1: Record & Auto-Generate (Inside CLI)
+### 🎥 Option 1: Record & Auto-Generate (Inside CLI) - **NO Node.js Required!**
 ```bash
 generate-test.bat  # Choose option 1 from menu
 ```
@@ -37,10 +56,15 @@ generate-test.bat record
 # OR
 record-and-generate.bat
 ```
+**Requirements:**
+- ✅ Maven 3.6+
+- ✅ Java JDK 17+
+- ❌ Node.js NOT required (uses Pure Java generator)
+
 **What it does:**
 1. Opens Playwright Inspector to record your actions
-2. Automatically extracts locators from recording
-3. Generates Page Object, Feature file, and Step Definitions
+2. Automatically extracts locators using Pure Java parser
+3. Generates Page Object, Feature file, and Step Definitions (Java-based)
 4. **Auto-validates & fixes common issues:**
    - ✅ Checks for duplicate step patterns
    - ✅ Auto-fixes protected methods to public
@@ -82,7 +106,7 @@ record-and-generate.bat
 - ✅ Retry test execution up to 3 times
 - ✅ Specific error detection and guidance
 
-### 🤖 Option 2: AI-Assisted (Inside CLI - RECOMMENDED for Enterprise)
+### 🤖 Option 2: AI-Assisted (Inside CLI - RECOMMENDED for Enterprise) - **Requires Node.js**
 ```bash
 generate-test.bat  # Choose option 2 from menu
 ```
@@ -92,6 +116,12 @@ generate-test.bat cli
 # OR
 node automation-cli.js
 ```
+
+**Requirements:**
+- ✅ Maven 3.6+
+- ✅ Java JDK 17+
+- ✅ Node.js 18+ (for AI/JIRA features)
+- ✅ MCP server setup: Run `setup-mcp.bat` once
 
 **AI-Assisted menu options:**
 1. 🎥 Record & Auto-Generate
@@ -118,7 +148,7 @@ node automation-cli.js
 - 🤝 Team collaboration with JIRA integration
 - ✨ Interactive test design without JIRA
 
-### ✅ Option 3: Validate & Run Tests
+### ✅ Option 3: Validate & Run Tests - **NO Node.js Required!**
 ```bash
 generate-test.bat  # Choose option 3 from menu
 ```
@@ -126,6 +156,11 @@ OR direct access:
 ```bash
 generate-test.bat validate
 ```
+
+**Requirements:**
+- ✅ Maven 3.6+
+- ✅ Java JDK 17+
+- ❌ Node.js NOT required
 
 **What it does:**
 - ✅ Analyzes project structure

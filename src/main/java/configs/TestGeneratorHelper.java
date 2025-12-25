@@ -3,26 +3,417 @@ package configs;
 import configs.jira.jiraClient;
 import configs.jira.jiraClient.JiraStory;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
 import java.util.stream.Collectors;
 
 /**
- * Test Generator Helper - Java counterpart to automation-cli.js features.
- * Provides utilities for test generation, validation, and JIRA integration.
+ * Unified Test Generator Helper - Single class for all test generation needs.
  * 
- * This class mirrors the functionality available in the Node.js CLI,
- * allowing Java tests to access the same capabilities programmatically.
+ * Features:
+ * 1. Parse Playwright recordings and generate test files (replaces TestFileGenerator)
+ * 2. JIRA story integration and AI-assisted generation
+ * 3. Test requirement management and validation
+ * 
+ * This consolidates all test generation functionality into one helper class.
  */
 public class TestGeneratorHelper {
+
+    // ========================================================================
+    // RECORDING-BASED GENERATION (from TestFileGenerator)
+    // ========================================================================
+    
+    /**
+     * Action extracted from Playwright recording.
+     */
+    private static class RecordedAction {
+        int id;
+        String type;
+        String selector;
+        String value;
+        String methodName;
+        String stepText;
+        
+        RecordedAction(int id, String type, String selector, String value) {
+            this.id = id;
+            this.type = type;
+            this.selector = selector;
+            this.value = value;
+            this.methodName = generateMethodName(type, id);
+            this.stepText = generateStepText(type, id);
+        }
+        
+        private String generateMethodName(String type, int id) {
+            switch (type) {
+                case "click": return "clickElement" + id;
+                case "fill": return "fillElement" + id;
+                case "select": return "selectOption" + id;
+                case "check": return "checkElement" + id;
+                case "press": return "pressKey" + id;
+                case "navigate": return "navigateTo";
+                default: return "action" + id;
+            }
+        }
+        
+        private String generateStepText(String type, int id) {
+            switch (type) {
+                case "click": return "user clicks on element " + id;
+                case "fill": return "user enters text into element " + id;
+                case "select": return "user selects option from dropdown " + id;
+                case "check": return "user checks checkbox " + id;
+                case "press": return "user presses key on element " + id;
+                case "navigate": return "user navigates to page";
+                default: return "user performs action " + id;
+            }
+        }
+    }
+    
+    /**
+     * Generate test files from Playwright recording.
+     * Main entry point for recording-based generation.
+     * 
+     * @param recordingFile Path to recorded-actions.java file
+     * @param featureName Name of the feature (e.g., "login", "profile")
+     * @param pageUrl Page URL or path
+     * @param jiraStory JIRA story ID
+     * @return true if successful, false otherwise
+     */
+    public static boolean generateFromRecording(String recordingFile, String featureName, 
+                                                  String pageUrl, String jiraStory) {
+        System.out.println("[INFO] Pure Java Test File Generator");
+        System.out.println("[INFO] Recording file: " + recordingFile);
+        System.out.println("[INFO] Feature name: " + featureName);
+        System.out.println("[INFO] Page URL: " + pageUrl);
+        System.out.println("[INFO] JIRA Story: " + jiraStory);
+        
+        try {
+            // Parse recording file
+            List<RecordedAction> actions = parseRecording(recordingFile);
+            System.out.println("[INFO] Extracted " + actions.size() + " actions from recording");
+            
+            // Generate class name (capitalize first letter)
+            String className = featureName.substring(0, 1).toUpperCase() + featureName.substring(1);
+            
+            // Generate files
+            generatePageObject(className, pageUrl, jiraStory, actions);
+            generateFeatureFile(className, jiraStory, actions);
+            generateStepDefinitions(className, jiraStory, actions);
+            
+            System.out.println("[SUCCESS] All files generated successfully!");
+            System.out.println("[INFO] Page Object: src/main/java/pages/" + className + ".java");
+            System.out.println("[INFO] Feature File: src/test/java/features/" + className + ".feature");
+            System.out.println("[INFO] Step Definitions: src/test/java/stepDefs/" + className + "Steps.java");
+            
+            return true;
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to generate test files: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Parse Playwright recording file and extract actions.
+     */
+    private static List<RecordedAction> parseRecording(String recordingFile) throws IOException {
+        List<RecordedAction> actions = new ArrayList<>();
+        String content = new String(Files.readAllBytes(Paths.get(recordingFile)));
+        
+        // Patterns for different Playwright actions
+        Pattern clickPattern = Pattern.compile("page\\.click\\(\"([^\"]+)\"\\)");
+        Pattern fillPattern = Pattern.compile("page\\.fill\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
+        Pattern selectPattern = Pattern.compile("page\\.selectOption\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
+        Pattern checkPattern = Pattern.compile("page\\.check\\(\"([^\"]+)\"\\)");
+        Pattern pressPattern = Pattern.compile("page\\.press\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
+        Pattern navigatePattern = Pattern.compile("page\\.navigate\\(\"([^\"]+)\"\\)");
+        
+        String[] lines = content.split("\\r?\\n");
+        int actionId = 1;
+        
+        for (String line : lines) {
+            Matcher matcher;
+            
+            // Check for navigate
+            matcher = navigatePattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "navigate", null, matcher.group(1)));
+                continue;
+            }
+            
+            // Check for click
+            matcher = clickPattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "click", matcher.group(1), null));
+                continue;
+            }
+            
+            // Check for fill
+            matcher = fillPattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "fill", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            // Check for select
+            matcher = selectPattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "select", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            // Check for check
+            matcher = checkPattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "check", matcher.group(1), null));
+                continue;
+            }
+            
+            // Check for press
+            matcher = pressPattern.matcher(line);
+            if (matcher.find()) {
+                actions.add(new RecordedAction(actionId++, "press", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+        }
+        
+        // If no actions found, add a default navigate action
+        if (actions.isEmpty()) {
+            System.out.println("[WARN] No actions found in recording, adding default navigation");
+            actions.add(new RecordedAction(1, "navigate", null, ""));
+        }
+        
+        return actions;
+    }
+    
+    /**
+     * Generate Page Object from recorded actions.
+     */
+    private static void generatePageObject(String className, String pageUrl, String jiraStory, 
+                                           List<RecordedAction> actions) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append("package pages;\n");
+        sb.append("import com.microsoft.playwright.Page;\n");
+        sb.append("import configs.loadProps;\n");
+        sb.append("import static configs.utils.*;\n");
+        sb.append("\n");
+        sb.append("/**\n");
+        sb.append(" * Page Object for ").append(className).append("\n");
+        sb.append(" * Auto-generated from Playwright recording by Pure Java Generator\n");
+        sb.append(" * @story ").append(jiraStory).append("\n");
+        sb.append(" */\n");
+        sb.append("public class ").append(className).append(" extends BasePage {\n");
+        sb.append("    private static final String PAGE_PATH = \"").append(pageUrl).append("\";\n");
+        sb.append("\n");
+        
+        // Generate locator constants
+        int locatorId = 1;
+        for (RecordedAction action : actions) {
+            if (action.selector != null) {
+                sb.append("    private static final String ELEMENT_").append(locatorId++)
+                  .append(" = \"").append(escapeJavaString(action.selector)).append("\";\n");
+            }
+        }
+        sb.append("\n");
+        
+        // Generate navigate method
+        sb.append("    public static void navigateTo(Page page) {\n");
+        sb.append("        page.navigate(loadProps.getProperty(\"URL\") + PAGE_PATH);\n");
+        sb.append("    }\n");
+        sb.append("\n");
+        
+        // Generate methods for each action
+        locatorId = 1;
+        for (RecordedAction action : actions) {
+            if ("navigate".equals(action.type)) continue;
+            
+            sb.append("    // ").append(action.stepText).append("\n");
+            
+            switch (action.type) {
+                case "click":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        clickOnElement(ELEMENT_").append(locatorId++).append(");\n");
+                    sb.append("    }\n");
+                    break;
+                    
+                case "fill":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page, String text) {\n");
+                    sb.append("        enterText(ELEMENT_").append(locatorId++).append(", text);\n");
+                    sb.append("    }\n");
+                    break;
+                    
+                case "select":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page, String option) {\n");
+                    sb.append("        selectDropDownValueByText(ELEMENT_").append(locatorId++).append(", option);\n");
+                    sb.append("    }\n");
+                    break;
+                    
+                case "check":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        clickOnElement(ELEMENT_").append(locatorId++).append(");\n");
+                    sb.append("    }\n");
+                    break;
+                    
+                case "press":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        page.locator(ELEMENT_").append(locatorId++).append(").press(\"")
+                      .append(escapeJavaString(action.value)).append("\");\n");
+                    sb.append("    }\n");
+                    break;
+            }
+            sb.append("\n");
+        }
+        
+        sb.append("}\n");
+        
+        Files.write(Paths.get("src/main/java/pages/" + className + ".java"), sb.toString().getBytes());
+    }
+    
+    /**
+     * Generate Feature file from recorded actions.
+     */
+    private static void generateFeatureFile(String className, String jiraStory, 
+                                           List<RecordedAction> actions) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append("@").append(jiraStory).append(" @").append(className).append("\n");
+        sb.append("Feature: ").append(className).append(" Test\n");
+        sb.append("  Auto-generated from Playwright recording\n");
+        sb.append("\n");
+        sb.append("  Scenario: Complete ").append(className).append(" workflow\n");
+        sb.append("    Given user navigates to ").append(className).append(" page\n");
+        
+        int elementId = 1;
+        for (RecordedAction action : actions) {
+            if ("navigate".equals(action.type)) continue;
+            
+            switch (action.type) {
+                case "click":
+                    sb.append("    When user clicks on element ").append(elementId++).append("\n");
+                    break;
+                case "fill":
+                    sb.append("    And user enters \"{string}\" into element ").append(elementId++).append("\n");
+                    break;
+                case "select":
+                    sb.append("    And user selects \"{string}\" from dropdown ").append(elementId++).append("\n");
+                    break;
+                case "check":
+                    sb.append("    And user checks checkbox ").append(elementId++).append("\n");
+                    break;
+                case "press":
+                    sb.append("    And user presses key on element ").append(elementId++).append("\n");
+                    break;
+            }
+        }
+        
+        sb.append("    Then page should be updated\n");
+        
+        Files.write(Paths.get("src/test/java/features/" + className + ".feature"), sb.toString().getBytes());
+    }
+    
+    /**
+     * Generate Step Definitions from recorded actions.
+     */
+    private static void generateStepDefinitions(String className, String jiraStory, 
+                                               List<RecordedAction> actions) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append("package stepDefs;\n");
+        sb.append("import configs.browserSelector;\n");
+        sb.append("import io.cucumber.java.en.*;\n");
+        sb.append("import pages.").append(className).append(";\n");
+        sb.append("\n");
+        sb.append("/**\n");
+        sb.append(" * Step Definitions for ").append(className).append("\n");
+        sb.append(" * Auto-generated from Playwright recording by Pure Java Generator\n");
+        sb.append(" * @story ").append(jiraStory).append("\n");
+        sb.append(" */\n");
+        sb.append("public class ").append(className).append("Steps extends browserSelector {\n");
+        sb.append("\n");
+        sb.append("    @Given(\"user navigates to ").append(className).append(" page\")\n");
+        sb.append("    public void navigateTo() {\n");
+        sb.append("        ").append(className).append(".navigateTo(page);\n");
+        sb.append("    }\n");
+        sb.append("\n");
+        
+        int elementId = 1;
+        for (RecordedAction action : actions) {
+            if ("navigate".equals(action.type)) continue;
+            
+            switch (action.type) {
+                case "click":
+                    sb.append("    @When(\"user clicks on element ").append(elementId).append("\")\n");
+                    sb.append("    public void clickElement").append(elementId).append("() {\n");
+                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page);\n");
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    elementId++;
+                    break;
+                    
+                case "fill":
+                    sb.append("    @And(\"user enters {string} into element ").append(elementId).append("\")\n");
+                    sb.append("    public void fillElement").append(elementId).append("(String text) {\n");
+                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page, text);\n");
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    elementId++;
+                    break;
+                    
+                case "select":
+                    sb.append("    @And(\"user selects {string} from dropdown ").append(elementId).append("\")\n");
+                    sb.append("    public void selectOption").append(elementId).append("(String option) {\n");
+                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page, option);\n");
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    elementId++;
+                    break;
+                    
+                case "check":
+                    sb.append("    @And(\"user checks checkbox ").append(elementId).append("\")\n");
+                    sb.append("    public void checkElement").append(elementId).append("() {\n");
+                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page);\n");
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    elementId++;
+                    break;
+                    
+                case "press":
+                    sb.append("    @And(\"user presses key on element ").append(elementId).append("\")\n");
+                    sb.append("    public void pressKey").append(elementId).append("() {\n");
+                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page);\n");
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    elementId++;
+                    break;
+            }
+        }
+        
+        sb.append("    @Then(\"page should be updated\")\n");
+        sb.append("    public void verifyPageUpdated() {\n");
+        sb.append("        // TODO: Add verification logic\n");
+        sb.append("    }\n");
+        sb.append("}\n");
+        
+        Files.write(Paths.get("src/test/java/stepDefs/" + className + "Steps.java"), sb.toString().getBytes());
+    }
+    
+    /**
+     * Escape special characters for Java strings.
+     */
+    private static String escapeJavaString(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\")
+                  .replace("\"", "\\\"")
+                  .replace("\n", "\\n")
+                  .replace("\r", "\\r")
+                  .replace("\t", "\\t");
+    }
+
+    // ========================================================================
+    // JIRA-BASED GENERATION (original TestGeneratorHelper functionality)
+    // ========================================================================
 
     /**
      * Test requirement data structure for programmatic test generation.
@@ -754,31 +1145,71 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Example usage demonstrating all features.
+     * Command-line interface for test generation.
+     * Supports two modes:
+     * 1. Recording mode (4 args): recordingFile featureName pageUrl jiraStory
+     * 2. JIRA mode (1 arg): jiraStoryId
+     * 
+     * @param args Command line arguments
      */
     public static void main(String[] args) {
-        System.out.println("🤖 Test Generator Helper - Example Usage\n");
+        if (args.length == 4) {
+            // Recording mode: Generate from Playwright recording
+            String recordingFile = args[0];
+            String featureName = args[1];
+            String pageUrl = args[2];
+            String jiraStory = args[3];
+            
+            boolean success = generateFromRecording(recordingFile, featureName, pageUrl, jiraStory);
+            System.exit(success ? 0 : 1);
+            
+        } else if (args.length == 1) {
+            // JIRA mode: Generate from JIRA story
+            String jiraStoryId = args[0];
+            
+            System.out.println("🤖 Test Generator Helper - JIRA Mode");
+            System.out.println("═══════════════════════════════════════\n");
+            
+            TestRequirement req = generateFromJiraStory(jiraStoryId);
+            if (req != null) {
+                System.out.println("\n✅ Test requirement generated successfully!");
+                System.out.println("   Test Name: " + req.testName);
+                System.out.println("   Elements: " + req.elements.size());
+                System.out.println("   Scenarios: " + req.scenarios.size());
+                System.exit(0);
+            } else {
+                System.err.println("\n❌ Failed to generate test requirement from JIRA");
+                System.exit(1);
+            }
+            
+        } else if (args.length == 0) {
+            // Interactive example mode
+            System.out.println("🤖 Test Generator Helper - Example Usage\n");
 
-        // Example 1: Analyze framework
-        System.out.println("═══ Example 1: Analyze Framework ═══");
-        FrameworkInfo info = analyzeFramework();
-        info.printSummary();
+            System.out.println("═══ Example 1: Analyze Framework ═══");
+            FrameworkInfo info = analyzeFramework();
+            info.printSummary();
 
-        // Example 2: Generate from JIRA story
-        System.out.println("═══ Example 2: Generate from JIRA Story ═══");
-        TestRequirement req = generateFromJiraStory("ECS-123");
-        if (req != null) {
-            System.out.println("Generated: " + req.testName);
-            System.out.println("Scenarios: " + req.scenarios.size());
+            System.out.println("═══ Example 2: Validate Test Structure ═══");
+            ValidationResult validation = validateTestStructure("login");
+            validation.printReport();
+
+            System.out.println("═══ Example 3: Open Latest Report ═══");
+            openLatestReport();
+            
+        } else {
+            // Show usage
+            System.err.println("❌ Invalid arguments!");
+            System.err.println("\nUsage:");
+            System.err.println("  Recording Mode:");
+            System.err.println("    java TestGeneratorHelper <recordingFile> <featureName> <pageUrl> <jiraStory>");
+            System.err.println();
+            System.err.println("  JIRA Mode:");
+            System.err.println("    java TestGeneratorHelper <jiraStoryId>");
+            System.err.println();
+            System.err.println("  Interactive Mode:");
+            System.err.println("    java TestGeneratorHelper");
+            System.exit(1);
         }
-
-        // Example 3: Validate test structure
-        System.out.println("═══ Example 3: Validate Test Structure ═══");
-        ValidationResult validation = validateTestStructure("login");
-        validation.printReport();
-
-        // Example 4: Open latest report
-        System.out.println("═══ Example 4: Open Latest Report ═══");
-        openLatestReport();
     }
 }

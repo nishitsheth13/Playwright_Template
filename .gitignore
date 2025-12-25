@@ -49,4 +49,6 @@ MRITestExecutionReports/
 
 
 # Files
-./jiraConfig.java
+./jiraConfig.javanode_modules/  
+package.json  
+package-lock.json  
