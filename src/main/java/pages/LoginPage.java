@@ -3,6 +3,9 @@ package pages;
 import com.microsoft.playwright.Locator;
 import configs.TimeoutConfig;
 
+// Note: BasePage is in the same package, so explicit import is not required
+// The 'page' field is inherited from BasePage which extends utils
+
 /**
  * Page Object Model for Login Page.
  * Contains locators, actions, and verifications for login functionality.
@@ -112,7 +115,7 @@ public class LoginPage extends BasePage {
      * @param username The username to enter
      */
     public static void enterUsername(String username) {
-        System.out.println("🔹 Entering username: " + username);
+        System.out.println("🔹 Entering username: " + maskUsername(username));
         getUsernameInput().clear();
         getUsernameInput().fill(username);
         System.out.println("✅ Username entered");
@@ -123,7 +126,7 @@ public class LoginPage extends BasePage {
      * @param password The password to enter
      */
     public static void enterPassword(String password) {
-        System.out.println("🔹 Entering password");
+        System.out.println("🔹 Entering password (masked for security)");
         getPasswordInput().clear();
         getPasswordInput().fill(password);
         System.out.println("✅ Password entered");
@@ -209,11 +212,23 @@ public class LoginPage extends BasePage {
      * @param password The password to login with
      */
     public static void login(String username, String password) {
-        System.out.println("🔐 Attempting login with username: " + username);
+        System.out.println("🔐 Attempting login for user: " + maskUsername(username));
         enterUsername(username);
         enterPassword(password);
         clickLoginButton();
         System.out.println("✅ Login process completed");
+    }
+    
+    /**
+     * Masks username for logging purposes (shows first 2 chars + ***)
+     * @param username The username to mask
+     * @return Masked username for logging
+     */
+    private static String maskUsername(String username) {
+        if (username == null || username.length() <= 2) {
+            return "***";
+        }
+        return username.substring(0, 2) + "***";
     }
 
     /**
