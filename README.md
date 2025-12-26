@@ -6,15 +6,13 @@ Complete BDD framework with Playwright Java, Cucumber, and TestNG.
 
 **👉 [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md) - SINGLE SOURCE OF TRUTH**
 
-Everything you need in one place:
-- ✅ CLI Recording (Pure Java - NO Node.js needed)
-- ✅ AI Enhancement Prompts  
-- ✅ AI Interactive CLI with JIRA (Requires Node.js)
-- ✅ Manual Coding
+Everything in one place with TODO checklists:
+- ✅ Pure Java Recording (NO Node.js needed)
+- ✅ AI-Assisted Generation (Requires Node.js)
+- ✅ Recorder Troubleshooting (with TODO steps)
 - ✅ Dynamic Locator Strategies (9 helper methods)
-- ✅ MCP Server Setup (AI Integration)
 - ✅ Complete validation checklists
-- ✅ Troubleshooting guide
+- ✅ All fixes and solutions
 
 ---
 
@@ -147,19 +145,20 @@ powershell -ExecutionPolicy Bypass -File validate-coverage.ps1 -FeatureName "Log
 
 ## 🆘 Common Issues
 
-All troubleshooting in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**:
-- ❌ Recording doesn't extract actions
-- ❌ Duplicate step definitions
-- ❌ NullPointerException
-- ❌ Elements not found
-- ❌ Protected method errors
+All troubleshooting with TODO checklists in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**:
+- ❌ Steps not saved in recording file → **FIXED (Dec 26, 2025)** - See "Recorder Troubleshooting"
+- ❌ getByLabel() actions not parsed → **FIXED (Dec 26, 2025)**
+- ❌ Recording file created but empty → Troubleshooting section has TODO checklist
+- ❌ Duplicate step definitions → Auto-validation handles this
+- ❌ Dynamic IDs causing failures → Use dynamic locator helpers (9 methods in utils.java)
+- ❌ Elements not found → See Dynamic Locators section
 
 ---
 
 ## 📚 Documentation Structure
 
-- **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Single comprehensive guide with everything
-- **README.md** (this file) - Quick reference and entry point
+**[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Single comprehensive guide with TODO checklists  
+**README.md** (this file) - Quick reference and entry point
 
 ---
 

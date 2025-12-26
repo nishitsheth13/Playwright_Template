@@ -7,17 +7,6 @@
         <listener class-name="configs.RetryListener"/>
     </listeners>
 
-    <!--   Method Runner-->
-    <!--    <test name="Smoke Test Execution">-->
-    <!--        <parameter name="Browsers" value="chrome"/>-->
-    <!--        <classes>-->
-    <!--            <class name="pages.login"/>-->
-    <!--        </classes>-->
-
-
-    <!--    </test>-->
-
-    <!--   Tests Runner-->
     <test name="Test Execution with Runner">
         <!--        <parameter name="Server" value="uksestdevtest02"/>-->
         <classes>

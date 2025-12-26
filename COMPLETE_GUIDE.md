@@ -11,14 +11,15 @@ Last Updated: December 26, 2025
 1. [Quick Start](#quick-start)
 2. [Prerequisites](#prerequisites)
 3. [Method 1: CLI Recording](#method-1-cli-recording-recommended)
-4. [Method 2: AI Prompt Enhancement](#method-2-ai-prompt-enhancement)
-5. [Method 3: AI Interactive CLI with JIRA](#method-3-ai-interactive-cli-with-jira)
-6. [Method 4: Manual Coding](#method-4-manual-coding)
-7. [Dynamic Locator Strategies](#dynamic-locator-strategies)
-8. [MCP Server Setup](#mcp-server-setup-ai-integration)
-9. [Retry Analyzer](#retry-analyzer-configuration)
-10. [Troubleshooting](#troubleshooting)
-11. [Quick Reference](#quick-reference)
+4. [Intelligent Naming System](#intelligent-naming-system)
+5. [Method 2: AI Prompt Enhancement](#method-2-ai-prompt-enhancement)
+6. [Method 3: AI Interactive CLI with JIRA](#method-3-ai-interactive-cli-with-jira)
+7. [Method 4: Manual Coding](#method-4-manual-coding)
+8. [Dynamic Locator Strategies](#dynamic-locator-strategies)
+9. [MCP Server Setup](#mcp-server-setup-ai-integration)
+10. [Retry Analyzer](#retry-analyzer-configuration)
+11. [Troubleshooting](#troubleshooting)
+12. [Quick Reference](#quick-reference)
 
 ---
 
@@ -147,6 +148,254 @@ powershell -ExecutionPolicy Bypass -File validate-coverage.ps1 -FeatureName "Log
 - [ ] ✅ Step definitions call Page Object methods
 - [ ] ✅ Project compiles without errors
 - [ ] ✅ Tests run successfully
+
+---
+
+## 🎨 INTELLIGENT NAMING SYSTEM
+
+**🎯 The recorder now generates descriptive, professional-quality code automatically!**
+
+### Overview
+
+All recorded tests use **intelligent naming conventions** to create maintainable, self-documenting code:
+- **Element names** extracted from selectors (not ELEMENT_1, ELEMENT_2)
+- **Method names** describe actions semantically (clickSignIn, enterUsername)
+- **Feature steps** use natural, readable language
+- **Comprehensive logging** with emoji indicators
+
+### Name Extraction Examples
+
+| Selector Type | Example | Generated Constant | Method Name |
+|--------------|---------|-------------------|-------------|
+| **Text locator** | `text=Sign In` | `SIGN_IN_1` | `clickSignIn()` |
+| **ID selector** | `#username` | `USERNAME_1` | `enterUsername()` |
+| **Placeholder** | `placeholder=Email` | `EMAIL_1` | `enterEmail()` |
+| **Aria-label** | `aria-label="Submit"` | `SUBMIT_1` | `clickSubmit()` |
+| **Data-testid** | `data-testid="login-btn"` | `LOGIN_BTN_1` | `clickLoginBtn()` |
+| **Role + Name** | `role=button[name="Save"]` | `SAVE_1` | `clickSave()` |
+| **Has-text** | `button:has-text("Cancel")` | `CANCEL_1` | `clickCancel()` |
+
+### Generated Code Structure
+
+#### ✅ Page Object (Before vs After)
+
+**❌ OLD (Generic):**
+```java
+private static final String ELEMENT_1 = "text=Sign In";
+public static void clickElement1(Page page) {
+    clickOnElement(ELEMENT_1);
+}
+```
+
+**✅ NEW (Descriptive):**
+```java
+// Sign In
+private static final String SIGN_IN_1 = "text=Sign In";
+
+/**
+ * user clicks on sign in
+ * Element: SignIn (text=Sign In)
+ */
+public static void clickSignIn(Page page) {
+    System.out.println("🖱️ user clicks on sign in: " + SIGN_IN_1);
+    clickOnElement(SIGN_IN_1);
+}
+```
+
+#### ✅ Feature File
+
+**❌ OLD:** `When user clicks on element 1`  
+**✅ NEW:** `When user clicks on sign in`
+
+#### ✅ Step Definitions
+
+**❌ OLD:**
+```java
+@When("user clicks on element 1")
+public void clickElement1() {
+    Profile.clickElement1(page);
+}
+```
+
+**✅ NEW:**
+```java
+@When("user clicks on sign in")
+public void clickSignIn() {
+    System.out.println("📍 Step: user clicks on sign in");
+    Profile.clickSignIn(page);
+}
+```
+
+### Naming Conventions
+
+#### 1. **Element Constants** (UPPER_SNAKE_CASE)
+```java
+SIGN_IN_1           // Click action on "Sign In"
+USERNAME_INPUT_2    // Text field with ID "username"
+SAVE_BUTTON_3       // Button with text "Save"
+COUNTRY_SELECT_4    // Dropdown for country selection
+```
+
+#### 2. **Method Names** (camelCase with verb prefix)
+
+| Action Type | Prefix | Example |
+|-------------|--------|---------|
+| Click | `click` | `clickSignIn()`, `clickSave()` |
+| Fill | `enter` | `enterUsername()`, `enterPassword()` |
+| Search | `search` | `searchProducts()` |
+| Select | `select` | `selectCountry()` |
+| Check | `check` | `checkRememberMe()` |
+| Toggle | `toggle` | `toggleDarkMode()` |
+
+**Special Recognition:**
+- Email fields → `enterEmail()` (not `enterEmailAddress()`)
+- Password fields → `enterPassword()` (not `enterPasswordInput()`)
+- Username fields → `enterUsername()` (not `enterUsernameField()`)
+- Search boxes → `searchProducts()` (not `enterSearch()`)
+
+#### 3. **Feature Steps** (Natural language)
+```gherkin
+When user clicks on sign in
+When user enters text into username
+When user selects option from country dropdown
+When user checks remember me checkbox
+Then page should be updated
+```
+
+### Supported Selector Types
+
+#### ✅ Modern Playwright (Preferred)
+```java
+text=Button Text                    // Text content
+placeholder=Enter email             // Placeholder attribute
+role=button[name="Submit"]          // ARIA role + name
+button:has-text("Save")            // Element with text
+#element-id                         // ID selector
+```
+
+#### ✅ Traditional Selectors
+```java
+input[name="username"]              // Name attribute
+input[placeholder="Email"]          // Placeholder
+button[aria-label="Close"]          // Aria-label
+a[title="Help"]                     // Title attribute
+input[data-testid="login"]          // Test ID
+.btn-primary                        // CSS class
+```
+
+### Smart Features
+
+#### Auto-Cleanup
+- ✅ Removes suffixes: "button", "btn", "input", "field", "link"
+- ✅ Removes from IDs: "-btn", "-button", "-input", "-field"
+- ✅ Converts kebab-case → PascalCase
+- ✅ Handles numbers: "25" → `Number25`
+
+#### Context-Aware Naming
+```java
+// Detects button type
+"Sign In" button    → clickSignIn()
+"Save" button       → clickSave()
+"Cancel" link       → clickCancel()
+
+// Detects input type
+"Email" field       → enterEmail()
+"Search" box        → searchProducts()
+"Password" field    → enterPassword()
+
+// Detects interaction
+Checkbox           → checkTerms()
+Toggle switch      → toggleDarkMode()
+Dropdown          → selectCountry()
+```
+
+#### Comprehensive Logging
+
+**Step Level (📍):**
+```
+📍 Step: user clicks on sign in
+📍 Step: user enters text into username
+```
+
+**Action Level:**
+```
+🖱️ user clicks on sign in: text=Sign In
+⌨️ user enters text into username: #username = 'john.doe'
+🔽 user selects option from country: #country = 'USA'
+☑️ user checks remember me: #remember
+✅ Clicked on element: text=Sign In
+```
+
+### Best Practices
+
+#### ✅ DO: Use Descriptive HTML
+```html
+<button>Sign In</button>                              ✅ Generates: clickSignIn()
+<input placeholder="Email Address" />                ✅ Generates: enterEmail()
+<button data-testid="submit-form">Submit</button>   ✅ Generates: clickSubmitForm()
+```
+
+#### ❌ AVOID: Non-Descriptive HTML
+```html
+<button>→</button>              ❌ Generates: clickElement1()
+<button>OK</button>             ❌ Too generic
+<input id="txt1" />            ❌ No meaningful name
+```
+
+#### 💡 Enhancement Tips
+1. **After Recording:** Review generated names
+2. **Refine if Needed:** Manually update for clarity
+3. **Add Attributes:** Use `aria-label` or `data-testid` for complex elements
+4. **Group Actions:** Combine related steps into higher-level methods
+
+### Troubleshooting
+
+**Q: Names are still generic (e.g., "Element1")**  
+**A:** Selector has no identifiable text/attributes  
+**Fix:** Add `aria-label`, `placeholder`, or `data-testid` to HTML
+
+**Q: Method names are too long**  
+**A:** Element has long descriptive text  
+**Fix:** Manually refactor to shorter aliases after generation
+
+**Q: Duplicate method names**  
+**A:** Multiple elements with same text  
+**Fix:** Framework adds ID suffixes automatically (`_1`, `_2`); refine if needed
+
+### Example Workflow
+
+```bash
+# 1. Record actions
+.\generate-test.bat → Option 1
+
+# 2. Enter feature name
+Feature Name: Login
+
+# 3. Record in browser:
+# - Click "Sign In" button
+# - Enter username
+# - Enter password
+# - Click "Submit"
+
+# 4. Generated Page Object:
+# SIGN_IN_1, USERNAME_2, PASSWORD_3, SUBMIT_4
+# clickSignIn(), enterUsername(), enterPassword(), clickSubmit()
+
+# 5. Generated Feature:
+# When user clicks on sign in
+# When user enters text into username
+# When user enters text into password
+# When user clicks on submit
+```
+
+### Benefits
+
+✅ **Self-Documenting** - Code explains itself  
+✅ **Maintainable** - Easy to find and update  
+✅ **Readable** - Non-technical people can read features  
+✅ **Professional** - Looks hand-crafted, not auto-generated  
+✅ **Debuggable** - Comprehensive logging pinpoints issues  
+✅ **Future-Proof** - All recordings use this convention automatically  
 
 ---
 
@@ -611,6 +860,132 @@ Auto-fix runs, but if persists:
 powershell -ExecutionPolicy Bypass -File scripts\fix-base-url.ps1
 ```
 
+### Maven Warnings (sun.misc.Unsafe)
+**Symptom:** Warnings about `sun.misc.Unsafe::staticFieldBase` during Maven builds
+
+**✅ Already Fixed!** The framework includes:
+- `.mvn/jvm.config` - Suppresses warnings globally
+- `pom.xml` - Configured with proper JVM arguments
+- Clean console output during builds
+
+**If warnings still appear:**
+```bash
+# Verify .mvn/jvm.config exists
+cat .mvn/jvm.config
+
+# Should contain:
+--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/sun.misc=ALL-UNNAMED
+```
+
+**Note:** These are Maven 3.9.x + Java 17+ compatibility warnings from Guice dependency. They don't affect functionality.
+
+---
+
+## 🎬 Recorder Troubleshooting
+
+### Understanding Two Recording Systems
+
+#### 1. Video Recording (recoder.java)
+**Purpose:** Screen capture during test execution  
+**Output:** AVI files in `MRITestExecutionReports/{version}/recordings/`  
+**When Used:** During test execution (not action recording)
+
+#### 2. Action Recording (Playwright CLI Codegen)
+**Purpose:** Capture user interactions and generate code  
+**Output:** `recorded-actions.java` in temp_recording_* folders  
+**When Used:** During `record-and-generate.bat` session
+
+### TODO: Recording Workflow
+- [ ] Run `record-and-generate.bat`
+- [ ] Playwright codegen starts: `mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI`
+- [ ] Perform actions in browser
+- [ ] Close browser to trigger parsing
+- [ ] TestGeneratorHelper parses `recorded-actions.java`
+- [ ] 3 test files generated (Page Object, Feature, Steps)
+
+### TODO: Common Issues Resolution
+
+#### Issue 1: Steps Not Saved (FIXED Dec 26, 2025)
+**Symptoms:**
+- [ ] Check if `recorded-actions.java` is empty or has no actions
+- [ ] Check for "[WARN] No actions found in recording" message
+- [ ] Check if generated test files only have navigation
+
+**Resolution:**
+- [x] ✅ Added missing `getByLabel().click()` pattern
+- [x] ✅ Added missing `getByLabel().fill()` pattern
+- [x] ✅ Added missing `getByLabel().press()` pattern
+
+**Supported APIs:**
+```java
+// Modern API (All Working)
+page.locator("selector").click()
+page.getByRole(AriaRole.BUTTON, options).click()
+page.getByText("text").click()
+page.getByLabel("label").click() // ✅ FIXED
+page.getByLabel("label").fill("text") // ✅ FIXED
+page.getByPlaceholder("placeholder").fill("text")
+```
+
+#### Issue 2: Recording File Not Created
+**TODO Checklist:**
+- [ ] Check Playwright installed: `mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium"`
+- [ ] Test codegen command: `mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="codegen --help"`
+- [ ] Verify temp_recording_* folder created: `dir /b | findstr temp_recording`
+- [ ] Ensure you perform actions before closing browser
+
+#### Issue 3: Duplicate Elements
+**Expected Behavior:** Each interaction gets its own constant:
+- USERNAME_2 (click to focus)
+- USERNAME_3 (fill with text)
+- USERNAME_4 (press Tab)
+
+**TODO:** Manually merge if needed after generation
+
+#### Issue 4: Dynamic/Random IDs
+**TODO:** Use dynamic locator helpers from utils.java:
+```java
+// Replace this:
+clickOnElement("#c5e5f7ef-1180-49e8-a0a3-bfde5d637c1e");
+
+// With this:
+String selector = findByText("button", "Save");
+clickOnElement(selector);
+```
+
+### TODO: Testing Recorder Manually
+```batch
+# Test parsing
+mvn exec:java -D exec.mainClass="configs.TestGeneratorHelper" -D exec.args="path\to\recorded-actions.java featureName pageUrl JIRA-123"
+
+# Example
+mvn exec:java -D exec.mainClass="configs.TestGeneratorHelper" -D exec.args="temp_recording_123\recorded-actions.java login /login JIRA-456"
+```
+
+**Expected Output Checklist:**
+- [ ] "[DEBUG] Found navigate: URL"
+- [ ] "[DEBUG] Found getByLabel click: Username"
+- [ ] "[DEBUG] Found getByLabel fill: Username = admin"
+- [ ] "[SUCCESS] Extracted X actions" where X > 0
+- [ ] "All files generated successfully!"
+
+### TODO: Verification After Recording
+- [ ] `temp_recording_*/recorded-actions.java` exists
+- [ ] File size > 0 bytes
+- [ ] File contains Playwright code (not empty)
+- [ ] Parser logs show "[DEBUG] Found..." messages
+- [ ] Extracted actions count > 0
+- [ ] 3 test files generated
+- [ ] Generated files compile without errors
+
+### TODO: Adding New Parsing Patterns
+If Playwright API changes:
+- [ ] Add pattern: `Pattern getByNewMethodPattern = Pattern.compile(...)`
+- [ ] Add parsing logic with debug output
+- [ ] Update extractReadableName method
+- [ ] Recompile: `mvn clean compile`
+- [ ] Test with sample recording
+
 ---
 
 ## 📌 Quick Reference
@@ -625,8 +1000,6 @@ powershell -ExecutionPolicy Bypass -File scripts\fix-base-url.ps1
 | **Run Tests** | `mvn test -DsuiteXmlFile=src/test/testng.xml` |
 | **Specific Feature** | `mvn test -Dcucumber.options="src/test/java/features/Login.feature"` |
 | **Clean Rebuild** | `mvn clean install` |
-| **Check Duplicates** | `powershell -ExecutionPolicy Bypass -File scripts\check-duplicates.ps1` |
-| **Validation** | `powershell -ExecutionPolicy Bypass -File validate-coverage.ps1 -FeatureName "Login"` |
 
 ### Reports Location
 - **Extent Reports**: `MRITestExecutionReports/Version*/extentReports/testNGExtentReports/html/`
@@ -636,7 +1009,7 @@ powershell -ExecutionPolicy Bypass -File scripts\fix-base-url.ps1
 
 ### Key Files
 - **Base Classes**: `src/main/java/configs/base.java`, `BasePage.java`
-- **Utilities**: `src/main/java/configs/utils.java`
+- **Utilities**: `src/main/java/configs/utils.java` (9 dynamic locator helpers)
 - **Test Generator**: `src/main/java/configs/TestGeneratorHelper.java`
 - **Hooks**: `src/test/java/hooks/hooks.java`
 - **Config**: `src/test/resources/configurations.properties`
@@ -647,6 +1020,8 @@ powershell -ExecutionPolicy Bypass -File scripts\fix-base-url.ps1
 
 Complete TODO before "DONE":
 - [ ] ✅ All recorded actions covered
+- [ ] ✅ Recording file created with actions
+- [ ] ✅ Parser extracted all actions successfully
 - [ ] ✅ Validation shows 100% coverage
 - [ ] ✅ Compiles without errors
 - [ ] ✅ Tests execute successfully
@@ -673,5 +1048,6 @@ record-and-generate.bat
 
 **Last Updated**: December 26, 2025  
 **Framework Version**: 2.0  
-**Documentation**: Single consolidated guide
+**Documentation**: Single consolidated guide  
+**Latest Fix**: getByLabel() parsing patterns added
 

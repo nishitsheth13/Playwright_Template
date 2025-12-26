@@ -47,8 +47,21 @@ MRITestExecutionReports/
 *.html
 *.pdf
 
+# Temporary recording directories
+temp_recording_*/
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.old
+*.tmp
+*~
+*.swp
 
 # Files
-./jiraConfig.javanode_modules/  
-package.json  
+./jiraConfig.java
+node_modules/
+package.json
 package-lock.json  
