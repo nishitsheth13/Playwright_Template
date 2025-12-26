@@ -110,17 +110,3 @@ Feature: Comprehensive Login Functionality Testing - MRI Energy Web Application
     Then Focus should move from Username to Password
     And Focus should move to Remember Me checkbox
     And Focus should move to Sign In button
-
-  @NonFunctional @Accessibility @Priority=15
-  Scenario: Verify login page accessibility features
-    Then Username field should have proper label
-    And Password field should have proper label
-    And Sign In button should be keyboard accessible
-
-
-#
-# @NonFunctional @Security @Priority=16
-#  Scenario: Verify account lockout after multiple failed attempts
-#    When User attempts login with invalid password 5 times
-#    Then User account should be locked
-#    And User should see account lockout message

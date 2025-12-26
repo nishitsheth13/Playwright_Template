@@ -1942,7 +1942,7 @@ async function callMCPTool(toolName, args) {
       await fs.mkdir(stepDefsDir, { recursive: true });
       await fs.writeFile(stepsFile, stepsContent, 'utf-8');
       
-      return `✅ Test suite generated successfully!\n\nGenerated files:\n  📄 ${pageFile}\n  📋 ${featureFile}\n  🧪 ${stepsFile}\n\nNext steps:\n  1. Review generated files\n  2. Add step definition implementations\n  3. Compile: mvn clean compile\n  4. Run: mvn test`;
+      return `✅ Test suite generated successfully!\n\nGenerated files:\n  📄 ${pageFile}\n  📋 ${featureFile}\n  🧪 ${stepsFile}\n\nNext steps:\n  1. Review generated files\n  2. Add step definition implementations\n  3. Compile: mvn clean compile\n  4. Run: mvn test -DsuiteXmlFile=src/test/testng.xml`;
       
     } else if (toolName === 'analyze-framework') {
       // Read existing files

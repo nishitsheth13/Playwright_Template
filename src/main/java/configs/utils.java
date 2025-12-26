@@ -148,6 +148,144 @@ public class utils extends base {
         return hostLocator.locator(":scope >> shadow-root >> " + targetSelector);
     }
 
+    // ============================================================
+    // DYNAMIC LOCATOR STRATEGIES (For Random/Dynamic IDs)
+    // ============================================================
+    
+    /**
+     * Find element by text content (best for dynamic IDs).
+     * Uses relative XPath to locate elements by visible text.
+     * 
+     * Example: findByText("button", "Submit") -> //button[text()='Submit']
+     * 
+     * @param tagName HTML tag name (button, div, span, etc.)
+     * @param text Exact text content
+     * @return Locator string
+     */
+    public static String findByText(String tagName, String text) {
+        return String.format("xpath=//%s[text()='%s']", tagName, text);
+    }
+    
+    /**
+     * Find element by partial text (when text is dynamic or long).
+     * 
+     * Example: findByPartialText("button", "Submit") -> //button[contains(text(),'Submit')]
+     * 
+     * @param tagName HTML tag name
+     * @param partialText Partial text content
+     * @return Locator string
+     */
+    public static String findByPartialText(String tagName, String partialText) {
+        return String.format("xpath=//%s[contains(text(),'%s')]", tagName, partialText);
+    }
+    
+    /**
+     * Find element by attribute (class, data-*, aria-*, etc.).
+     * Best for elements with stable attributes but dynamic IDs.
+     * 
+     * Example: findByAttribute("button", "class", "btn-primary")
+     * Result: //button[@class='btn-primary']
+     * 
+     * @param tagName HTML tag name
+     * @param attribute Attribute name
+     * @param value Attribute value
+     * @return Locator string
+     */
+    public static String findByAttribute(String tagName, String attribute, String value) {
+        return String.format("xpath=//%s[@%s='%s']", tagName, attribute, value);
+    }
+    
+    /**
+     * Find element by partial attribute match.
+     * Useful when attribute values are dynamic or concatenated.
+     * 
+     * Example: findByPartialAttribute("button", "class", "submit")
+     * Result: //button[contains(@class,'submit')]
+     * 
+     * @param tagName HTML tag name
+     * @param attribute Attribute name
+     * @param partialValue Partial attribute value
+     * @return Locator string
+     */
+    public static String findByPartialAttribute(String tagName, String attribute, String partialValue) {
+        return String.format("xpath=//%s[contains(@%s,'%s')]", tagName, attribute, partialValue);
+    }
+    
+    /**
+     * Find element by parent-child relationship (when child has dynamic ID).
+     * Navigate from stable parent to dynamic child.
+     * 
+     * Example: findByParentChild("div[@class='form-group']", "input")
+     * Result: //div[@class='form-group']//input
+     * 
+     * @param parentLocator Parent element xpath (without xpath= prefix)
+     * @param childTag Child element tag
+     * @return Locator string
+     */
+    public static String findByParentChild(String parentLocator, String childTag) {
+        return String.format("xpath=//%s//%s", parentLocator, childTag);
+    }
+    
+    /**
+     * Find element by label text (for form inputs).
+     * Finds input/textarea associated with a label.
+     * 
+     * Example: findByLabel("Username") 
+     * Result: //label[text()='Username']/following-sibling::input
+     * 
+     * @param labelText Label text content
+     * @return Locator string
+     */
+    public static String findByLabel(String labelText) {
+        return String.format("xpath=//label[text()='%s']/following-sibling::input | //label[text()='%s']/following-sibling::textarea", 
+                           labelText, labelText);
+    }
+    
+    /**
+     * Find element by placeholder (for inputs with dynamic IDs).
+     * 
+     * Example: findByPlaceholder("Enter username")
+     * Result: //input[@placeholder='Enter username']
+     * 
+     * @param placeholderText Placeholder text
+     * @return Locator string
+     */
+    public static String findByPlaceholder(String placeholderText) {
+        return String.format("xpath=//input[@placeholder='%s'] | //textarea[@placeholder='%s']", 
+                           placeholderText, placeholderText);
+    }
+    
+    /**
+     * Find button by text or aria-label (most reliable for buttons).
+     * 
+     * Example: findButton("Submit")
+     * Result: //button[text()='Submit' or @aria-label='Submit']
+     * 
+     * @param buttonText Button text or aria-label
+     * @return Locator string
+     */
+    public static String findButton(String buttonText) {
+        return String.format("xpath=//button[text()='%s' or @aria-label='%s' or @value='%s']", 
+                           buttonText, buttonText, buttonText);
+    }
+    
+    /**
+     * Find element by position relative to another element.
+     * Useful when target element has no unique attributes.
+     * 
+     * Example: findByRelativePosition("div[@class='header']", "following-sibling", "button", 1)
+     * Result: //div[@class='header']/following-sibling::button[1]
+     * 
+     * @param anchorLocator Anchor element xpath (without xpath= prefix)
+     * @param axis XPath axis (following-sibling, preceding-sibling, parent, ancestor, etc.)
+     * @param targetTag Target element tag
+     * @param position Position index (1-based)
+     * @return Locator string
+     */
+    public static String findByRelativePosition(String anchorLocator, String axis, String targetTag, int position) {
+        return String.format("xpath=//%s/%s::%s[%d]", anchorLocator, axis, targetTag, position);
+    }
+
     /**
      * Navigate through menu hierarchy with expand support.
      * Handles expandable menus, main menus, submenus, and final page navigation.

@@ -346,8 +346,8 @@ public class loginSteps extends browserSelector {
     public void usernameFieldShouldHaveProperLabel() {
         System.out.println("🔹 Step: Verifying username field accessibility");
         SoftAssert localAsserts = new SoftAssert();
-        localAsserts.assertTrue(login.isUsernameFieldVisible(), "Username field should have proper label");
-        System.out.println("✅ Username field has proper label");
+        localAsserts.assertTrue(login.hasUsernameProperLabel(), "Username field should have proper label (id, name, placeholder, or aria-label)");
+        System.out.println("✅ Username field has proper accessibility label");
         localAsserts.assertAll();
     }
 
@@ -355,16 +355,16 @@ public class loginSteps extends browserSelector {
     public void passwordFieldShouldHaveProperLabel() {
         System.out.println("🔹 Step: Verifying password field accessibility");
         SoftAssert localAsserts = new SoftAssert();
-        localAsserts.assertTrue(login.isPasswordFieldVisible(), "Password field should have proper label");
-        System.out.println("✅ Password field has proper label");
+        localAsserts.assertTrue(login.hasPasswordProperLabel(), "Password field should have proper label (id, name, placeholder, or aria-label)");
+        System.out.println("✅ Password field has proper accessibility label");
         localAsserts.assertAll();
     }
 
     @And("Sign In button should be keyboard accessible")
     public void signInButtonShouldBeKeyboardAccessible() {
-        System.out.println("🔹 Step: Verifying Sign In button accessibility");
+        System.out.println("🔹 Step: Verifying Sign In button keyboard accessibility");
         SoftAssert localAsserts = new SoftAssert();
-        localAsserts.assertTrue(login.isSignInButtonVisible(), "Sign In button should be keyboard accessible");
+        localAsserts.assertTrue(login.isSignInButtonKeyboardAccessible(), "Sign In button should be keyboard accessible (focusable and not disabled)");
         System.out.println("✅ Sign In button is keyboard accessible");
         localAsserts.assertAll();
     }

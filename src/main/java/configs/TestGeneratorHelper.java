@@ -29,7 +29,6 @@ public class TestGeneratorHelper {
      * Action extracted from Playwright recording.
      */
     private static class RecordedAction {
-        int id;
         String type;
         String selector;
         String value;
@@ -37,7 +36,6 @@ public class TestGeneratorHelper {
         String stepText;
         
         RecordedAction(int id, String type, String selector, String value) {
-            this.id = id;
             this.type = type;
             this.selector = selector;
             this.value = value;
@@ -116,12 +114,23 @@ public class TestGeneratorHelper {
     
     /**
      * Parse Playwright recording file and extract actions.
+     * Supports both old API (page.click) and modern API (page.locator().click())
      */
     private static List<RecordedAction> parseRecording(String recordingFile) throws IOException {
         List<RecordedAction> actions = new ArrayList<>();
         String content = new String(Files.readAllBytes(Paths.get(recordingFile)));
         
-        // Patterns for different Playwright actions
+        // Patterns for MODERN Playwright Locator API (primary)
+        Pattern locatorClickPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.click\\(");
+        Pattern locatorFillPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
+        Pattern locatorSelectPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.selectOption\\(\"([^\"]+)\"\\)");
+        Pattern locatorCheckPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.check\\(");
+        Pattern locatorPressPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.press\\(\"([^\"]+)\"\\)");
+        Pattern getByRoleClickPattern = Pattern.compile("page\\.getByRole\\(AriaRole\\.\\w+,\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)\\)\\.click\\(");
+        Pattern getByTextClickPattern = Pattern.compile("page\\.getByText\\(\"([^\"]+)\"\\)\\.click\\(");
+        Pattern getByPlaceholderFillPattern = Pattern.compile("page\\.getByPlaceholder\\(\"([^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
+        
+        // Patterns for OLD Playwright API (fallback)
         Pattern clickPattern = Pattern.compile("page\\.click\\(\"([^\"]+)\"\\)");
         Pattern fillPattern = Pattern.compile("page\\.fill\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
         Pattern selectPattern = Pattern.compile("page\\.selectOption\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
@@ -132,47 +141,120 @@ public class TestGeneratorHelper {
         String[] lines = content.split("\\r?\\n");
         int actionId = 1;
         
+        System.out.println("[DEBUG] Parsing recording file with " + lines.length + " lines");
+        
         for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty() || line.startsWith("//") || line.startsWith("import") || line.startsWith("package")) {
+                continue;
+            }
+            
             Matcher matcher;
             
             // Check for navigate
             matcher = navigatePattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found navigate: " + matcher.group(1));
                 actions.add(new RecordedAction(actionId++, "navigate", null, matcher.group(1)));
                 continue;
             }
             
-            // Check for click
-            matcher = clickPattern.matcher(line);
+            // MODERN API - locator().click()
+            matcher = locatorClickPattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found locator click: " + matcher.group(1));
                 actions.add(new RecordedAction(actionId++, "click", matcher.group(1), null));
                 continue;
             }
             
-            // Check for fill
-            matcher = fillPattern.matcher(line);
+            // MODERN API - getByRole().click()
+            matcher = getByRoleClickPattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found getByRole click: " + matcher.group(1));
+                actions.add(new RecordedAction(actionId++, "click", "text=" + matcher.group(1), null));
+                continue;
+            }
+            
+            // MODERN API - getByText().click()
+            matcher = getByTextClickPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found getByText click: " + matcher.group(1));
+                actions.add(new RecordedAction(actionId++, "click", "text=" + matcher.group(1), null));
+                continue;
+            }
+            
+            // MODERN API - locator().fill()
+            matcher = locatorFillPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found locator fill: " + matcher.group(1) + " = " + matcher.group(2));
                 actions.add(new RecordedAction(actionId++, "fill", matcher.group(1), matcher.group(2)));
                 continue;
             }
             
-            // Check for select
-            matcher = selectPattern.matcher(line);
+            // MODERN API - getByPlaceholder().fill()
+            matcher = getByPlaceholderFillPattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found getByPlaceholder fill: " + matcher.group(1) + " = " + matcher.group(2));
+                actions.add(new RecordedAction(actionId++, "fill", "placeholder=" + matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            // MODERN API - locator().selectOption()
+            matcher = locatorSelectPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found locator select: " + matcher.group(1) + " = " + matcher.group(2));
                 actions.add(new RecordedAction(actionId++, "select", matcher.group(1), matcher.group(2)));
                 continue;
             }
             
-            // Check for check
-            matcher = checkPattern.matcher(line);
+            // MODERN API - locator().check()
+            matcher = locatorCheckPattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found locator check: " + matcher.group(1));
                 actions.add(new RecordedAction(actionId++, "check", matcher.group(1), null));
                 continue;
             }
             
-            // Check for press
+            // MODERN API - locator().press()
+            matcher = locatorPressPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found locator press: " + matcher.group(1) + " - " + matcher.group(2));
+                actions.add(new RecordedAction(actionId++, "press", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            // OLD API fallbacks
+            matcher = clickPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found old API click: " + matcher.group(1));
+                actions.add(new RecordedAction(actionId++, "click", matcher.group(1), null));
+                continue;
+            }
+            
+            matcher = fillPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found old API fill: " + matcher.group(1) + " = " + matcher.group(2));
+                actions.add(new RecordedAction(actionId++, "fill", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            matcher = selectPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found old API select: " + matcher.group(1) + " = " + matcher.group(2));
+                actions.add(new RecordedAction(actionId++, "select", matcher.group(1), matcher.group(2)));
+                continue;
+            }
+            
+            matcher = checkPattern.matcher(line);
+            if (matcher.find()) {
+                System.out.println("[DEBUG] Found old API check: " + matcher.group(1));
+                actions.add(new RecordedAction(actionId++, "check", matcher.group(1), null));
+                continue;
+            }
+            
             matcher = pressPattern.matcher(line);
             if (matcher.find()) {
+                System.out.println("[DEBUG] Found old API press: " + matcher.group(1) + " - " + matcher.group(2));
                 actions.add(new RecordedAction(actionId++, "press", matcher.group(1), matcher.group(2)));
                 continue;
             }
@@ -181,7 +263,10 @@ public class TestGeneratorHelper {
         // If no actions found, add a default navigate action
         if (actions.isEmpty()) {
             System.out.println("[WARN] No actions found in recording, adding default navigation");
+            System.out.println("[WARN] Check if recording file contains actual Playwright actions");
             actions.add(new RecordedAction(1, "navigate", null, ""));
+        } else {
+            System.out.println("[SUCCESS] Extracted " + actions.size() + " actions from recording");
         }
         
         return actions;

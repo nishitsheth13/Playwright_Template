@@ -211,6 +211,113 @@ public class login extends utils {
     }
 
     /**
+     * Verifies if username field has proper accessibility label.
+     * Checks for id, name, placeholder, or aria-label attributes.
+     * 
+     * @return true if username field has proper label
+     */
+    public static boolean hasUsernameProperLabel() {
+        try {
+            Locator usernameField = page.locator(username);
+            String id = usernameField.getAttribute("id");
+            String name = usernameField.getAttribute("name");
+            String placeholder = usernameField.getAttribute("placeholder");
+            String ariaLabel = usernameField.getAttribute("aria-label");
+            
+            // Check if field has at least one identifying attribute
+            boolean hasLabel = (id != null && !id.isEmpty()) ||
+                             (name != null && !name.isEmpty()) ||
+                             (placeholder != null && !placeholder.isEmpty()) ||
+                             (ariaLabel != null && !ariaLabel.isEmpty());
+            
+            System.out.println("🔍 Username field accessibility attributes:");
+            System.out.println("   - ID: " + id);
+            System.out.println("   - Name: " + name);
+            System.out.println("   - Placeholder: " + placeholder);
+            System.out.println("   - ARIA Label: " + ariaLabel);
+            
+            return hasLabel;
+        } catch (Exception e) {
+            System.err.println("❌ Error checking username label: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Verifies if password field has proper accessibility label.
+     * Checks for id, name, placeholder, or aria-label attributes.
+     * 
+     * @return true if password field has proper label
+     */
+    public static boolean hasPasswordProperLabel() {
+        try {
+            Locator passwordField = page.locator(password);
+            String id = passwordField.getAttribute("id");
+            String name = passwordField.getAttribute("name");
+            String placeholder = passwordField.getAttribute("placeholder");
+            String ariaLabel = passwordField.getAttribute("aria-label");
+            String type = passwordField.getAttribute("type");
+            
+            // Check if field has proper type and at least one identifying attribute
+            boolean hasLabel = "password".equalsIgnoreCase(type) &&
+                             ((id != null && !id.isEmpty()) ||
+                              (name != null && !name.isEmpty()) ||
+                              (placeholder != null && !placeholder.isEmpty()) ||
+                              (ariaLabel != null && !ariaLabel.isEmpty()));
+            
+            System.out.println("🔍 Password field accessibility attributes:");
+            System.out.println("   - ID: " + id);
+            System.out.println("   - Name: " + name);
+            System.out.println("   - Type: " + type);
+            System.out.println("   - Placeholder: " + placeholder);
+            System.out.println("   - ARIA Label: " + ariaLabel);
+            
+            return hasLabel;
+        } catch (Exception e) {
+            System.err.println("❌ Error checking password label: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Verifies if Sign In button is keyboard accessible.
+     * Checks if button can receive focus and has proper attributes.
+     * 
+     * @return true if button is keyboard accessible
+     */
+    public static boolean isSignInButtonKeyboardAccessible() {
+        try {
+            Locator button = page.locator(SignInButton);
+            String tagName = button.evaluate("el => el.tagName").toString().toLowerCase();
+            String type = button.getAttribute("type");
+            String tabIndex = button.getAttribute("tabindex");
+            String disabled = button.getAttribute("disabled");
+            
+            // Button is keyboard accessible if it's a button/input element
+            // and not explicitly disabled or has negative tabindex
+            boolean isAccessible = ("button".equals(tagName) || "input".equals(tagName)) &&
+                                 (disabled == null || disabled.isEmpty()) &&
+                                 (tabIndex == null || !"-1".equals(tabIndex));
+            
+            System.out.println("🔍 Sign In button accessibility attributes:");
+            System.out.println("   - Tag: " + tagName);
+            System.out.println("   - Type: " + type);
+            System.out.println("   - Tab Index: " + tabIndex);
+            System.out.println("   - Disabled: " + disabled);
+            
+            // Test keyboard focus
+            button.focus();
+            boolean isFocused = button.evaluate("el => el === document.activeElement").toString().equals("true");
+            System.out.println("   - Can receive focus: " + isFocused);
+            
+            return isAccessible && isFocused;
+        } catch (Exception e) {
+            System.err.println("❌ Error checking button keyboard accessibility: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Verifies if Remember Me checkbox is visible.
      * 
      * @return true if Remember Me checkbox is visible

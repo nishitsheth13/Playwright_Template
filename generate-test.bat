@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================
 REM Unified Test Generation CLI
 REM ============================================
@@ -28,70 +29,71 @@ if "%MODE%"=="record" goto :launch_recording
 
 :show_menu
 echo.
-echo ╔════════════════════════════════════════════════════════════╗
-echo ║                                                            ║
-echo ║       🤖 AI Test Automation - Unified CLI 🚀             ║
-echo ║                                                            ║
-echo ║  Choose your test generation method:                      ║
-echo ║                                                            ║
-echo ╚════════════════════════════════════════════════════════════╝
+echo ================================================================
 echo.
-echo  1. 🎥 Record ^& Auto-Generate ^(Fastest - 5-10 min^)
-echo      └─ Record browser actions → Auto-generate all files
+echo        AI Test Automation - Unified CLI
 echo.
-echo  2. 🤖 AI-Assisted Interactive (Full-featured CLI)
-echo      └─ Answer questions OR use JIRA → AI generates test
+echo   Choose your test generation method:
 echo.
-echo  3. ✅ Validate ^& Run Tests ^(Check existing tests^)
-echo      └─ Compile → Validate → Run → Fix errors
+echo ================================================================
 echo.
-echo  0. Exit
+echo  1. [RECORD] Record ^& Auto-Generate (Fastest - 5-10 min)
+echo      ^|-- Record browser actions then auto-generate all files
 echo.
-choice /C 1230 /N /M "👉 Enter your choice (0-3): "
-set CHOICE=%ERRORLEVEL%
+echo  2. [AI CLI] AI-Assisted Interactive (Full-featured CLI)
+echo      ^|-- Answer questions OR use JIRA then AI generates test
+echo.
+echo  3. [VALIDATE] Validate ^& Run Tests (Check existing tests)
+echo      ^|-- Compile, Validate, Run and Fix errors
+echo.
+echo  0. [EXIT] Exit
+echo.
+set /p CHOICE="Enter your choice (0-3): "
+echo.
 
-if %CHOICE%==1 goto :launch_recording
-if %CHOICE%==2 goto :launch_cli
-if %CHOICE%==3 goto :validate_only
-if %CHOICE%==4 exit /b 0
+if "%CHOICE%"=="1" goto :launch_recording
+if "%CHOICE%"=="2" goto :launch_cli
+if "%CHOICE%"=="3" goto :validate_only
+if "%CHOICE%"=="0" exit /b 0
+echo Invalid choice. Please try again.
 goto :show_menu
 
 :launch_recording
 echo.
-echo ════════════════════════════════════════════════════════════
-echo 🎥 Starting Playwright Recording...
-echo ════════════════════════════════════════════════════════════
+echo ================================================================
+echo [RECORD] Starting Playwright Recording...
+echo ================================================================
 echo.
 call record-and-generate.bat
 if errorlevel 1 (
     echo.
-    echo ❌ Recording failed or was cancelled
+    echo [ERROR] Recording failed or was cancelled
     echo.
     pause
     exit /b 1
 )
 echo.
-echo ✅ Recording and generation completed!
+echo [SUCCESS] Recording and generation completed!
 echo.
 pause
 exit /b 0
 
 :launch_cli
 echo.
-echo ════════════════════════════════════════════════════════════
-echo 🤖 Launching AI Interactive CLI...
-echo ════════════════════════════════════════════════════════════
+echo ================================================================
+echo [AI CLI] Launching AI Interactive CLI...
+echo ================================================================
 echo.
 node automation-cli.js
 if errorlevel 1 (
     echo.
-    echo ❌ CLI execution failed
+    echo [ERROR] CLI execution failed
     echo.
     pause
     exit /b 1
 )
 echo.
-echo ✅ CLI completed!
+echo [SUCCESS] CLI completed!
 echo.
 pause
 exit /b 0
@@ -241,9 +243,9 @@ call mvn clean compile test-compile 2>&1 | tee target\compile-output.log
 
 if errorlevel 1 (
     echo.
-    echo ════════════════════════════════════════════════════════════
+    echo ================================================================
     echo   COMPILATION FAILED - Running Smart Auto-Fix
-    echo ════════════════════════════════════════════════════════════
+    echo ================================================================
     echo.
     
     if %COMPILE_ATTEMPT% LSS %MAX_COMPILE_ATTEMPTS% (
@@ -270,30 +272,29 @@ if errorlevel 1 (
             
             echo - Fixing class name capitalizations...
             powershell -Command "Get-ChildItem -Path src -Recurse -Filter *.java | ForEach-Object { $content = Get-Content $_.FullName -Raw; if ($content -match 'public class ([a-z]\w+)') { $className = $Matches[1]; $fixed = $className.Substring(0,1).ToUpper() + $className.Substring(1); $content = $content -replace \"public class $className\", \"public class $fixed\"; Set-Content $_.FullName $content } }"
-        )
-        
+
         echo.
-        echo ════════════════════════════════════════════════════════════
+        echo ================================================================
         echo Common issues auto-fixed:
-        echo   ✓ File name matches class name
-        echo   ✓ Missing imports and inheritance
-        echo   ✓ Protected methods changed to public
-        echo   ✓ Class/method name capitalizations
-        echo   ✓ Variable naming (camelCase)
-        echo   ✓ Syntax errors (semicolons, brackets, typos)
-        echo   ✓ Code cleanup (whitespace, unused imports)
-        echo   ✓ Removed duplicate/unused imports
-        echo   ✓ Organized import statements
-        echo   ✓ Code review warnings reported
-        echo ════════════════════════════════════════════════════════════
+        echo   * File name matches class name
+        echo   * Missing imports and inheritance
+        echo   * Protected methods changed to public
+        echo   * Class/method name capitalizations
+        echo   * Variable naming (camelCase)
+        echo   * Syntax errors (semicolons, brackets, typos)
+        echo   * Code cleanup (whitespace, unused imports)
+        echo   * Removed duplicate/unused imports
+        echo   * Organized import statements
+        echo   * Code review warnings reported
+        echo ================================================================
         echo.
         echo Retrying compilation...
         goto :compile_loop
     ) else (
         echo.
-        echo ════════════════════════════════════════════════════════════
+        echo ================================================================
         echo Maximum compilation attempts reached
-        echo ════════════════════════════════════════════════════════════
+        echo ================================================================
         echo.
         echo Review compilation errors in: target\compile-output.log
         echo.
@@ -307,9 +308,9 @@ if errorlevel 1 (
     )
 ) else (
     echo.
-    echo ════════════════════════════════════════════════════════════
-    echo   ✅ COMPILATION SUCCESSFUL!
-    echo ════════════════════════════════════════════════════════════
+    echo ================================================================
+    echo   [SUCCESS] COMPILATION SUCCESSFUL!
+    echo ================================================================
     echo.
 )
 

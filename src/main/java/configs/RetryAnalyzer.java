@@ -41,13 +41,22 @@ public class RetryAnalyzer implements IRetryAnalyzer {
             retryCount.set(currentRetryCount);
 
             String retryMessage = String.format(
-                    "⚠️ Test Failed: %s | Retry attempt: %d of %d | Thread: %s",
+                    "\n========================================\n" +
+                    "⚠️  TEST RETRY TRIGGERED\n" +
+                    "========================================\n" +
+                    "Test Name: %s\n" +
+                    "Retry Attempt: %d of %d\n" +
+                    "Thread: %s\n" +
+                    "Failure Reason: %s\n" +
+                    "========================================\n",
                 result.getName(),
                     currentRetryCount,
                     maxRetryCount,
-                    Thread.currentThread().getName()
+                    Thread.currentThread().getName(),
+                    result.getThrowable() != null ? result.getThrowable().getMessage() : "Unknown"
             );
             System.out.println(retryMessage);
+            System.err.println(retryMessage); // Also print to stderr for visibility
 
             result.setAttribute("retryCount", currentRetryCount);
             result.setAttribute("maxRetryCount", maxRetryCount);
@@ -57,12 +66,19 @@ public class RetryAnalyzer implements IRetryAnalyzer {
         }
 
         String failMessage = String.format(
-                "❌ Test Failed permanently: %s | Max retries (%d) exhausted | Thread: %s",
+                "\n========================================\n" +
+                "❌ TEST FAILED PERMANENTLY\n" +
+                "========================================\n" +
+                "Test Name: %s\n" +
+                "Max Retries Exhausted: %d\n" +
+                "Thread: %s\n" +
+                "========================================\n",
                 result.getName(),
                 maxRetryCount,
                 Thread.currentThread().getName()
         );
         System.out.println(failMessage);
+        System.err.println(failMessage);
 
         // Clean up ThreadLocal to prevent memory leaks
         retryCount.remove();
