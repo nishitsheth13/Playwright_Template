@@ -2,17 +2,20 @@
 
 Complete BDD framework with Playwright Java, Cucumber, and TestNG.
 
-## 📖 Documentation
+---
 
-**👉 [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md) - SINGLE SOURCE OF TRUTH**
+## 📖 Complete Documentation
 
-Everything in one place with TODO checklists:
-- ✅ Pure Java Recording (NO Node.js needed)
-- ✅ AI-Assisted Generation (Requires Node.js)
-- ✅ Recorder Troubleshooting (with TODO steps)
+**👉 [PLAYWRIGHT_AUTOMATION_COMPLETE.md](PLAYWRIGHT_AUTOMATION_COMPLETE.md) - SINGLE SOURCE OF TRUTH**
+
+Everything you need in one comprehensive guide:
+- ✅ All 4 Test Generation Methods
+- ✅ Code Reusability Checks & Validation
+- ✅ Intelligent Naming System
 - ✅ Dynamic Locator Strategies (9 helper methods)
-- ✅ Complete validation checklists
-- ✅ All fixes and solutions
+- ✅ Complete Troubleshooting Guide
+- ✅ Before & After Comparisons
+- ✅ Best Practices & Quick Reference
 
 ---
 
@@ -20,7 +23,7 @@ Everything in one place with TODO checklists:
 
 ### Fastest Way - Automated Recording
 ```bash
-record-and-generate.bat
+playwright-automation.bat
 ```
 **NO Node.js required!** Record browser actions → Auto-generate tests in 5-10 minutes.
 
@@ -37,67 +40,32 @@ Choose from:
 
 ## 📋 Prerequisites
 
-### For Recording:
-- Java 17+
-- Maven 3.6+
-
-### For AI Interactive CLI:
-- Node.js 18+
-- npm install
-- JIRA credentials configured (optional)
+**For Recording:** Java 17+, Maven 3.6+  
+**For AI CLI:** Node.js 18+, npm
 
 ---
 
 ## 🎯 What This Framework Does
 
-1. **Records browser actions** using Playwright Inspector
-2. **Auto-generates tests:**
-   - Page Objects with locator constants
-   - Cucumber Feature files (Gherkin)
-   - Step Definitions
-3. **Auto-validates & fixes:**
-   - Duplicate step patterns
-   - Protected methods
-   - BASE_URL references
-   - Syntax issues
-4. **Compiles & runs tests** automatically
-5. **Retries flaky tests** (configurable)
-6. **Generates reports** (Extent Reports with screenshots)
-
----
-
-## 📊 Project Structure
-
-```
-src/
-├── main/java/
-│   ├── configs/          # Framework configuration
-│   │   ├── base.java
-│   │   ├── utils.java (9 dynamic locator helpers)
-│   │   ├── TestGeneratorHelper.java
-│   │   ├── RetryAnalyzer.java
-│   │   └── BasePage.java
-│   └── pages/            # Page Objects (auto-generated)
-│       └── {Feature}.java
-└── test/
-    ├── java/
-    │   ├── features/     # Cucumber feature files
-    │   ├── stepDefs/     # Step definitions
-    │   ├── hooks/        # Test hooks
-    │   └── runner/       # TestNG runner
-    └── resources/
-        ├── configurations.properties
-        └── testng.xml
-```
+1. **Records** browser actions using Playwright Inspector
+2. **Auto-generates** Page Objects, Features, and Step Definitions with intelligent naming
+3. **Validates** code reusability and detects existing implementations
+4. **Auto-fixes** duplicates, protected methods, and syntax issues
+5. **Compiles & runs** tests with automatic retries
+6. **Generates** comprehensive HTML reports with screenshots
 
 ---
 
 ## 🔧 Key Features
 
-- ✅ **Pure Java Recording** - No Node.js for recording
-- ✅ **Modern Playwright API** - Locator API support
-- ✅ **Intelligent Parser** - Extracts all recorded actions
-- ✅ **Auto-Validation** - Checks duplicates, syntax
+- ✅ **Pure Java Recording** - No Node.js required for recording
+- ✅ **Intelligent Naming** - Descriptive element and method names
+- ✅ **Code Reusability** - Detects and suggests existing code reuse
+- ✅ **Priority Locators** - Stable selector strategies with dynamic ID detection
+- ✅ **Auto-Validation** - Comprehensive pre/post-generation checks
+- ✅ **Retry Mechanism** - Automatic retry for flaky tests
+- ✅ **JIRA Integration** - Optional story-based test generation
+- ✅ **Detailed Reporting** - Extent Reports with full traceability
 - ✅ **Auto-Fix** - Resolves compilation errors
 - ✅ **Retry Mechanism** - Handles flaky tests
 - ✅ **Rich Reports** - Extent Reports with screenshots
@@ -129,47 +97,47 @@ mvn test -Dcucumber.options="src/test/java/features/Login.feature"
 
 After test execution:
 - **Extent Reports**: `MRITestExecutionReports/Version*/extentReports/testNGExtentReports/html/`
-- **Screenshots**: `MRITestExecutionReports/Version*/screenShots/`
-- **Recordings**: `MRITestExecutionReports/Version*/recordings/`
+---
+
+## 📚 Complete Documentation
+
+👉 **[PLAYWRIGHT_AUTOMATION_COMPLETE.md](PLAYWRIGHT_AUTOMATION_COMPLETE.md)**
+
+For detailed step-by-step guides, troubleshooting, and advanced features.
 
 ---
 
-## 🔍 Validation
+## 🧪 Running Tests
 
-Ensure all recorded steps are covered:
 ```bash
-powershell -ExecutionPolicy Bypass -File validate-coverage.ps1 -FeatureName "Login"
+# Full workflow (record + generate + compile + test)
+playwright-automation.bat
+
+# Compile project
+mvn clean compile
+
+# Run all tests
+mvn test
+
+# Run specific feature
+mvn test -Dcucumber.filter.tags=@Login
+
+# Run TestNG suite
+mvn test -DsuiteXmlFile=src/test/testng.xml
 ```
 
 ---
 
-## 🆘 Common Issues
+## 📊 View Reports
 
-All troubleshooting with TODO checklists in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**:
-- ❌ Steps not saved in recording file → **FIXED (Dec 26, 2025)** - See "Recorder Troubleshooting"
-- ❌ getByLabel() actions not parsed → **FIXED (Dec 26, 2025)**
-- ❌ Recording file created but empty → Troubleshooting section has TODO checklist
-- ❌ Duplicate step definitions → Auto-validation handles this
-- ❌ Dynamic IDs causing failures → Use dynamic locator helpers (9 methods in utils.java)
-- ❌ Elements not found → See Dynamic Locators section
+After test execution, reports are in:
+- **Extent HTML:** `MRITestExecutionReports/Version*/extentReports/testNGExtentReports/html/`
+- **Cucumber HTML:** `target/cucumber-reports/cucumber.html`
+- **Screenshots:** `MRITestExecutionReports/Version*/screenShots/`
 
 ---
 
-## 📚 Documentation Structure
-
-**[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Single comprehensive guide with TODO checklists  
-**README.md** (this file) - Quick reference and entry point
-
----
-
-**🎉 Ready to start? Run `record-and-generate.bat` and follow the prompts!**
-
-**📖 For complete step-by-step TODO checklists, see [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**
-
----
-
-**Last Updated**: December 26, 2025  
-**Framework Version**: 2.0
+**Last Updated:** December 29, 2025
 - Node.js 18+
 - npm install
 - JIRA credentials configured

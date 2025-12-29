@@ -28,105 +28,242 @@ if "%MODE%"=="cli" goto :launch_cli
 if "%MODE%"=="record" goto :launch_recording
 
 :show_menu
+cls
 echo.
-echo ================================================================
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║                                                                        ║
+echo ║        🚀 Playwright Test Automation Framework - Main Menu            ║
+echo ║                                                                        ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
 echo.
-echo        AI Test Automation - Unified CLI
+echo ┌─ SETUP (First Time Users) ─────────────────────────────────────────────┐
+echo │                                                                          │
+echo │  1. 🔧 Complete Setup ^& Installation                                   │
+echo │     └─ Install Playwright, Node.js dependencies, MCP Server            │
+echo │                                                                          │
+echo └──────────────────────────────────────────────────────────────────────────┘
 echo.
-echo   Choose your test generation method:
+echo ┌─ TEST GENERATION (Main Workflows) ─────────────────────────────────────┐
+echo │                                                                          │
+echo │  2. 📹 Record ^& Auto-Generate Test                                     │
+echo │     └─ Record browser actions → Auto-generate test files (5-10 min)    │
+echo │                                                                          │
+echo │  3. 🤖 AI Interactive Test Generation                                   │
+echo │     └─ Answer AI questions → Generate test from conversation           │
+echo │                                                                          │
+echo │  4. 🎫 JIRA + AI Test Generation                                        │
+echo │     └─ Provide JIRA ticket → AI creates test + links to JIRA           │
+echo │                                                                          │
+echo │  5. ✍️  Manual Test Creation Guide                                      │
+echo │     └─ Step-by-step guide for writing tests manually                   │
+echo │                                                                          │
+echo └──────────────────────────────────────────────────────────────────────────┘
 echo.
-echo ================================================================
+echo ┌─ UTILITIES ─────────────────────────────────────────────────────────────┐
+echo │                                                                          │
+echo │  6. ✅ Validate ^& Fix Generated Tests                                  │
+echo │     └─ Compile, validate, fix errors, run tests                        │
+echo │                                                                          │
+echo │  7. 📊 View Test Reports                                                │
+echo │     └─ Open latest Extent Reports in browser                           │
+echo │                                                                          │
+echo │  0. 🚪 Exit                                                              │
+echo │                                                                          │
+echo └──────────────────────────────────────────────────────────────────────────┘
 echo.
-echo  1. [RECORD] Record ^& Auto-Generate (Fastest - 5-10 min)
-echo      ^|-- Record browser actions then auto-generate all files
-echo.
-echo  2. [AI CLI] AI-Assisted Interactive (Full-featured CLI)
-echo      ^|-- Answer questions OR use JIRA then AI generates test
-echo.
-echo  3. [VALIDATE] Validate ^& Run Tests (Check existing tests)
-echo      ^|-- Compile, Validate, Run and Fix errors
-echo.
-echo  0. [EXIT] Exit
-echo.
-set /p CHOICE="Enter your choice (0-3): "
+set /p CHOICE="Enter your choice (0-7): "
 echo.
 
-if "%CHOICE%"=="1" goto :launch_recording
-if "%CHOICE%"=="2" goto :launch_cli
-if "%CHOICE%"=="3" goto :validate_only
-if "%CHOICE%"=="0" exit /b 0
-echo Invalid choice. Please try again.
+if "%CHOICE%"=="1" goto :complete_setup
+if "%CHOICE%"=="2" goto :launch_recording
+if "%CHOICE%"=="3" goto :launch_ai_cli
+if "%CHOICE%"=="4" goto :launch_jira_ai_cli
+if "%CHOICE%"=="5" goto :manual_guide
+if "%CHOICE%"=="6" goto :validate_only
+if "%CHOICE%"=="7" goto :view_reports
+if "%CHOICE%"=="0" goto :exit_script
+echo.
+echo ❌ Invalid choice. Please enter a number between 0-7.
+echo.
+timeout /t 2 >nul
 goto :show_menu
 
+REM ============================================
+REM MENU OPTION HANDLERS
+REM ============================================
+
+REM Option 1: Complete Setup & Installation
+:complete_setup
+cls
+echo.
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        🔧 Complete Setup ^& Installation                               ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
+echo.
+echo This will install all required components:
+echo   ✓ Node.js dependencies (MCP Server, Playwright CLI)
+echo   ✓ Playwright browsers
+echo   ✓ Maven dependencies
+echo   ✓ Validate configurations
+echo.
+echo ⚠️  This may take 5-15 minutes depending on your internet speed.
+echo.
+set /p CONFIRM="Continue with installation? (Y/N): "
+if /i not "%CONFIRM%"=="Y" goto :show_menu
+
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo [1/5] Checking prerequisites...
+echo ════════════════════════════════════════════════════════════════════════
+
+REM Check Node.js
+node --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Node.js is NOT installed! Download from: https://nodejs.org/
+    pause
+    goto :show_menu
+)
+echo ✅ Node.js installed
+
+REM Check Maven
+mvn --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Maven is NOT installed! Download from: https://maven.apache.org/
+    pause
+    goto :show_menu
+)
+echo ✅ Maven installed
+
+REM Check Java
+java -version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Java is NOT installed! Install Java JDK 17+
+    pause
+    goto :show_menu
+)
+echo ✅ Java installed
+
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo [2/5] Installing Node.js dependencies...
+echo ════════════════════════════════════════════════════════════════════════
+cd mcp-server
+if exist package.json (
+    call npm install
+    echo ✅ MCP Server dependencies installed
+)
+cd ..
+
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo [3/5] Installing Playwright browsers...
+echo ════════════════════════════════════════════════════════════════════════
+call mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install"
+echo ✅ Playwright browsers installed
+
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo [4/5] Installing Maven dependencies...
+echo ════════════════════════════════════════════════════════════════════════
+call mvn clean install -DskipTests
+if errorlevel 1 (
+    echo ❌ Failed to install Maven dependencies
+    pause
+    goto :show_menu
+)
+echo ✅ Maven dependencies installed
+
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo [5/5] Validating configuration...
+echo ════════════════════════════════════════════════════════════════════════
+if exist src\test\resources\configurations.properties (
+    echo ✅ Configuration file found
+    echo ⚠️  Update configurations.properties with your application details
+) else (
+    echo ❌ Configuration file NOT found
+)
+
+echo.
+echo ✅ SETUP COMPLETE!
+echo.
+echo Next Steps:
+echo   1. Update configurations.properties with your application details
+echo   2. Choose Option 2 to record your first test
+echo.
+pause
+goto :show_menu
+
+REM Option 2: Record & Auto-Generate Test
 :launch_recording
+cls
 echo.
-echo ================================================================
-echo [RECORD] Starting Playwright Recording...
-echo ================================================================
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        📹 Record ^& Auto-Generate Test                                 ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
 echo.
-call record-and-generate.bat
+call playwright-automation.bat record
 if errorlevel 1 (
-    echo.
-    echo [ERROR] Recording failed or was cancelled
-    echo.
+    echo ❌ Recording failed or was cancelled
     pause
-    exit /b 1
 )
-echo.
-echo [SUCCESS] Recording and generation completed!
-echo.
-pause
-exit /b 0
+goto :show_menu
 
-:launch_cli
+REM Option 3: AI Interactive Test Generation
+:launch_ai_cli
+cls
 echo.
-echo ================================================================
-echo [AI CLI] Launching AI Interactive CLI...
-echo ================================================================
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        🤖 AI Interactive Test Generation                               ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
 echo.
 node automation-cli.js
 if errorlevel 1 (
-    echo.
-    echo [ERROR] CLI execution failed
-    echo.
+    echo ❌ AI CLI execution failed
+    echo Ensure Node.js dependencies are installed (Option 1)
     pause
-    exit /b 1
 )
-echo.
-echo [SUCCESS] CLI completed!
-echo.
-pause
-exit /b 0
+goto :show_menu
 
-:generate_mode
+REM Option 4: JIRA + AI Test Generation
+:launch_jira_ai_cli
+cls
 echo.
-echo Starting AI Interactive CLI...
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        🎫 JIRA + AI Test Generation                                    ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
 echo.
-
-node automation-cli.js
-
+if not exist src\test\resources\jiraConfigurations.properties (
+    echo ❌ JIRA configuration file not found!
+    echo Create: src\test\resources\jiraConfigurations.properties
+    pause
+    goto :show_menu
+)
+set /p JIRA_TICKET="Enter JIRA ticket ID (e.g., PROJ-123): "
+if "%JIRA_TICKET%"=="" goto :show_menu
+node automation-cli.js --mode jira --ticket %JIRA_TICKET%
 if errorlevel 1 (
-    echo.
-    echo ERROR: Failed to run automation-cli.js
-    echo.
-    echo Troubleshooting:
-    echo 1. Check Node.js is installed: node --version
-    echo 2. Ensure you have Node.js 18 or higher
-    echo 3. Run setup first: setup-mcp.bat
-    echo.
+    echo ❌ JIRA test generation failed
+    echo Verify JIRA credentials in jiraConfigurations.properties
     pause
-    exit /b 1
 )
+goto :show_menu
 
+REM Option 5: Manual Test Creation Guide
+:manual_guide
+cls
 echo.
-echo ============================================
-echo Test Generation Complete!
-echo ============================================
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        ✍️  Manual Test Creation Guide                                  ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
 echo.
-choice /C YN /M "Do you want to validate and run tests now"
-if errorlevel 2 exit /b 0
-if errorlevel 1 goto :validate_only
+echo Opening complete documentation: PLAYWRIGHT_AUTOMATION_COMPLETE.md
+echo.
+timeout /t 2 >nul
+start PLAYWRIGHT_AUTOMATION_COMPLETE.md
+goto :show_menu
 
+REM Option 6: Validate & Fix Generated Tests (existing code continues below)
 :validate_only
 echo.
 echo ============================================
@@ -315,8 +452,33 @@ if errorlevel 1 (
 )
 
 echo ============================================
-echo   STEP 5: RUNNING TESTS
+echo   STEP 5: RUNNING TESTS VIA TESTNG.XML
 echo ============================================
+echo.
+echo TestNG Configuration: src/test/testng.xml
+echo.
+echo This will execute all test suites defined in testng.xml
+echo including:
+echo   - Feature files
+echo   - Cucumber scenarios  
+echo   - TestNG configurations
+echo.
+choice /C YN /M "Do you want to run testng.xml now"
+if errorlevel 2 (
+    echo.
+    echo ============================================
+    echo Skipping TestNG execution
+    echo ============================================
+    echo.
+    echo To run tests manually later, use:
+    echo   mvn test -DsuiteXmlFile=src/test/testng.xml
+    echo.
+    echo Or run specific tests:
+    echo   mvn test -Dcucumber.filter.tags=@YourTag
+    echo.
+    pause
+    exit /b 0
+)
 echo.
 
 set MAX_TEST_ATTEMPTS=3
@@ -381,7 +543,72 @@ echo.
 echo Workflow Complete!
 echo.
 pause
+goto :show_menu
+
+REM Option 7: View Test Reports
+:view_reports
+cls
+echo.
+echo ╔════════════════════════════════════════════════════════════════════════╗
+echo ║        📊 View Test Reports                                            ║
+echo ╚════════════════════════════════════════════════════════════════════════╝
+echo.
+echo Searching for latest test reports...
+echo.
+
+REM Find latest report directory
+for /f "delims=" %%i in ('dir /b /ad /o-n "MRITestExecutionReports\Version*" 2^>nul') do (
+    set LATEST_REPORT=%%i
+    goto :found_report
+)
+
+:found_report
+if not defined LATEST_REPORT (
+    echo ❌ No test reports found
+    echo.
+    echo Run tests first using Option 2 or Option 6
+    pause
+    goto :show_menu
+)
+
+echo Latest report found: %LATEST_REPORT%
+echo.
+
+REM Check for Extent Spark Report
+if exist "MRITestExecutionReports\%LATEST_REPORT%\extentReports\testNGExtentReports\spark\spark.html" (
+    echo Opening Extent Spark Report...
+    start "" "MRITestExecutionReports\%LATEST_REPORT%\extentReports\testNGExtentReports\spark\spark.html"
+) else if exist "MRITestExecutionReports\%LATEST_REPORT%\extentReports\testNGExtentReports\html\Html.html" (
+    echo Opening Extent HTML Report...
+    start "" "MRITestExecutionReports\%LATEST_REPORT%\extentReports\testNGExtentReports\html\Html.html"
+) else (
+    echo ⚠️  No HTML reports found in latest directory
+    echo.
+    echo Available reports:
+    dir /b "MRITestExecutionReports\%LATEST_REPORT%\extentReports\testNGExtentReports\" 2>nul
+)
+
+echo.
+echo Report opened in your default browser
+pause
+goto :show_menu
+
+REM Exit Script
+:exit_script
+cls
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo.
+echo   Thank you for using Playwright Test Automation Framework!
+echo.
+echo   📚 Documentation: PLAYWRIGHT_AUTOMATION_COMPLETE.md
+echo   🐛 Issues: Report in your project repository
+echo.
+echo ════════════════════════════════════════════════════════════════════════
+echo.
+timeout /t 2 >nul
 exit /b 0
+
 :end
 pause
 exit /b 0

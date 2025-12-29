@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.regex.*;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -18,6 +20,41 @@ import java.util.stream.Collectors;
  * 3. Test requirement management and validation
  * 
  * This consolidates all test generation functionality into one helper class.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LOCATOR STRATEGY & CODE REUSABILITY (Applied to ALL generation methods)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * LOCATOR PRIORITY ORDER (optimizeSelector method):
+ *   1. Static ID          → //input[@id='Username'] (highest priority)
+ *   2. Relative XPath     → //div[@class='form']//input
+ *   3. Absolute XPath     → /html/body/div/input
+ *   4. Label or Names     → label=Username, @name='submit'
+ *   5. Class name         → .btn-primary, @class='container'
+ *   6. CSS Selectors      → div > button (lowest priority)
+ * 
+ * DYNAMIC ID DETECTION (isDynamicId method):
+ *   - Detects GUIDs: [a-f0-9]{8}-[a-f0-9]{4}-...
+ *   - Detects Timestamps: \d{10,13}
+ *   - Detects Random Hashes: [a-zA-Z0-9]{16,}
+ *   - Warns and downgrades dynamic IDs to lower priority
+ * 
+ * CODE REUSABILITY (Code Reuse Detection Helpers):
+ *   - pageObjectExists()           → Checks if page object already exists
+ *   - detectExistingLogin()        → Finds existing login.java methods
+ *   - containsLoginPattern()       → Detects login/auth patterns in actions
+ *   - hasConfiguredCredentials()   → Checks configurations.properties for test data
+ *   - Automatically imports existing classes (e.g., login.java)
+ *   - Skips regeneration of existing page objects
+ *   - Provides tips for manual integration
+ * 
+ * USAGE:
+ *   All test generation methods (Recording, JIRA, Manual) use these features:
+ *   - Recording-based: generateFromRecording() → parseRecording() → optimizeSelector()
+ *   - JIRA-based: generateFromJiraStory() → [uses same file generation methods]
+ *   - File generation: generatePageObject(), generateFeatureFile(), generateStepDefinitions()
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 public class TestGeneratorHelper {
 
@@ -282,6 +319,13 @@ public class TestGeneratorHelper {
      * Generate test files from Playwright recording.
      * Main entry point for recording-based generation.
      * 
+     * TODO: MANDATORY PRE-GENERATION CHECKS:
+     * 1. Check if page object exists (avoid overwriting custom code)
+     * 2. Verify existing login patterns (reuse existing steps)
+     * 3. Check configurations.properties for test data
+     * 4. Validate all selectors follow priority order
+     * 5. Warn about dynamic IDs before generation
+     * 
      * @param recordingFile Path to recorded-actions.java file
      * @param featureName Name of the feature (e.g., "login", "profile")
      * @param pageUrl Page URL or path
@@ -296,23 +340,150 @@ public class TestGeneratorHelper {
         System.out.println("[INFO] Page URL: " + pageUrl);
         System.out.println("[INFO] JIRA Story: " + jiraStory);
         
+        // MANDATORY - Run pre-generation validation checks
+        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║          CODE REUSABILITY & VALIDATION CHECKS                  ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+        
+        String className = featureName.substring(0, 1).toUpperCase() + featureName.substring(1);
+        boolean hasExistingPageObject = false;
+        boolean hasExistingLogin = false;
+        boolean hasConfiguredData = false;
+        
+        // Check 1: Existing page object
+        System.out.println("🔍 [CHECK 1] Scanning for existing page objects...");
+        if (pageObjectExists(className)) {
+            hasExistingPageObject = true;
+            System.out.println("✅ FOUND: Page object " + className + ".java already exists!");
+            System.out.println("   📁 Location: src/main/java/pages/" + className + ".java");
+            System.out.println("   ⚠️  ACTION: Will SKIP generation to avoid overwriting custom code");
+            System.out.println("   💡 TIP: Review existing methods before manually integrating new actions\n");
+        } else {
+            System.out.println("⚠️  NOT FOUND: Page object doesn't exist - will create new " + className + ".java\n");
+        }
+        
+        // Check 2: Existing login patterns
+        System.out.println("🔍 [CHECK 2] Detecting existing login/authentication code...");
+        String existingLogin = detectExistingLogin();
+        if (existingLogin != null) {
+            hasExistingLogin = true;
+            System.out.println("✅ FOUND: Existing login class: " + existingLogin + ".java");
+            System.out.println("   📁 Location: src/main/java/pages/" + existingLogin + ".java");
+            System.out.println("   📝 REUSE INSTRUCTIONS:");
+            System.out.println("      1. Import in Step Definitions: import pages." + existingLogin + ";");
+            System.out.println("      2. Call login methods: " + existingLogin + ".enterValidUsernameFromConfiguration(page);");
+            System.out.println("      3. Call login methods: " + existingLogin + ".enterValidPasswordFromConfiguration(page);");
+            System.out.println("      4. Call login methods: " + existingLogin + ".clickSignIn(page);");
+            System.out.println("   💡 TIP: Avoid regenerating login steps - reuse existing validated methods!\n");
+        } else {
+            System.out.println("⚠️  NOT FOUND: No existing login patterns detected\n");
+        }
+        
+        // Check 3: Configuration test data
+        System.out.println("🔍 [CHECK 3] Checking for configured test credentials...");
+        if (hasConfiguredCredentials()) {
+            hasConfiguredData = true;
+            System.out.println("✅ FOUND: Test credentials configured in configurations.properties");
+            System.out.println("   📁 Location: src/test/resources/configurations.properties");
+            System.out.println("   📝 USAGE INSTRUCTIONS:");
+            System.out.println("      1. In Page Objects: loadProps.getProperty(\"Username\")");
+            System.out.println("      2. In Step Defs: Call methods like enterValidUsernameFromConfiguration()");
+            System.out.println("      3. In Features: Reference as 'valid credentials from configuration'");
+            System.out.println("   💡 TIP: Use configuration data instead of hardcoded values!\n");
+        } else {
+            System.out.println("⚠️  NOT FOUND: No test credentials in configurations.properties");
+            System.out.println("   💡 TIP: Add Username and Password properties for data-driven testing\n");
+        }
+        
+        System.out.println("═══════════════════════════════════════════════════════════════\n");
+        
         try {
             // Parse recording file
             List<RecordedAction> actions = parseRecording(recordingFile);
             System.out.println("[INFO] Extracted " + actions.size() + " actions from recording");
             
-            // Generate class name (capitalize first letter)
-            String className = featureName.substring(0, 1).toUpperCase() + featureName.substring(1);
+            // TODO: Check 4 & 5 - Validate selectors and dynamic IDs
+            int dynamicIdCount = 0;
+            for (RecordedAction action : actions) {
+                if (action.selector != null && action.selector.contains("@id=")) {
+                    String id = action.selector.replaceAll(".*@id=['\"]([^'\"]+)['\"].*", "$1");
+                    if (isDynamicId(id)) {
+                        dynamicIdCount++;
+                        System.out.println("⚠️ [CHECK 5] Dynamic ID detected: " + id + " (will be downgraded)");
+                    }
+                }
+            }
+            if (dynamicIdCount > 0) {
+                System.out.println("⚠️ [TODO] Found " + dynamicIdCount + " dynamic IDs - consider using relative XPath instead\n");
+            } else {
+                System.out.println("✅ [CHECK 4 & 5] No dynamic IDs detected - selectors are stable\n");
+            }
             
             // Generate files
             generatePageObject(className, pageUrl, jiraStory, actions);
             generateFeatureFile(className, jiraStory, actions);
             generateStepDefinitions(className, jiraStory, actions);
             
-            System.out.println("[SUCCESS] All files generated successfully!");
-            System.out.println("[INFO] Page Object: src/main/java/pages/" + className + ".java");
-            System.out.println("[INFO] Feature File: src/test/java/features/" + className + ".feature");
-            System.out.println("[INFO] Step Definitions: src/test/java/stepDefs/" + className + "Steps.java");
+            System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+            System.out.println("║              GENERATION COMPLETE - NEXT STEPS                  ║");
+            System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+            
+            System.out.println("✅ [SUCCESS] All files generated successfully!\n");
+            
+            System.out.println("📂 GENERATED FILES:");
+            System.out.println("   1. Page Object:      src/main/java/pages/" + className + ".java");
+            System.out.println("   2. Feature File:     src/test/java/features/" + className + ".feature");
+            System.out.println("   3. Step Definitions: src/test/java/stepDefs/" + className + "Steps.java\n");
+            
+            // Integration instructions
+            System.out.println("═══════════════════════════════════════════════════════════════");
+            System.out.println("📝 INTEGRATION CHECKLIST:");
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
+            
+            if (hasExistingLogin) {
+                System.out.println("🔄 [CRITICAL: REUSE EXISTING LOGIN - ACTION REQUIRED!]");
+                System.out.println("   ⚠️  Login pattern detected - DO NOT use generated login steps!");
+                System.out.println("   ✅ Existing login class found: " + existingLogin + ".java");
+                System.out.println("   📝 MANDATORY STEPS:");
+                System.out.println("   ✓ Step 1: Open " + className + "Steps.java");
+                System.out.println("   ✓ Step 2: Find the LOGIN STEPS section (marked with TODO)");
+                System.out.println("   ✓ Step 3: Replace generated code with existing login methods");
+                System.out.println("   ✓ Step 4: Update " + className + ".feature to use these steps:\n");
+                System.out.println("      When User enters valid username from configuration");
+                System.out.println("      And User enters valid password from configuration");
+                System.out.println("      And User clicks on Sign In button\n");
+                System.out.println("   💡 WHY? Existing login is tested, uses config data, and maintains consistency!\n");
+            }
+            
+            if (hasConfiguredData) {
+                System.out.println("📋 [USE CONFIGURED TEST DATA]");
+                System.out.println("   ✓ Test credentials found in configurations.properties");
+                System.out.println("   ✓ Available properties: Username, Password (check config file for more)");
+                System.out.println("   ✓ Usage: loadProps.getProperty(\"Username\")");
+                System.out.println("   ✓ Already implemented in: enterValidUsernameFromConfiguration() methods\n");
+            }
+            
+            System.out.println("🔨 [COMPILE PROJECT]");
+            System.out.println("   ✓ Run: mvn clean compile");
+            System.out.println("   ✓ Or:  generate-test.bat → Option 3 (Validate & Run)\n");
+            
+            System.out.println("🧪 [RUN TESTS]");
+            System.out.println("   ✓ Run specific feature: mvn test -Dcucumber.filter.tags=@" + className);
+            System.out.println("   ✓ Run all tests: mvn test");
+            System.out.println("   ✓ Or use: generate-test.bat → Option 3 (Validate & Run)\n");
+            
+            System.out.println("📊 [VIEW REPORTS]");
+            System.out.println("   ✓ Location: MRITestExecutionReports/Version*/extentReports/");
+            System.out.println("   ✓ Open latest: HTML report in testNGExtentReports/html/\n");
+            
+            System.out.println("💡 [VERIFICATION TIPS]");
+            System.out.println("   ✓ Review generated locators in " + className + ".java");
+            System.out.println("   ✓ Check for dynamic IDs warnings above");
+            System.out.println("   ✓ Verify steps match recorded actions in .feature file");
+            System.out.println("   ✓ Ensure step definitions import correct page objects");
+            System.out.println("   ✓ Test manually before CI/CD integration\n");
+            
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
             
             return true;
         } catch (Exception e) {
@@ -323,8 +494,257 @@ public class TestGeneratorHelper {
     }
     
     /**
+     * Checks if an ID is dynamic (contains GUIDs, timestamps, or random strings).
+     * Dynamic IDs should be avoided as they change between sessions.
+     * 
+     * @param id The ID to check
+     * @return true if the ID appears to be dynamic
+     */
+    private static boolean isDynamicId(String id) {
+        if (id == null || id.isEmpty()) return false;
+        
+        // Check for GUID patterns (e.g., b0f53fd4-e8a9-4e88-87af-4456e7b35a2e)
+        if (id.matches("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")) {
+            return true;
+        }
+        
+        // Check for random hash patterns (long strings of random characters)
+        if (id.length() > 20 && id.matches("[a-zA-Z0-9]{20,}")) {
+            return true;
+        }
+        
+        // Check for timestamp patterns
+        if (id.matches(".*\\d{13,}.*")) { // Unix timestamp
+            return true;
+        }
+        
+        // Check for random suffixes like _1234567890
+        if (id.matches(".*[_-]\\d{8,}$")) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Gets priority comment for a selector (used in generated code).
+     * TODO: MANDATORY - All generated locators must show their priority level
+     * 
+     * @param selector The selector to analyze
+     * @return Priority comment string
+     */
+    private static String getPriorityComment(String selector) {
+        if (selector == null || selector.isEmpty()) return "Unknown Priority";
+        
+        // Priority 1: Static ID
+        if (selector.contains("@id=") || selector.contains("[@id='")) {
+            String id = selector.replaceAll(".*@id=['\"]([^'\"]+)['\"].*", "$1");
+            if (isDynamicId(id)) {
+                return "Priority 3: XPath (Dynamic ID downgraded)";
+            }
+            return "Priority 1: Static ID ⭐⭐⭐⭐⭐";
+        }
+        
+        // Priority 2: Relative XPath (contains //)
+        if (selector.startsWith("//") && !selector.matches("^/html/.*")) {
+            return "Priority 2: Relative XPath ⭐⭐⭐⭐";
+        }
+        
+        // Priority 3: Absolute XPath
+        if (selector.startsWith("/html")) {
+            return "Priority 3: Absolute XPath ⭐⭐⭐";
+        }
+        
+        // Priority 4: Label or Names
+        if (selector.startsWith("label=") || selector.contains("@name=")) {
+            return "Priority 4: Label/Name ⭐⭐";
+        }
+        
+        // Priority 5: Class name
+        if (selector.contains("@class=") || selector.matches(".*\\[@class.*")) {
+            return "Priority 5: Class name ⭐";
+        }
+        
+        // Priority 6: CSS
+        if (selector.startsWith("css=") || (!selector.startsWith("//") && !selector.startsWith("label="))) {
+            return "Priority 6: CSS ⭐";
+        }
+        
+        return "Unknown Priority";
+    }
+    
+    /**
+     * Optimizes a selector by preferring stable locators.
+     * Priority Order:
+     * 1. Static ID (highest priority)
+     * 2. Relative XPath
+     * 3. Absolute XPath
+     * 4. Label or Names
+     * 5. Class name
+     * 6. CSS (lowest priority)
+     * 
+     * @param selector The original selector
+     * @return Optimized selector following priority order
+     */
+    private static String optimizeSelector(String selector) {
+        if (selector == null || selector.isEmpty()) return selector;
+        
+        System.out.println("[DEBUG] Optimizing selector: " + selector);
+        
+        // Common field name to ID mappings (for label conversion)
+        Map<String, String> labelToId = new HashMap<>();
+        labelToId.put("Username", "Username");
+        labelToId.put("Password", "Password");
+        labelToId.put("First Name", "FirstName");
+        labelToId.put("Last Name", "LastName");
+        labelToId.put("Mobile Phone Number", "MobilePhoneNumber");
+        labelToId.put("Email", "Email");
+        labelToId.put("Phone", "Phone");
+        labelToId.put("Address", "Address");
+        labelToId.put("City", "City");
+        labelToId.put("State", "State");
+        labelToId.put("Zip Code", "ZipCode");
+        labelToId.put("Country", "Country");
+        
+        // ========== PRIORITY 1: STATIC ID ==========
+        // Check for ID selectors in various formats
+        String extractedId = null;
+        
+        // Format: #idValue
+        if (selector.startsWith("#")) {
+            extractedId = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
+        }
+        // Format: id='value' or id="value"
+        else if (selector.contains("id=")) {
+            Pattern idPattern = Pattern.compile("id=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = idPattern.matcher(selector);
+            if (matcher.find()) {
+                extractedId = matcher.group(1);
+            }
+        }
+        // Format: [@id='value'] in XPath
+        else if (selector.contains("[@id=") || selector.contains("[@id =")) {
+            Pattern xpathIdPattern = Pattern.compile("@id\\s*=\\s*['\"]([^'\"]+)['\"]");
+            Matcher matcher = xpathIdPattern.matcher(selector);
+            if (matcher.find()) {
+                extractedId = matcher.group(1);
+            }
+        }
+        
+        // If ID found, check if it's static
+        if (extractedId != null && !extractedId.isEmpty()) {
+            if (isDynamicId(extractedId)) {
+                System.out.println("[PRIORITY 1 - SKIP] Dynamic ID detected: " + extractedId + " - Moving to lower priority");
+            } else {
+                System.out.println("[✓ PRIORITY 1] Static ID found: " + extractedId);
+                return "//input[@id='" + extractedId + "'] | //button[@id='" + extractedId + "'] | " +
+                       "//textarea[@id='" + extractedId + "'] | //select[@id='" + extractedId + "'] | " +
+                       "//*[@id='" + extractedId + "']";
+            }
+        }
+        
+        // ========== PRIORITY 2: RELATIVE XPATH ==========
+        // Already in relative XPath format (starts with //)
+        if (selector.startsWith("//") || selector.startsWith("(//")) {
+            System.out.println("[✓ PRIORITY 2] Relative XPath detected");
+            return selector;
+        }
+        
+        // ========== PRIORITY 3: ABSOLUTE XPATH ==========
+        // Absolute XPath (starts with single /)
+        if (selector.startsWith("/") && !selector.startsWith("//")) {
+            System.out.println("[✓ PRIORITY 3] Absolute XPath detected");
+            return selector;
+        }
+        
+        // ========== PRIORITY 4: LABEL OR NAMES ==========
+        // Handle label= locator - try to convert to ID (Priority 1) or XPath
+        if (selector.startsWith("label=")) {
+            String labelText = selector.substring(6).trim();
+            System.out.println("[PRIORITY 4] Label selector detected: " + labelText);
+            
+            // Try to upgrade to Priority 1 (Static ID) if mapping exists
+            String fieldId = labelToId.get(labelText);
+            if (fieldId != null) {
+                System.out.println("[✓ PRIORITY 4 → PRIORITY 1] Label mapped to static ID: " + fieldId);
+                return "//input[@id='" + fieldId + "'] | //textarea[@id='" + fieldId + "'] | //select[@id='" + fieldId + "']";
+            }
+            
+            // Convert to relative XPath (Priority 2)
+            System.out.println("[✓ PRIORITY 4 → PRIORITY 2] Converting label to relative XPath");
+            return "//label[normalize-space(text())='" + labelText + "']/..//input | " +
+                   "//label[normalize-space(text())='" + labelText + "']/..//textarea | " +
+                   "//label[normalize-space(text())='" + labelText + "']/..//select";
+        }
+        
+        // Handle name attribute
+        if (selector.startsWith("name=") || (selector.contains("name=") && !selector.contains("text="))) {
+            Pattern namePattern = Pattern.compile("name=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = namePattern.matcher(selector);
+            if (matcher.find()) {
+                String name = matcher.group(1);
+                System.out.println("[✓ PRIORITY 4] Name attribute found: " + name);
+                return "//input[@name='" + name + "'] | //button[@name='" + name + "'] | " +
+                       "//textarea[@name='" + name + "'] | //select[@name='" + name + "'] | " +
+                       "//*[@name='" + name + "']";
+            }
+        }
+        
+        // Handle placeholder (treat as name-like selector)
+        if (selector.startsWith("placeholder=")) {
+            String placeholder = selector.substring(12).trim();
+            System.out.println("[✓ PRIORITY 4] Placeholder attribute found: " + placeholder);
+            return "//input[@placeholder='" + placeholder + "'] | //textarea[@placeholder='" + placeholder + "']";
+        }
+        
+        // Handle text= locator (treat as name-like)
+        if (selector.startsWith("text=")) {
+            String text = selector.substring(5).trim();
+            System.out.println("[✓ PRIORITY 4] Text selector found: " + text);
+            return "//button[normalize-space(text())='" + text + "'] | " +
+                   "//a[normalize-space(text())='" + text + "'] | " +
+                   "//*[normalize-space(text())='" + text + "']";
+        }
+        
+        // ========== PRIORITY 5: CLASS NAME ==========
+        // CSS class selector: .className
+        if (selector.startsWith(".")) {
+            String className = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
+            System.out.println("[✓ PRIORITY 5] Class name found: " + className);
+            return "//*[contains(@class, '" + className + "')]";
+        }
+        
+        // Attribute selector with class
+        if (selector.contains("class=") && !selector.startsWith("//")) {
+            Pattern classPattern = Pattern.compile("class=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = classPattern.matcher(selector);
+            if (matcher.find()) {
+                String className = matcher.group(1).split("\\s+")[0]; // Get first class
+                System.out.println("[✓ PRIORITY 5] Class attribute found: " + className);
+                return "//*[contains(@class, '" + className + "')]";
+            }
+        }
+        
+        // ========== PRIORITY 6: CSS SELECTORS ==========
+        // Generic CSS selectors (lowest priority)
+        if (!selector.startsWith("//") && !selector.startsWith("/") && 
+            (selector.contains(">") || selector.contains("+") || selector.contains("~") || 
+             selector.contains("[") || selector.contains(":"))) {
+            System.out.println("[✓ PRIORITY 6] CSS selector detected (consider upgrading to higher priority)");
+        }
+        
+        System.out.println("[INFO] Selector used as-is (no optimization applied)");
+        return selector; // Return original if no optimization found
+    }
+    
+    /**
      * Parse Playwright recording file and extract actions.
      * Supports both old API (page.click) and modern API (page.locator().click())
+     * 
+     * LOCATOR OPTIMIZATION: Applies optimizeSelector() to prioritize:
+     * 1. Static ID, 2. Relative XPath, 3. Absolute XPath, 4. Label/Names, 5. Class, 6. CSS
+     * 
+     * DYNAMIC ID DETECTION: Identifies and warns about GUID/timestamp IDs using isDynamicId()
      */
     private static List<RecordedAction> parseRecording(String recordingFile) throws IOException {
         List<RecordedAction> actions = new ArrayList<>();
@@ -377,8 +797,10 @@ public class TestGeneratorHelper {
             // MODERN API - locator().click()
             matcher = locatorClickPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found locator click: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "click", matcher.group(1), null));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found locator click: " + matcher.group(1) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "click", selector, null));
                 continue;
             }
             
@@ -401,8 +823,10 @@ public class TestGeneratorHelper {
             // MODERN API - locator().fill()
             matcher = locatorFillPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found locator fill: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "fill", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found locator fill: " + matcher.group(1) + " = " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "fill", selector, matcher.group(2)));
                 continue;
             }
             
@@ -441,60 +865,76 @@ public class TestGeneratorHelper {
             // MODERN API - locator().selectOption()
             matcher = locatorSelectPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found locator select: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "select", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found locator select: " + matcher.group(1) + " = " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "select", selector, matcher.group(2)));
                 continue;
             }
             
             // MODERN API - locator().check()
             matcher = locatorCheckPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found locator check: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "check", matcher.group(1), null));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found locator check: " + matcher.group(1) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "check", selector, null));
                 continue;
             }
             
             // MODERN API - locator().press()
             matcher = locatorPressPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found locator press: " + matcher.group(1) + " - " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "press", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found locator press: " + matcher.group(1) + " - " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "press", selector, matcher.group(2)));
                 continue;
             }
             
             // OLD API fallbacks
             matcher = clickPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found old API click: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "click", matcher.group(1), null));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found old API click: " + matcher.group(1) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "click", selector, null));
                 continue;
             }
             
             matcher = fillPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found old API fill: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "fill", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found old API fill: " + matcher.group(1) + " = " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "fill", selector, matcher.group(2)));
                 continue;
             }
             
             matcher = selectPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found old API select: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "select", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found old API select: " + matcher.group(1) + " = " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "select", selector, matcher.group(2)));
                 continue;
             }
             
             matcher = checkPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found old API check: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "check", matcher.group(1), null));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found old API check: " + matcher.group(1) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "check", selector, null));
                 continue;
             }
             
             matcher = pressPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found old API press: " + matcher.group(1) + " - " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "press", matcher.group(1), matcher.group(2)));
+                String selector = optimizeSelector(matcher.group(1));
+                System.out.println("[DEBUG] Found old API press: " + matcher.group(1) + " - " + matcher.group(2) + 
+                    (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                actions.add(new RecordedAction(actionId++, "press", selector, matcher.group(2)));
                 continue;
             }
         }
@@ -513,9 +953,22 @@ public class TestGeneratorHelper {
     
     /**
      * Generate Page Object from recorded actions.
+     * 
+     * CODE REUSABILITY: Checks pageObjectExists() to avoid overwriting existing classes
+     * LOCATOR OPTIMIZATION: All selectors optimized via optimizeSelector() before generation
+     * SKIP LOGIC: Returns early if page object exists, preserving custom implementations
      */
     private static void generatePageObject(String className, String pageUrl, String jiraStory, 
                                            List<RecordedAction> actions) throws IOException {
+        
+        // Check if page object already exists
+        if (pageObjectExists(className)) {
+            System.out.println("[REUSE] Page object already exists: " + className + ".java");
+            System.out.println("[INFO] Skipping page object generation - using existing implementation");
+            System.out.println("[TIP] To add new methods, manually edit: src/main/java/pages/" + className + ".java");
+            return; // Skip generation, use existing
+        }
+        
         StringBuilder sb = new StringBuilder();
         
         sb.append("package pages;\n");
@@ -533,13 +986,60 @@ public class TestGeneratorHelper {
         sb.append("\n");
         
         // Generate locator constants with descriptive names
+        // TODO: MANDATORY - Verify all selectors follow priority order
+        int staticIdCount = 0;
+        int labelSelectorCount = 0;
+        int textSelectorCount = 0;
+        
+        // DEDUPLICATION: Track unique locators and methods
+        Set<String> generatedLocators = new HashSet<>();
+        Set<String> generatedMethods = new HashSet<>();
+        Set<String> locatorConstants = new HashSet<>();
+        
         for (RecordedAction action : actions) {
             if (action.selector != null) {
-                sb.append("    // ").append(action.readableName).append("\n");
+                // Skip duplicate locators (same selector string)
+                if (generatedLocators.contains(action.selector)) {
+                    System.out.println("[SKIP DUPLICATE] Locator already exists: " + action.selector);
+                    continue;
+                }
+                
+                // Skip duplicate locator constant names
+                if (locatorConstants.contains(action.elementName)) {
+                    System.out.println("[SKIP DUPLICATE] Locator constant already defined: " + action.elementName);
+                    continue;
+                }
+                
+                generatedLocators.add(action.selector);
+                locatorConstants.add(action.elementName);
+                
+                // Count selector types for validation
+                if (action.selector.contains("@id=") && !isDynamicId(action.selector)) {
+                    staticIdCount++;
+                } else if (action.selector.startsWith("label=")) {
+                    labelSelectorCount++;
+                    System.out.println("⚠️ [WARNING] Using label= selector (Priority 4): " + action.selector);
+                    System.out.println("   TODO: Verify static ID is not available for " + action.readableName);
+                } else if (action.selector.startsWith("text=")) {
+                    textSelectorCount++;
+                }
+                
+                // TODO: Add comment showing priority level used
+                String priorityComment = getPriorityComment(action.selector);
+                sb.append("    // ").append(action.readableName).append(" - ").append(priorityComment).append("\n");
                 sb.append("    private static final String ").append(action.elementName)
                   .append(" = \"").append(escapeJavaString(action.selector)).append("\";\n");
                 sb.append("\n");
             }
+        }
+        
+        // TODO: Log summary of locator types used
+        System.out.println("[LOCATOR SUMMARY] Static IDs: " + staticIdCount + 
+                          ", Labels: " + labelSelectorCount + 
+                          ", Text: " + textSelectorCount);
+        if (labelSelectorCount > 0) {
+            System.out.println("⚠️ [TODO] Review " + labelSelectorCount + 
+                              " label= selectors - consider using XPath with static IDs");
         }
 
         // Generate navigate method
@@ -552,6 +1052,13 @@ public class TestGeneratorHelper {
         // Generate methods for each action with descriptive names
         for (RecordedAction action : actions) {
             if ("navigate".equals(action.type)) continue;
+            
+            // DEDUPLICATION: Skip duplicate methods
+            if (generatedMethods.contains(action.methodName)) {
+                System.out.println("[SKIP DUPLICATE] Method already exists: " + action.methodName + "()");
+                continue;
+            }
+            generatedMethods.add(action.methodName);
             
             sb.append("    /**\n");
             sb.append("     * ").append(action.stepText).append("\n");
@@ -605,60 +1112,245 @@ public class TestGeneratorHelper {
     
     /**
      * Generate Feature file from recorded actions.
+     * 
+     * SCENARIO OUTLINE: Includes actual recorded data in Examples table
+     * CODE REUSABILITY: Detects existing login patterns via containsLoginPattern()
+     *                   Suggests using existing steps from detectExistingLogin()
+     *                   Checks hasConfiguredCredentials() for test data reuse
      */
     private static void generateFeatureFile(String className, String jiraStory, 
                                            List<RecordedAction> actions) throws IOException {
+        
+        boolean hasConfiguredData = hasConfiguredCredentials();
+        boolean hasLoginPattern = containsLoginPattern(actions);
+        String existingLoginClass = detectExistingLogin();
+        boolean shouldReuseLogin = hasLoginPattern && existingLoginClass != null;
+        
+        if (hasLoginPattern && existingLoginClass != null) {
+            System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+            System.out.println("║         FEATURE FILE - LOGIN REUSE RECOMMENDATION              ║");
+            System.out.println("╚════════════════════════════════════════════════════════════════╝");
+            System.out.println("🔄 [REUSE TIP] Login pattern detected in feature");
+            System.out.println("   📝 Consider using existing login steps from " + existingLoginClass + "Steps.java:\n");
+            System.out.println("   RECOMMENDED STEPS:");
+            System.out.println("      Given User navigates to the MRI Energy login page");
+            System.out.println("      When User enters valid username from configuration");
+            System.out.println("      And User enters valid password from configuration");
+            System.out.println("      And User clicks on Sign In button");
+            System.out.println("      Then User should be successfully logged in\n");
+            System.out.println("   💡 TIP: Reference existing step definitions for consistency");
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
+        }
+        
+        if (hasConfiguredData) {
+            System.out.println("📋 [DATA TIP] Configured test data available");
+            System.out.println("   ✓ Use parameterized steps like 'user enters valid username from configuration'");
+            System.out.println("   ✓ Avoid hardcoding credentials in feature files");
+            System.out.println("   ✓ Reference: src/test/resources/configurations.properties\n");
+        }
+        
         StringBuilder sb = new StringBuilder();
+        List<String> exampleColumns = new ArrayList<>();
+        List<String> exampleValues = new ArrayList<>();
         
         sb.append("@").append(jiraStory).append(" @").append(className).append("\n");
         sb.append("Feature: ").append(className).append(" Test\n");
         sb.append("  Auto-generated from Playwright recording\n");
         sb.append("\n");
-        sb.append("  Scenario: Complete ").append(className).append(" workflow\n");
+        
+        // Use Scenario instead of Scenario Outline if login reuse is enabled (no Examples table needed)
+        if (shouldReuseLogin && hasLoginPattern) {
+            sb.append("  Scenario: Complete ").append(className).append(" workflow with existing login\n");
+        } else {
+            sb.append("  Scenario Outline: Complete ").append(className).append(" workflow\n");
+        }
         sb.append("    Given user navigates to ").append(className).append(" page\n");
+        
+        // DEDUPLICATION: Track generated steps in feature file
+        Set<String> generatedFeatureSteps = new HashSet<>();
+        boolean hasGeneratedLoginSteps = false;
         
         for (RecordedAction action : actions) {
             if ("navigate".equals(action.type)) continue;
             
+            // Check if this is a login-related action
+            boolean isLoginAction = isLoginRelatedAction(action);
+            
+            // If login reuse enabled and this is login action, replace with existing login steps
+            if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
+                sb.append("    # ═══ LOGIN STEPS - USING EXISTING METHODS ═══\n");
+                sb.append("    When User enters valid username from configuration\n");
+                sb.append("    And User enters valid password from configuration\n");
+                sb.append("    And User clicks on Sign In button\n");
+                sb.append("    # ═══════════════════════════════════════════════\n");
+                hasGeneratedLoginSteps = true;
+                continue; // Skip generating the hardcoded login step
+            }
+            
+            String featureStep = "";
+            
             switch (action.type) {
                 case "click":
-                    sb.append("    When ").append(action.stepText).append("\n");
+                    featureStep = "When " + action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+                    
+                    sb.append("    ").append(featureStep).append("\n");
                     break;
                 case "fill":
-                    sb.append("    And user enters \"{string}\" into ").append(action.readableName.toLowerCase()).append("\n");
+                    // Skip login-related fill actions if login reuse is enabled
+                    if (shouldReuseLogin && isLoginRelatedAction(action)) {
+                        System.out.println("[SKIP LOGIN FIELD] Not adding to feature file (using existing login): " + action.readableName);
+                        continue;
+                    }
+                    
+                    String columnName = action.readableName.toLowerCase().replace(" ", "");
+                    featureStep = "And user enters \"<" + columnName + ">\" into " + action.readableName.toLowerCase();
+                    
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+                    
+                    sb.append("    ").append(featureStep).append("\n");
+                    exampleColumns.add(columnName);
+                    exampleValues.add(action.value != null ? action.value : "");
                     break;
                 case "select":
-                    sb.append("    And user selects \"{string}\" from ").append(action.readableName.toLowerCase()).append("\n");
+                    String selectColumn = action.readableName.toLowerCase().replace(" ", "");
+                    featureStep = "And user selects \"<" + selectColumn + ">\" from " + action.readableName.toLowerCase();
+                    
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+                    
+                    sb.append("    ").append(featureStep).append("\n");
+                    exampleColumns.add(selectColumn);
+                    exampleValues.add(action.value != null ? action.value : "");
                     break;
                 case "check":
-                    sb.append("    And ").append(action.stepText).append("\n");
+                    featureStep = "And " + action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+                    
+                    sb.append("    ").append(featureStep).append("\n");
                     break;
                 case "press":
-                    sb.append("    And ").append(action.stepText).append("\n");
+                    featureStep = "And " + action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+                    
+                    sb.append("    ").append(featureStep).append("\n");
                     break;
             }
         }
         
         sb.append("    Then page should be updated\n");
         
+        // Add Examples table with actual recorded data
+        if (!exampleColumns.isEmpty()) {
+            sb.append("\n    Examples:\n");
+            sb.append("      | ");
+            sb.append(String.join(" | ", exampleColumns));
+            sb.append(" |\n");
+            sb.append("      | ");
+            sb.append(String.join(" | ", exampleValues));
+            sb.append(" |\n");
+        }
+        
         Files.write(Paths.get("src/test/java/features/" + className + ".feature"), sb.toString().getBytes());
     }
     
     /**
      * Generate Step Definitions from recorded actions.
+     * 
+     * CODE REUSABILITY: 
+     *   - Detects login patterns via containsLoginPattern()
+     *   - Imports existing classes via detectExistingLogin()
+     *   - Adds documentation about reused methods
+     *   - Provides tips for integrating with existing login steps
      */
     private static void generateStepDefinitions(String className, String jiraStory, 
                                                List<RecordedAction> actions) throws IOException {
+        
+        // Detect if we need to import existing page objects for reuse
+        boolean hasLoginPattern = containsLoginPattern(actions);
+        String existingLoginClass = detectExistingLogin();
+        boolean shouldReuseLogin = hasLoginPattern && existingLoginClass != null;
+        
+        if (shouldReuseLogin) {
+            System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+            System.out.println("║            CODE REUSE OPPORTUNITY DETECTED                     ║");
+            System.out.println("╚════════════════════════════════════════════════════════════════╝");
+            System.out.println("🔄 [LOGIN REUSE] Detected login pattern in recorded actions");
+            System.out.println("   ✅ Existing login class: " + existingLoginClass + ".java");
+            System.out.println("   📁 Location: src/main/java/pages/" + existingLoginClass + ".java\n");
+            
+            System.out.println("📝 MANUAL INTEGRATION STEPS:");
+            System.out.println("   1. Open generated file: src/test/java/stepDefs/" + className + "Steps.java");
+            System.out.println("   2. Locate login-related step definitions (look for 'username', 'password', 'signin')");
+            System.out.println("   3. Replace with existing login methods:\n");
+            System.out.println("      INSTEAD OF:");
+            System.out.println("        @When(\"user enters text into username\")");
+            System.out.println("        public void enterUsername(String text) {");
+            System.out.println("            " + className + ".enterUsername(page, text);");
+            System.out.println("        }\n");
+            System.out.println("      USE THIS:");
+            System.out.println("        @When(\"user enters valid username from configuration\")");
+            System.out.println("        public void enterValidUsername() {");
+            System.out.println("            " + existingLoginClass + ".enterValidUsernameFromConfiguration(page);");
+            System.out.println("        }\n");
+            
+            System.out.println("   4. Update Feature file: src/test/java/features/" + className + ".feature");
+            System.out.println("      Change step text to match existing login steps\n");
+            
+            System.out.println("💡 BENEFITS:");
+            System.out.println("   ✓ Reuses tested and validated login methods");
+            System.out.println("   ✓ Uses configured credentials from configurations.properties");
+            System.out.println("   ✓ Consistent login behavior across all tests");
+            System.out.println("   ✓ Less code duplication and maintenance\n");
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
+        }
+        
         StringBuilder sb = new StringBuilder();
         
         sb.append("package stepDefs;\n");
         sb.append("import configs.browserSelector;\n");
         sb.append("import io.cucumber.java.en.*;\n");
         sb.append("import pages.").append(className).append(";\n");
+        
+        // Import existing login class if detected and different from current class
+        if (shouldReuseLogin && !className.equals(existingLoginClass)) {
+            sb.append("import pages.").append(existingLoginClass).append(";\n");
+        }
+        
         sb.append("\n");
         sb.append("/**\n");
         sb.append(" * Step Definitions for ").append(className).append("\n");
         sb.append(" * Auto-generated from Playwright recording by Pure Java Generator\n");
+        if (shouldReuseLogin && !className.equals(existingLoginClass)) {
+            sb.append(" * Reuses existing login methods from ").append(existingLoginClass).append(".java\n");
+        }
         sb.append(" * @story ").append(jiraStory).append("\n");
         sb.append(" */\n");
         sb.append("public class ").append(className).append("Steps extends browserSelector {\n");
@@ -670,14 +1362,75 @@ public class TestGeneratorHelper {
         sb.append("    }\n");
         sb.append("\n");
         
+        // DEDUPLICATION: Track generated step definitions
+        Set<String> generatedSteps = new HashSet<>();
+        Set<String> generatedStepMethods = new HashSet<>();
+        
+        // Track if we're generating login steps
+        boolean hasGeneratedLoginSteps = false;
+        
         for (RecordedAction action : actions) {
             if ("navigate".equals(action.type)) continue;
+            
+            // Check if this is a login-related action
+            boolean isLoginAction = isLoginRelatedAction(action);
             
             // Generate camelCase method name for step definition
             String stepMethodName = action.methodName.substring(0, 1).toLowerCase() + action.methodName.substring(1);
 
+            // DEDUPLICATION: Skip duplicate step methods
+            if (generatedStepMethods.contains(stepMethodName)) {
+                System.out.println("[SKIP DUPLICATE] Step definition method already exists: " + stepMethodName + "()");
+                continue;
+            }
+
+            // If login reuse is enabled and this is a login action, skip generating step and add comment
+            if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
+                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
+                sb.append("    // 🔄 LOGIN STEPS - REUSE EXISTING METHODS\n");
+                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
+                sb.append("    // TODO: The following login steps were detected in your recording.\n");
+                sb.append("    // Instead of using the generated page object methods, use existing login methods:\n");
+                sb.append("    //\n");
+                sb.append("    // RECOMMENDED APPROACH:\n");
+                sb.append("    //   @When(\"User enters valid username from configuration\")\n");
+                sb.append("    //   public void enterValidUsername() {\n");
+                sb.append("    //       ").append(existingLoginClass).append(".enterValidUsernameFromConfiguration(page);\n");
+                sb.append("    //   }\n");
+                sb.append("    //\n");
+                sb.append("    //   @And(\"User enters valid password from configuration\")\n");
+                sb.append("    //   public void enterValidPassword() {\n");
+                sb.append("    //       ").append(existingLoginClass).append(".enterValidPasswordFromConfiguration(page);\n");
+                sb.append("    //   }\n");
+                sb.append("    //\n");
+                sb.append("    //   @And(\"User clicks on Sign In button\")\n");
+                sb.append("    //   public void clickSignIn() {\n");
+                sb.append("    //       ").append(existingLoginClass).append(".clickSignIn(page);\n");
+                sb.append("    //   }\n");
+                sb.append("    //\n");
+                sb.append("    // Update your feature file to use:\n");
+                sb.append("    //   When User enters valid username from configuration\n");
+                sb.append("    //   And User enters valid password from configuration\n");
+                sb.append("    //   And User clicks on Sign In button\n");
+                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
+                sb.append("\n");
+                hasGeneratedLoginSteps = true;
+            }
+            
+            // Mark step method as generated
+            generatedStepMethods.add(stepMethodName);
+
             switch (action.type) {
                 case "click":
+                    String clickStepText = action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate step annotations
+                    if (generatedSteps.contains(clickStepText)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + clickStepText);
+                        continue;
+                    }
+                    generatedSteps.add(clickStepText);
+                    
                     sb.append("    @When(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
                     sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
@@ -688,6 +1441,14 @@ public class TestGeneratorHelper {
                     
                 case "fill":
                     String fillStepText = "user enters {string} into " + action.readableName.toLowerCase();
+                    
+                    // DEDUPLICATION: Skip duplicate step annotations
+                    if (generatedSteps.contains(fillStepText)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + fillStepText);
+                        continue;
+                    }
+                    generatedSteps.add(fillStepText);
+                    
                     sb.append("    @And(\"").append(fillStepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("(String text) {\n");
                     sb.append("        System.out.println(\"📍 Step: Entering text into ").append(action.readableName).append(": '\" + text + \"'\");\n");
@@ -698,6 +1459,14 @@ public class TestGeneratorHelper {
                     
                 case "select":
                     String selectStepText = "user selects {string} from " + action.readableName.toLowerCase();
+                    
+                    // DEDUPLICATION: Skip duplicate step annotations
+                    if (generatedSteps.contains(selectStepText)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + selectStepText);
+                        continue;
+                    }
+                    generatedSteps.add(selectStepText);
+                    
                     sb.append("    @And(\"").append(selectStepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("(String option) {\n");
                     sb.append("        System.out.println(\"📍 Step: Selecting option from ").append(action.readableName).append(": '\" + option + \"'\");\n");
@@ -707,6 +1476,15 @@ public class TestGeneratorHelper {
                     break;
                     
                 case "check":
+                    String checkStepText = action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate step annotations
+                    if (generatedSteps.contains(checkStepText)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + checkStepText);
+                        continue;
+                    }
+                    generatedSteps.add(checkStepText);
+                    
                     sb.append("    @And(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
                     sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
@@ -716,6 +1494,15 @@ public class TestGeneratorHelper {
                     break;
                     
                 case "press":
+                    String pressStepText = action.stepText;
+                    
+                    // DEDUPLICATION: Skip duplicate step annotations
+                    if (generatedSteps.contains(pressStepText)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + pressStepText);
+                        continue;
+                    }
+                    generatedSteps.add(pressStepText);
+                    
                     sb.append("    @And(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
                     sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
@@ -746,6 +1533,122 @@ public class TestGeneratorHelper {
                   .replace("\n", "\\n")
                   .replace("\r", "\\r")
                   .replace("\t", "\\t");
+    }
+    
+    // ========================================================================
+    // CODE REUSE DETECTION HELPERS
+    // ========================================================================
+    
+    /**
+     * Check if an action is login-related.
+     */
+    private static boolean isLoginRelatedAction(RecordedAction action) {
+        if (action == null) return false;
+        
+        String selector = action.selector != null ? action.selector.toLowerCase() : "";
+        String readableName = action.readableName != null ? action.readableName.toLowerCase() : "";
+        String value = action.value != null ? action.value.toLowerCase() : "";
+        
+        return selector.contains("username") || selector.contains("password") || 
+               selector.contains("login") || selector.contains("signin") || selector.contains("sign-in") ||
+               readableName.contains("username") || readableName.contains("password") ||
+               readableName.contains("login") || readableName.contains("signin") ||
+               value.contains("username") || value.contains("password");
+    }
+
+    /**
+     * Check if a page object already exists.
+     * @param className The page object class name
+     * @return true if the page object exists
+     */
+    private static boolean pageObjectExists(String className) {
+        try {
+            Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
+            return Files.exists(pageObjectPath);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Detect if existing page objects have login methods.
+     * Returns the class name that contains login functionality.
+     * @return Class name with login methods, or null if not found
+     */
+    private static String detectExistingLogin() {
+        try {
+            Path pagesDir = Paths.get("src/main/java/pages");
+            if (!Files.exists(pagesDir)) return null;
+            
+            // Check for login.java first (common naming convention)
+            Path loginPage = pagesDir.resolve("login.java");
+            if (Files.exists(loginPage)) {
+                String content = new String(Files.readAllBytes(loginPage));
+                // Verify it has login methods
+                if (content.contains("enterValidUsername") || 
+                    content.contains("enterUsername") ||
+                    content.contains("login")) {
+                    System.out.println("[REUSE] Found existing login.java with login methods");
+                    return "login";
+                }
+            }
+            
+            // Search all page objects for login patterns
+            Files.list(pagesDir)
+                 .filter(path -> path.toString().endsWith(".java"))
+                 .forEach(path -> {
+                     try {
+                         String content = new String(Files.readAllBytes(path));
+                         if (content.toLowerCase().contains("login") && 
+                             (content.contains("enterUsername") || content.contains("enterPassword"))) {
+                             String className = path.getFileName().toString().replace(".java", "");
+                             System.out.println("[REUSE] Found login methods in: " + className);
+                         }
+                     } catch (IOException e) {
+                         // Ignore
+                     }
+                 });
+                 
+            return "login"; // Default to login class name
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Detect if recorded actions contain login patterns.
+     * @param actions List of recorded actions
+     * @return true if login pattern detected
+     */
+    private static boolean containsLoginPattern(List<RecordedAction> actions) {
+        for (RecordedAction action : actions) {
+            String selector = action.selector != null ? action.selector.toLowerCase() : "";
+            String value = action.value != null ? action.value.toLowerCase() : "";
+            
+            if (selector.contains("username") || selector.contains("password") ||
+                selector.contains("login") || selector.contains("signin") ||
+                value.contains("username") || value.contains("password")) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Check if configurations.properties has test credentials.
+     * @return true if credentials are configured
+     */
+    private static boolean hasConfiguredCredentials() {
+        try {
+            Path configPath = Paths.get("src/test/resources/configurations.properties");
+            if (!Files.exists(configPath)) return false;
+            
+            String content = new String(Files.readAllBytes(configPath));
+            return content.contains("username") || content.contains("Username") ||
+                   content.contains("password") || content.contains("Password");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ========================================================================
