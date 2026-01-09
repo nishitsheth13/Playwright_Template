@@ -1,0 +1,45 @@
+# GitHub Actions workflow to validate Java code on every push/PR
+# This prevents the 'methodName instead of main' issue from happening again
+
+name: Java Code Validation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.java'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.java'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    
+    - name: Run Java validation script
+      shell: pwsh
+      run: |
+        ./validate-java-code.ps1 -Verbose
+    
+    - name: Check for main method issues
+      run: |
+        if grep -r "public static void methodName(String\[\] args)" src/; then
+          echo "❌ ERROR: Found 'methodName' instead of 'main'"
+          echo "Please change 'methodName' to 'main'"
+          exit 1
+        fi
+        echo "✅ Main method signatures are correct"
+    
+    - name: Validate class compilation
+      run: |
+        mvn clean compile -DskipTests

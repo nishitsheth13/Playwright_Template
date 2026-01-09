@@ -12,12 +12,15 @@
         <maven.compiler.source>22</maven.compiler.source>
         <maven.compiler.target>22</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <suiteXmlFile>src/test/testng.xml</suiteXmlFile>
+        <suiteXmlFile>${project.basedir}/src/test/testng.xml</suiteXmlFile>
         <!-- Suppress warnings from Maven's internal Guice usage of deprecated APIs -->
         <argLine>
             --add-opens java.base/java.lang=ALL-UNNAMED
             --add-opens java.base/java.util=ALL-UNNAMED
-            --add-opens java.base/sun.misc=ALL-UNNAMED
+            --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+            -Djava.util.logging.config.file=logging.properties
+            -XX:+IgnoreUnrecognizedVMOptions
+            -XX:-PrintWarnings
         </argLine>
     </properties>
     <dependencies>

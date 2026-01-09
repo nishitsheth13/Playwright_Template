@@ -3,6 +3,7 @@ package listener;
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
 import com.aventstack.extentreports.Status;
+import configs.AITestFramework;
 import configs.jira.jiraClient;
 import configs.loadProps;
 import configs.testNGExtentReporter;
@@ -28,6 +29,10 @@ public class listener extends utils implements ITestListener {
     public void onStart(ITestContext context) {
         System.out.println("📊 Starting Test Suite: " + context.getName());
         System.out.println("📁 Reports will be generated in: " + System.getProperty("user.dir") + "/MRITestExecutionReports/");
+
+        // Initialize AI Test Framework
+        System.out.println("🤖 Initializing AI Test Framework...");
+        AITestFramework.initialize();
     }
 
     public void onTestStart(ITestResult result) {
@@ -44,12 +49,18 @@ public class listener extends utils implements ITestListener {
     }
 
     public void onTestSuccess(ITestResult result) {
+        extentTest.get().log(Status.PASS, "Test Passed");
 
-        extentTest.get().log(Status.PASS, "Successful");
+        // Record execution in AI Framework
+        long duration = result.getEndMillis() - result.getStartMillis();
+        AITestFramework.TestExecutionRecord record =
+            new AITestFramework.TestExecutionRecord(result.getName(), "PASS", duration);
+        AITestFramework.recordExecution(record);
+
         String issueKey = getDynamicIssueKey(result);
         if (issueKey != null && isJiraEnabled) {
             // If JIRA integration is enabled, log the result in JIRA
-            jiraClient.handleTestCaseResultSmart(
+            jiraClient.updateIssueWithTestResult(
                     issueKey,
                     "Automation Test Passed - " + result.getMethod().getMethodName(),
                     passCommentText,
@@ -61,8 +72,26 @@ public class listener extends utils implements ITestListener {
 
     public void onTestFailure(ITestResult result) {
         try {
+            // Check if this test will be retried
+            boolean willRetry = result.getAttribute("isRetry") != null && (Boolean) result.getAttribute("isRetry");
+
+            if (willRetry) {
+                System.out.println("🔄 Test failed but will be retried: " + result.getName());
+                // Log to extent but don't update JIRA yet
+                extentTest.get().log(Status.WARNING, "Test Failed - Will Retry");
+                extentTest.get().warning(result.getThrowable());
+                return; // Skip JIRA update for retried tests
+            }
+
             extentTest.get().log(Status.FAIL, "Test Failed");
             extentTest.get().fail(result.getThrowable());
+
+            // Record execution in AI Framework
+            long duration = result.getEndMillis() - result.getStartMillis();
+            AITestFramework.TestExecutionRecord record =
+                new AITestFramework.TestExecutionRecord(result.getName(), "FAIL", duration);
+            record.failureReason = result.getThrowable() != null ? result.getThrowable().getMessage() : "Unknown";
+            AITestFramework.recordExecution(record);
 
             // Check if page is available (should be set by browserSelector.setUp())
             if (page == null) {
@@ -92,19 +121,28 @@ public class listener extends utils implements ITestListener {
             File screenshotFile = null;
             if (page != null) {
                 try {
+                    // getScreenShotPath already creates the screenshot file
                     String screenshotPath = getScreenShotPath(result.getName());
                     screenshotFile = new File(screenshotPath);
 
-                    // Add to Extent Report
-                    extentTest.get().addScreenCaptureFromPath(screenshotFile.getAbsolutePath());
+                    // Wait a moment for file system to complete write
+                    Thread.sleep(500);
 
-                    System.out.println("📸 Screenshot created for JIRA:");
-                    System.out.println("   - Path: " + screenshotFile.getAbsolutePath());
-                    System.out.println("   - Exists: " + screenshotFile.exists());
-                    System.out.println("   - Size: " + (screenshotFile.exists() ? screenshotFile.length() + " bytes" : "N/A"));
+                    // Verify screenshot file was created successfully
+                    if (screenshotFile.exists() && screenshotFile.length() > 0) {
+                        // Add to Extent Report
+                        extentTest.get().addScreenCaptureFromPath(screenshotFile.getAbsolutePath());
+
+                        System.out.println("📸 Screenshot created successfully:");
+                        System.out.println("   - Path: " + screenshotFile.getAbsolutePath());
+                        System.out.println("   - Size: " + screenshotFile.length() + " bytes");
+                    } else {
+                        System.err.println("⚠️ Screenshot file not created or empty: " + screenshotPath);
+                        screenshotFile = null;
+                    }
                 } catch (Exception e) {
                     System.err.println("❌ Failed to create screenshot: " + e.getMessage());
-                    System.err.println("   Exception type: " + e.getClass().getName());
+                    e.printStackTrace();
                     screenshotFile = null;
                 }
             } else {
@@ -125,7 +163,7 @@ public class listener extends utils implements ITestListener {
             if (isJiraEnabled) {
                 if (issueKey != null) {
                     // If JIRA integration is enabled, log the result in JIRA
-                    jiraClient.handleTestCaseResultSmart(
+                    jiraClient.updateIssueWithTestResult(
                             issueKey,
                             summary,
                             description,
@@ -133,7 +171,7 @@ public class listener extends utils implements ITestListener {
                             true
                     );
                 } else {
-                    jiraClient.createBug(summary, description, screenshotFile);
+                    jiraClient.createBugInJIRA(summary, description, screenshotFile);
                     System.out.println("⚠️ No JIRA IssueKey provided or mapped. Creating New Jira Issue");
                 }
             }
@@ -181,6 +219,22 @@ public class listener extends utils implements ITestListener {
         } else {
             System.err.println("⚠️ Warning: Extent Reports was null, report may not be generated");
         }
+
+        // Generate and display AI Framework health report
+        System.out.println("\n" + AITestFramework.generateHealthReport());
+
+        // Check for flaky tests and alert
+        java.util.List<AITestFramework.TestHealthStatus> flakyTests = AITestFramework.getFlakyTests();
+        if (!flakyTests.isEmpty()) {
+            System.err.println("\n⚠️ ALERT: " + flakyTests.size() + " flaky tests detected!");
+            for (AITestFramework.TestHealthStatus test : flakyTests) {
+                System.err.println("  - " + test.testName + " (Success: " +
+                    String.format("%.1f%%", test.successRate) + ")");
+            }
+        }
+
+        // Shutdown AI framework
+        AITestFramework.shutdown();
     }
 
 
@@ -216,3 +270,11 @@ public class listener extends utils implements ITestListener {
 // ... existing code ...
     // Leave other events if not needed
 }
+
+
+
+
+
+
+
+

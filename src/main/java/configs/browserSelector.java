@@ -1,15 +1,15 @@
 package configs;
 
-import com.microsoft.playwright.Browser;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.BrowserType;
-import com.microsoft.playwright.Playwright;
-import pages.login;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Playwright;
+
 
 public class browserSelector extends base {
     public static String brows = loadProps.getProperty("Browser");
@@ -29,7 +29,8 @@ public class browserSelector extends base {
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
 
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -46,14 +47,14 @@ public class browserSelector extends base {
             page.navigate(URL);
             utils.version();
 
-
         } else if (brows.equalsIgnoreCase("edge")) {
             Playwright playwright = Playwright.create();
             Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
                     .setChannel("msedge")
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -82,7 +83,8 @@ public class browserSelector extends base {
             Browser browser = playwright.firefox().launch(new BrowserType.LaunchOptions()
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -111,12 +113,10 @@ public class browserSelector extends base {
             System.out.println("This Browser is not found in your system.");
         }
 
-
     }
 
-
     public static void tearDown() throws Exception {
-        login.logout();
+
         if (page != null) {
             page.close();
             if (Recording && !headless) {
@@ -127,8 +127,8 @@ public class browserSelector extends base {
         if (context != null) {
             if (traceLog) {
                 context.tracing().stop(new com.microsoft.playwright.Tracing.StopOptions()
-                        .setPath(Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + 
-                        loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/trace.zip")));
+                        .setPath(Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" +
+                                loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/trace.zip")));
             }
             context.close();
         }
@@ -141,8 +141,7 @@ public class browserSelector extends base {
 
     }
 
-
-    //For Parallel Execution using Testng XML
+    // For Parallel Execution using Testng XML
 
     public static void LaunchBrowser(String browserSelection) throws Exception {
         if (browserSelection.equalsIgnoreCase("chrome")) {
@@ -151,7 +150,8 @@ public class browserSelector extends base {
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
 
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -176,7 +176,8 @@ public class browserSelector extends base {
                     .setChannel("msedge")
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -200,7 +201,8 @@ public class browserSelector extends base {
             Browser browser = playwright.firefox().launch(new BrowserType.LaunchOptions()
                     .setArgs(Collections.singletonList("--start-maximized"))
                     .setHeadless(headless));
-            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
+            Path videoDir = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/"
+                    + loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/recordings/");
             if (!Files.exists(videoDir)) {
                 Files.createDirectories(videoDir);
             }
@@ -244,6 +246,5 @@ public class browserSelector extends base {
             playwright.close();
         }
     }
-
 
 }

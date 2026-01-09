@@ -1,11 +1,14 @@
 package configs.jira;
 
-import configs.loadProps;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-
-import java.io.File;
-import java.util.*;
 
 /**
  * JIRA REST API client for automated defect management.
@@ -19,7 +22,7 @@ public class jiraClient {
      * @return JIRA base URL ending with /
      */
     private static String getJiraBaseUrl() {
-        String baseUrl = loadProps.getJIRAConfig("JIRA_BASE_URL");
+        String baseUrl = configs.loadProps.getJIRAConfig("JIRA_BASE_URL");
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
             System.err.println("❌ JIRA_BASE_URL not configured");
             return null;
@@ -34,14 +37,14 @@ public class jiraClient {
      * @return Base64 encoded authorization header
      */
     private static String getAuthHeader() {
-        String email = loadProps.getJIRAConfig("JIRA_EMAIL");
-        String token = loadProps.getJIRAConfig("JIRA_API_TOKEN");
-        
+        String email = configs.loadProps.getJIRAConfig("JIRA_EMAIL");
+        String token = configs.loadProps.getJIRAConfig("JIRA_API_TOKEN");
+
         if (email == null || token == null) {
             System.err.println("❌ JIRA credentials not found in configuration");
             return null;
         }
-        
+
         String auth = email + ":" + token;
         return "Basic " + Base64.getEncoder().encodeToString(auth.getBytes());
     }
@@ -50,13 +53,14 @@ public class jiraClient {
      * Handles test case results by updating JIRA issues.
      * Adds pass/fail comments based on test outcome.
      * 
-     * @param issueKey JIRA issue key to update
-     * @param summary Test summary
+     * @param issueKey        JIRA issue key to update
+     * @param summary         Test summary
      * @param descriptionText Test description or error message
-     * @param attachmentFile Screenshot file (optional)
-     * @param isFailed Whether the test failed
+     * @param attachmentFile  Screenshot file (optional)
+     * @param isFailed        Whether the test failed
      */
-    public static void handleTestCaseResultSmart(String issueKey, String summary, String descriptionText, File attachmentFile, boolean isFailed) {
+    public static void updateIssueWithTestResult(String issueKey, String summary, String descriptionText, File attachmentFile,
+            boolean isFailed) {
         try {
             String authHeader = getAuthHeader();
             if (authHeader == null) {
@@ -69,9 +73,11 @@ public class jiraClient {
                 return;
             }
 
-            String passCommentText = loadProps.getProperty("PassComment") + " " + loadProps.getProperty("Version");
-            String failCommentText = loadProps.getProperty("FailedComment") + " " + loadProps.getProperty("Version");
-            
+            String passCommentText = configs.loadProps.getProperty("PassComment") + " "
+                    + configs.loadProps.getProperty("Version");
+            String failCommentText = configs.loadProps.getProperty("FailedComment") + " "
+                    + configs.loadProps.getProperty("Version");
+
             // Check if issue exists
             Response checkResponse = RestAssured
                     .given()
@@ -80,9 +86,10 @@ public class jiraClient {
                     .get(baseUrl + "rest/api/3/issue/" + issueKey);
 
             if (checkResponse.getStatusCode() == 200) {
-                String commentText = isFailed ?
-                        failCommentText + "\n\n*Summary:* " + summary + "\n\n*Details:* " + descriptionText :
-                        passCommentText;
+                // Fixed: Pass comment for passed tests, fail comment for failed tests
+                String commentText = isFailed
+                        ? failCommentText + "\n\n*Summary:* " + summary + "\n\n*Details:* " + descriptionText
+                        : passCommentText + "\n\n*Test Case:* " + summary;
 
                 addComment(issueKey, commentText);
 
@@ -108,20 +115,24 @@ public class jiraClient {
                         if (attachResponse.statusCode() == 200 || attachResponse.statusCode() == 201) {
                             System.out.println("✅ Screenshot attached successfully to " + issueKey);
                         } else {
-                            System.err.println("❌ Failed to upload screenshot (" + attachResponse.statusCode() + "): " + attachResponse.getBody().asString());
+                            System.err.println("❌ Failed to upload screenshot (" + attachResponse.statusCode() + "): "
+                                    + attachResponse.getBody().asString());
                         }
                     } else {
                         if (attachmentFile == null) {
                             System.err.println("⚠️ No screenshot file provided (attachmentFile is null)");
                         } else if (!attachmentFile.exists()) {
-                            System.err.println("⚠️ Screenshot file does not exist: " + attachmentFile.getAbsolutePath());
+                            System.err
+                                    .println("⚠️ Screenshot file does not exist: " + attachmentFile.getAbsolutePath());
                         } else if (attachmentFile.length() == 0) {
-                            System.err.println("⚠️ Screenshot file is empty (0 bytes): " + attachmentFile.getAbsolutePath());
+                            System.err.println(
+                                    "⚠️ Screenshot file is empty (0 bytes): " + attachmentFile.getAbsolutePath());
                         }
                     }
                 }
 
-                System.out.println("✅ JIRA issue " + issueKey + " updated with " + (isFailed ? "failure" : "success") + " comment");
+                System.out.println("✅ JIRA issue " + issueKey + " updated with " + (isFailed ? "failure" : "success")
+                        + " comment");
             } else if (checkResponse.getStatusCode() == 404) {
                 System.err.println("❌ JIRA issue " + issueKey + " not found (404)");
             } else if (checkResponse.getStatusCode() == 401) {
@@ -129,7 +140,8 @@ public class jiraClient {
             } else if (checkResponse.getStatusCode() == 403) {
                 System.err.println("❌ JIRA access forbidden (403) - check permissions");
             } else {
-                System.err.println("❌ Unexpected JIRA API response (" + checkResponse.getStatusCode() + "): " + checkResponse.getBody().asString());
+                System.err.println("❌ Unexpected JIRA API response (" + checkResponse.getStatusCode() + "): "
+                        + checkResponse.getBody().asString());
             }
         } catch (Exception e) {
             System.err.println("❌ Error updating JIRA issue: " + e.getMessage());
@@ -137,7 +149,7 @@ public class jiraClient {
         }
     }
 
-    public static void createBug(String summary, String descriptionText, File attachmentFile) {
+    public static void createBugInJIRA(String summary, String descriptionText, File attachmentFile) {
         String baseUrl = getJiraBaseUrl();
         if (baseUrl == null) {
             return;
@@ -149,7 +161,7 @@ public class jiraClient {
             return;
         }
 
-        String projectKey = loadProps.getJIRAConfig("PROJECT_KEY");
+        String projectKey = configs.loadProps.getJIRAConfig("PROJECT_KEY");
         if (projectKey == null || projectKey.trim().isEmpty()) {
             System.err.println("❌ PROJECT_KEY not configured");
             return;
@@ -239,8 +251,8 @@ public class jiraClient {
         Map<String, Object> adfBody = new HashMap<>();
         adfBody.put("type", "doc");
         adfBody.put("version", 1);
-        adfBody.put("content", new Object[]{
-                Map.of("type", "paragraph", "content", new Object[]{
+        adfBody.put("content", new Object[] {
+                Map.of("type", "paragraph", "content", new Object[] {
                         Map.of("type", "text", "text", commentText)
                 })
         });
@@ -259,7 +271,8 @@ public class jiraClient {
         if (response.statusCode() == 201 || response.statusCode() == 200) {
             System.out.println("💬 Comment added to " + issueKey);
         } else {
-            System.err.println("❌ Failed to add comment (" + response.statusCode() + "): " + response.getBody().asString());
+            System.err.println(
+                    "❌ Failed to add comment (" + response.statusCode() + "): " + response.getBody().asString());
         }
     }
 
@@ -303,7 +316,8 @@ public class jiraClient {
                 // Extract acceptance criteria
                 List<String> acceptanceCriteria = extractAcceptanceCriteria(description);
 
-                JiraStory story = new JiraStory(key, summary, description, issueType, status, priority, acceptanceCriteria);
+                JiraStory story = new JiraStory(key, summary, description, issueType, status, priority,
+                        acceptanceCriteria);
 
                 System.out.println("✅ Fetched JIRA story: " + key);
                 return story;
@@ -313,7 +327,8 @@ public class jiraClient {
             } else if (response.getStatusCode() == 401) {
                 System.err.println("❌ JIRA authentication failed (401) - check credentials");
             } else {
-                System.err.println("❌ Failed to fetch story (" + response.getStatusCode() + "): " + response.getBody().asString());
+                System.err.println(
+                        "❌ Failed to fetch story (" + response.getStatusCode() + "): " + response.getBody().asString());
             }
         } catch (Exception e) {
             System.err.println("❌ Error fetching JIRA story: " + e.getMessage());
@@ -373,7 +388,8 @@ public class jiraClient {
 
     /**
      * Extracts acceptance criteria from story description.
-     * Looks for patterns like "Acceptance Criteria:", Given/When/Then, bullet points.
+     * Looks for patterns like "Acceptance Criteria:", Given/When/Then, bullet
+     * points.
      * 
      * @param description Story description text
      * @return List of acceptance criteria strings
@@ -435,7 +451,7 @@ public class jiraClient {
         public final List<String> acceptanceCriteria;
 
         public JiraStory(String key, String summary, String description, String issueType,
-                         String status, String priority, List<String> acceptanceCriteria) {
+                String status, String priority, List<String> acceptanceCriteria) {
             this.key = key;
             this.summary = summary;
             this.description = description;
@@ -483,8 +499,7 @@ public class jiraClient {
         }
     }
 
-
-    public static void updateTestCase(String issueKey, String newDescription) {
+    public static void updateDescription(String issueKey, String newDescription) {
         String baseUrl = getJiraBaseUrl();
         if (baseUrl == null) {
             return;
@@ -500,8 +515,8 @@ public class jiraClient {
         Map<String, Object> description = new HashMap<>();
         description.put("type", "doc");
         description.put("version", 1);
-        description.put("content", new Object[]{
-                Map.of("type", "paragraph", "content", new Object[]{
+        description.put("content", new Object[] {
+                Map.of("type", "paragraph", "content", new Object[] {
                         Map.of("type", "text", "text", newDescription)
                 })
         });

@@ -3,15 +3,15 @@
 
 <suite name="MRI Energy Testng XML Test Suite">     <!--   Parallel Runner-->
     <listeners>
-        <listener class-name="listener.listener"/>
-        <listener class-name="configs.RetryListener"/>
+        <listener class-name="listener.listener" />
+        <listener class-name="configs.RetryListener" />
     </listeners>
 
 
     <test name="Test Execution with Runner">
         <!--        <parameter name="Server" value="uksestdevtest02"/>-->
         <classes>
-            <class name="runner.testRunner"/>
+            <class name="runner.TestRunner" />
         </classes>
     </test>
 

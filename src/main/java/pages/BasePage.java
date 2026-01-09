@@ -1,6 +1,6 @@
 package pages;
 
-import com.microsoft.playwright.Page;
+
 import configs.TimeoutConfig;
 import configs.utils;
 
@@ -12,107 +12,113 @@ import configs.utils;
  * @version 1.0
  */
 public abstract class BasePage extends utils {
-    
-    public static Page page;
-    
+
     /**
-     * Constructor to initialize page instance
+     * Constructor - inherits page from base class through utils
      */
     public BasePage() {
-        BasePage.page = utils.page;
+        // page is inherited from base class through utils
     }
-    
+
     // ============================================================
     // NAVIGATION METHODS
     // ============================================================
-    
+
     /**
      * Navigate to specific URL with wait
+     * 
      * @param url The URL to navigate to
      */
-    public static void navigateTo(String url) {
+    public static void navigateToUrl(String url) {
         System.out.println("🌐 Navigating to: " + url);
         page.navigate(url);
         page.waitForLoadState();
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
         System.out.println("✅ Page loaded successfully");
     }
-    
+
     /**
      * Refresh current page
      */
     public static void refreshPage() {
         System.out.println("🔄 Refreshing page...");
         page.reload();
-        TimeoutConfig.mediumWait();
+        TimeoutConfig.waitMedium();
         System.out.println("✅ Page refreshed");
     }
-    
+
     /**
      * Navigate back to previous page
      */
-    public static void goBack() {
+    public static void navigateBack() {
         System.out.println("◀️ Navigating back...");
         page.goBack();
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
     }
-    
+
     /**
      * Navigate forward to next page
      */
-    public static void goForward() {
+    public static void navigateForward() {
         System.out.println("▶️ Navigating forward...");
         page.goForward();
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
     }
-    
+
     // ============================================================
     // PAGE INFORMATION METHODS
     // ============================================================
-    
+
     /**
      * Get current page title
+     * 
      * @return Page title as String
      */
     public static String getPageTitle() {
         return page.title();
     }
-    
+
     /**
      * Get current page URL
+     * 
      * @return Current URL as String
      */
     public static String getCurrentUrl() {
         return page.url();
     }
-    
+
     /**
      * Check if page title contains expected text
+     * 
      * @param expectedTitle Text to check in title
      * @return true if title contains expected text, false otherwise
      */
     public static boolean isTitleContains(String expectedTitle) {
         String actualTitle = getPageTitle();
         boolean contains = actualTitle.contains(expectedTitle);
-        System.out.println("📋 Title check: Expected='" + expectedTitle + "', Actual='" + actualTitle + "', Result=" + contains);
+        System.out.println(
+                "📋 Title check: Expected='" + expectedTitle + "', Actual='" + actualTitle + "', Result=" + contains);
         return contains;
     }
-    
+
     /**
      * Check if current URL contains expected text
+     * 
      * @param expectedUrlPart Text to check in URL
      * @return true if URL contains expected text, false otherwise
      */
     public static boolean isUrlContains(String expectedUrlPart) {
         String actualUrl = getCurrentUrl();
         boolean contains = actualUrl.contains(expectedUrlPart);
-        System.out.println("🔗 URL check: Expected='" + expectedUrlPart + "', Actual='" + actualUrl + "', Result=" + contains);
+        System.out.println(
+                "🔗 URL check: Expected='" + expectedUrlPart + "', Actual='" + actualUrl + "', Result=" + contains);
         return contains;
     }
-    
+
     /**
      * Wait for page title to contain specific text
-     * @param expectedTitle Expected text in title
+     * 
+     * @param expectedTitle    Expected text in title
      * @param timeoutInSeconds Maximum wait time
      * @return true if title contains text within timeout
      */
@@ -120,53 +126,55 @@ public abstract class BasePage extends utils {
         System.out.println("⏳ Waiting for title to contain: " + expectedTitle);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (timeoutInSeconds * 1000);
-        
+
         while (System.currentTimeMillis() < endTime) {
             if (isTitleContains(expectedTitle)) {
                 System.out.println("✅ Title found");
                 return true;
             }
-            TimeoutConfig.shortWait();
+            TimeoutConfig.waitShort();
         }
-        
+
         System.out.println("❌ Title not found within timeout");
         return false;
     }
-    
+
     // ============================================================
     // COMMON ACTION METHODS
     // ============================================================
-    
+
     /**
      * Scroll to top of page
      */
     public static void scrollToTop() {
         System.out.println("⬆️ Scrolling to top");
         page.evaluate("window.scrollTo(0, 0)");
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
     }
-    
+
     /**
      * Scroll to bottom of page
      */
     public static void scrollToBottom() {
         System.out.println("⬇️ Scrolling to bottom");
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)");
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
     }
-    
+
     /**
      * Scroll to specific element
+     * 
      * @param locator Element locator
      */
     public static void scrollToElement(String locator) {
         System.out.println("🎯 Scrolling to element: " + locator);
         page.locator(locator).scrollIntoViewIfNeeded();
-        TimeoutConfig.shortWait();
+        TimeoutConfig.waitShort();
     }
-    
+
     /**
      * Take screenshot of current page
+     * 
      * @param screenshotName Name for the screenshot file
      * @return Screenshot file path
      */
@@ -180,11 +188,11 @@ public abstract class BasePage extends utils {
             return null;
         }
     }
-    
+
     // ============================================================
     // ALERT/DIALOG METHODS
     // ============================================================
-    
+
     /**
      * Accept browser alert
      */
@@ -195,7 +203,7 @@ public abstract class BasePage extends utils {
             dialog.accept();
         });
     }
-    
+
     /**
      * Dismiss browser alert
      */
@@ -206,21 +214,21 @@ public abstract class BasePage extends utils {
             dialog.dismiss();
         });
     }
-    
+
     // ============================================================
     // WAIT METHODS
     // ============================================================
-    
+
     /**
      * Wait for page to be fully loaded
      */
     public static void waitForPageLoad() {
         System.out.println("⏳ Waiting for page to load...");
         page.waitForLoadState();
-        TimeoutConfig.mediumWait();
+        TimeoutConfig.waitMedium();
         System.out.println("✅ Page loaded");
     }
-    
+
     /**
      * Wait for network to be idle
      */
@@ -229,13 +237,14 @@ public abstract class BasePage extends utils {
         page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE);
         System.out.println("✅ Network idle");
     }
-    
+
     // ============================================================
     // VALIDATION METHODS
     // ============================================================
-    
+
     /**
      * Verify page is loaded by checking multiple elements
+     * 
      * @param locators Array of locators to check
      * @return true if all elements are present
      */
@@ -250,10 +259,11 @@ public abstract class BasePage extends utils {
         System.out.println("✅ All elements found - Page loaded");
         return true;
     }
-    
+
     /**
      * Check if current page is the expected page
-     * @param expectedUrl Expected URL substring
+     * 
+     * @param expectedUrl   Expected URL substring
      * @param expectedTitle Expected title substring
      * @return true if both URL and title match
      */
@@ -263,3 +273,6 @@ public abstract class BasePage extends utils {
         return urlMatch && titleMatch;
     }
 }
+
+
+

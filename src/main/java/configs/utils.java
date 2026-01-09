@@ -1,10 +1,6 @@
 package configs;
 
-import com.microsoft.playwright.Locator;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.TimeoutError;
-
-import java.awt.*;
+import java.awt.AWTException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -15,6 +11,10 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 
 /**
  * Utility class providing common helper methods for test automation.
@@ -27,10 +27,9 @@ public class utils extends base {
     private static final String VERSION_LOCATOR = "xpath=/html/body/div/footer/div[1]/div[1]";
     private static final String REPORT_BASE_PATH = System.getProperty("user.dir") + "/MRITestExecutionReports/";
     private static final String CUCUMBER_REPORTS_FOLDER = "cucumberExtentReports";
-    
+
     public static boolean isDelete = Boolean.parseBoolean(loadProps.getProperty("Remove_Old_Reports"));
     public static int folderCount = Integer.parseInt(loadProps.getProperty("Version_Record"));
-
 
     /**
      * Clicks on an element after verifying its visibility.
@@ -65,7 +64,7 @@ public class utils extends base {
     /**
      * Enters text into an element after clearing and clicking it.
      * 
-     * @param element The locator string for the element
+     * @param element   The locator string for the element
      * @param inputText The text to enter
      */
     public static void enterText(String element, String inputText) {
@@ -87,7 +86,7 @@ public class utils extends base {
     /**
      * Clears and enters text into an element.
      * 
-     * @param element The locator string for the element
+     * @param element   The locator string for the element
      * @param inputText The text to enter
      */
     public static void clearAndEnterText(String element, String inputText) {
@@ -139,7 +138,7 @@ public class utils extends base {
      * Access elements inside Shadow DOM.
      * Useful for modern web components that use Shadow DOM encapsulation.
      * 
-     * @param shadowHost The selector for the shadow host element
+     * @param shadowHost     The selector for the shadow host element
      * @param targetSelector The selector for the element inside shadow root
      * @return Locator for the element inside shadow DOM
      */
@@ -151,7 +150,7 @@ public class utils extends base {
     // ============================================================
     // DYNAMIC LOCATOR STRATEGIES (For Random/Dynamic IDs)
     // ============================================================
-    
+
     /**
      * Find element by text content (best for dynamic IDs).
      * Uses relative XPath to locate elements by visible text.
@@ -159,26 +158,27 @@ public class utils extends base {
      * Example: findByText("button", "Submit") -> //button[text()='Submit']
      * 
      * @param tagName HTML tag name (button, div, span, etc.)
-     * @param text Exact text content
+     * @param text    Exact text content
      * @return Locator string
      */
     public static String findByText(String tagName, String text) {
         return String.format("xpath=//%s[text()='%s']", tagName, text);
     }
-    
+
     /**
      * Find element by partial text (when text is dynamic or long).
      * 
-     * Example: findByPartialText("button", "Submit") -> //button[contains(text(),'Submit')]
+     * Example: findByPartialText("button", "Submit") ->
+     * //button[contains(text(),'Submit')]
      * 
-     * @param tagName HTML tag name
+     * @param tagName     HTML tag name
      * @param partialText Partial text content
      * @return Locator string
      */
     public static String findByPartialText(String tagName, String partialText) {
         return String.format("xpath=//%s[contains(text(),'%s')]", tagName, partialText);
     }
-    
+
     /**
      * Find element by attribute (class, data-*, aria-*, etc.).
      * Best for elements with stable attributes but dynamic IDs.
@@ -186,15 +186,15 @@ public class utils extends base {
      * Example: findByAttribute("button", "class", "btn-primary")
      * Result: //button[@class='btn-primary']
      * 
-     * @param tagName HTML tag name
+     * @param tagName   HTML tag name
      * @param attribute Attribute name
-     * @param value Attribute value
+     * @param value     Attribute value
      * @return Locator string
      */
     public static String findByAttribute(String tagName, String attribute, String value) {
         return String.format("xpath=//%s[@%s='%s']", tagName, attribute, value);
     }
-    
+
     /**
      * Find element by partial attribute match.
      * Useful when attribute values are dynamic or concatenated.
@@ -202,15 +202,15 @@ public class utils extends base {
      * Example: findByPartialAttribute("button", "class", "submit")
      * Result: //button[contains(@class,'submit')]
      * 
-     * @param tagName HTML tag name
-     * @param attribute Attribute name
+     * @param tagName      HTML tag name
+     * @param attribute    Attribute name
      * @param partialValue Partial attribute value
      * @return Locator string
      */
     public static String findByPartialAttribute(String tagName, String attribute, String partialValue) {
         return String.format("xpath=//%s[contains(@%s,'%s')]", tagName, attribute, partialValue);
     }
-    
+
     /**
      * Find element by parent-child relationship (when child has dynamic ID).
      * Navigate from stable parent to dynamic child.
@@ -219,28 +219,29 @@ public class utils extends base {
      * Result: //div[@class='form-group']//input
      * 
      * @param parentLocator Parent element xpath (without xpath= prefix)
-     * @param childTag Child element tag
+     * @param childTag      Child element tag
      * @return Locator string
      */
     public static String findByParentChild(String parentLocator, String childTag) {
         return String.format("xpath=//%s//%s", parentLocator, childTag);
     }
-    
+
     /**
      * Find element by label text (for form inputs).
      * Finds input/textarea associated with a label.
      * 
-     * Example: findByLabel("Username") 
+     * Example: findByLabel("Username")
      * Result: //label[text()='Username']/following-sibling::input
      * 
      * @param labelText Label text content
      * @return Locator string
      */
     public static String findByLabel(String labelText) {
-        return String.format("xpath=//label[text()='%s']/following-sibling::input | //label[text()='%s']/following-sibling::textarea", 
-                           labelText, labelText);
+        return String.format(
+                "xpath=//label[text()='%s']/following-sibling::input | //label[text()='%s']/following-sibling::textarea",
+                labelText, labelText);
     }
-    
+
     /**
      * Find element by placeholder (for inputs with dynamic IDs).
      * 
@@ -251,10 +252,10 @@ public class utils extends base {
      * @return Locator string
      */
     public static String findByPlaceholder(String placeholderText) {
-        return String.format("xpath=//input[@placeholder='%s'] | //textarea[@placeholder='%s']", 
-                           placeholderText, placeholderText);
+        return String.format("xpath=//input[@placeholder='%s'] | //textarea[@placeholder='%s']",
+                placeholderText, placeholderText);
     }
-    
+
     /**
      * Find button by text or aria-label (most reliable for buttons).
      * 
@@ -265,21 +266,23 @@ public class utils extends base {
      * @return Locator string
      */
     public static String findButton(String buttonText) {
-        return String.format("xpath=//button[text()='%s' or @aria-label='%s' or @value='%s']", 
-                           buttonText, buttonText, buttonText);
+        return String.format("xpath=//button[text()='%s' or @aria-label='%s' or @value='%s']",
+                buttonText, buttonText, buttonText);
     }
-    
+
     /**
      * Find element by position relative to another element.
      * Useful when target element has no unique attributes.
      * 
-     * Example: findByRelativePosition("div[@class='header']", "following-sibling", "button", 1)
+     * Example: findByRelativePosition("div[@class='header']", "following-sibling",
+     * "button", 1)
      * Result: //div[@class='header']/following-sibling::button[1]
      * 
      * @param anchorLocator Anchor element xpath (without xpath= prefix)
-     * @param axis XPath axis (following-sibling, preceding-sibling, parent, ancestor, etc.)
-     * @param targetTag Target element tag
-     * @param position Position index (1-based)
+     * @param axis          XPath axis (following-sibling, preceding-sibling,
+     *                      parent, ancestor, etc.)
+     * @param targetTag     Target element tag
+     * @param position      Position index (1-based)
      * @return Locator string
      */
     public static String findByRelativePosition(String anchorLocator, String axis, String targetTag, int position) {
@@ -291,24 +294,25 @@ public class utils extends base {
      * Handles expandable menus, main menus, submenus, and final page navigation.
      * 
      * @param expandMenu Locator for expand button
-     * @param mainMenu Locator for main menu
-     * @param subMenu Locator for submenu
-     * @param pageLink Locator for final page link
+     * @param mainMenu   Locator for main menu
+     * @param subMenu    Locator for submenu
+     * @param pageLink   Locator for final page link
      * @throws InterruptedException if thread is interrupted
      */
-    public static void navigateToMenu(String expandMenu, String mainMenu, String subMenu, String pageLink) throws InterruptedException {
+    public static void navigateToMenu(String expandMenu, String mainMenu, String subMenu, String pageLink)
+            throws InterruptedException {
         Thread.sleep(500);
         Locator expand = page.locator(expandMenu);
         Locator main = page.locator(mainMenu);
         Locator sub = page.locator(subMenu);
         Locator pageLocator = page.locator(pageLink);
-        
+
         boolean isExpanded = main.isVisible();
         if (!isExpanded && expand.isVisible()) {
             expand.click();
             Thread.sleep(300);
         }
-        
+
         if (main.isVisible()) {
             main.click();
             if (sub.isVisible()) {
@@ -339,15 +343,15 @@ public class utils extends base {
             com.microsoft.playwright.Download download = page.waitForDownload(() -> {
                 downloadTrigger.run();
             });
-            
-            Path downloadPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" + 
-                    loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/downloads/" + 
+
+            Path downloadPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" +
+                    loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/downloads/" +
                     download.suggestedFilename());
-            
+
             if (!Files.exists(downloadPath.getParent())) {
                 Files.createDirectories(downloadPath.getParent());
             }
-            
+
             download.saveAs(downloadPath);
             System.out.println("✅ File downloaded: " + download.suggestedFilename());
             return downloadPath;
@@ -375,7 +379,8 @@ public class utils extends base {
 
     public static void UploadFile(String by, String args) {
         Locator fileInput = page.locator(by);
-        fileInput.setInputFiles(Paths.get(System.getProperty("user.dir") + "/src/test/resources/attachments/mri_energy_logo.png"));
+        fileInput.setInputFiles(
+                Paths.get(System.getProperty("user.dir") + "/src/test/resources/attachments/mri_energy_logo.png"));
     }
 
     public static void moveFile(Path oldFilePath, Path newFilePath) {
@@ -394,7 +399,8 @@ public class utils extends base {
     }
 
     /**
-     * Extracts version from application footer and creates version-specific report directory.
+     * Extracts version from application footer and creates version-specific report
+     * directory.
      * 
      * @return The sanitized version string
      * @throws IOException if directory creation fails
@@ -403,15 +409,15 @@ public class utils extends base {
         try {
             String systemVersion = page.locator(VERSION_LOCATOR).innerText();
             String sanitizedVersion = systemVersion.replaceAll("[()-+.^:,. ]", "");
-            
+
             Path reportPath = Paths.get(REPORT_BASE_PATH, sanitizedVersion);
             loadProps.setProperty("Version", sanitizedVersion);
-            
+
             if (!Files.exists(reportPath)) {
                 Files.createDirectories(reportPath);
                 System.out.println("📁 Created version directory: " + sanitizedVersion);
             }
-            
+
             return sanitizedVersion;
         } catch (Exception e) {
             System.err.println("❌ Error extracting version: " + e.getMessage());
@@ -438,20 +444,20 @@ public class utils extends base {
 
             if (directories != null) {
                 int deleteFolderCount = directories.length - folderCount - 1;
-                
+
                 if (deleteFolderCount > 0) {
                     System.out.println("🗑️ Cleaning up old reports (keeping last " + folderCount + " versions)...");
-                    
+
                     for (File directory : directories) {
                         String directoryName = directory.getName();
-                        
+
                         if (!directoryName.equals(loadProps.getProperty("Version")) &&
-                            !directoryName.equals(CUCUMBER_REPORTS_FOLDER)) {
-                            
+                                !directoryName.equals(CUCUMBER_REPORTS_FOLDER)) {
+
                             deleteDirectory(directory.toPath());
                             System.out.println("✅ Deleted old report folder: " + directoryName);
                             deleteFolderCount--;
-                            
+
                             if (deleteFolderCount <= 0) {
                                 break;
                             }
