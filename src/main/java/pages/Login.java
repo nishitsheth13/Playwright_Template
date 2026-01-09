@@ -14,7 +14,7 @@ public class Login extends BasePage {
     private static final String USERNAME = "#Username";
     private static final String PASSWORD = "#Password";
     private static final String SIGN_IN = "text=Sign In";
-    private static final String LOGOUT_LOGOUT = "label=Logout";
+    private static final String LOGOUT_LOGOUT = "//img[@alt='Logout']";
 
     /**
      * Navigate to Login page
