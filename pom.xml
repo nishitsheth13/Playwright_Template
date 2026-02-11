@@ -13,6 +13,7 @@
         <maven.compiler.target>22</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <suiteXmlFile>${project.basedir}/src/test/testng.xml</suiteXmlFile>
+        <skipCucumberReporting>false</skipCucumberReporting>
         <!-- Suppress warnings from Maven's internal Guice usage of deprecated APIs -->
         <argLine>
             --add-opens java.base/java.lang=ALL-UNNAMED
@@ -178,7 +179,9 @@
                     </properties>
                     <systemPropertyVariables>
                         <extent.reporter.spark.start>true</extent.reporter.spark.start>
-                        <extent.reporter.spark.out>MRITestExecutionReports/cucumberExtentReports/spark/spark.html</extent.reporter.spark.out>
+                        <extent.reporter.spark.out>
+                            MRITestExecutionReports/cucumberExtentReports/spark/spark.html
+                        </extent.reporter.spark.out>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -202,6 +205,7 @@
                             <jsonFiles>
                                 <param>**/*.json</param>
                             </jsonFiles>
+                            <skip>${skipCucumberReporting}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -215,6 +219,17 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                </configuration>
+            </plugin>
+
+            <!-- Exec Maven Plugin - For running Java classes and Playwright CLI -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <!-- No default mainClass - allows -Dexec.mainClass to work properly -->
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,6 +1,9 @@
 package configs;
 
-import java.awt.AWTException;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -11,10 +14,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
-
-import com.microsoft.playwright.Locator;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.TimeoutError;
 
 /**
  * Utility class providing common helper methods for test automation.
@@ -29,23 +28,26 @@ public class utils extends base {
     private static final String CUCUMBER_REPORTS_FOLDER = "cucumberExtentReports";
 
     public static boolean isDelete = Boolean.parseBoolean(loadProps.getProperty("Remove_Old_Reports"));
-    public static int folderCount = Integer.parseInt(loadProps.getProperty("Version_Record"));
+    public static int folderCount = Integer.parseInt(loadProps.getProperty("Version_Record") != null ? loadProps.getProperty("Version_Record") : "5");
 
     /**
-     * Clicks on an element after verifying its visibility.
-     * 
+     * Clicks on an element after automatically waiting for its visibility.
+     * Includes built-in retry logic and detailed logging.
+     *
      * @param element The locator string for the element
      */
     public static void clickOnElement(String element) {
         try {
-            if (isElementPresent(element)) {
-                page.locator(element).click();
-                System.out.println("✅ Clicked on element: " + element);
-            } else {
-                System.err.println("❌ Element not visible: " + element);
-            }
+            System.out.println("⏳ Waiting for element to be visible: " + element);
+            // Auto-wait for element to be visible (default timeout from Playwright config)
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+
+            page.locator(element).click();
+            System.out.println("✅ Clicked on element: " + element);
         } catch (TimeoutError e) {
-            System.err.println("❌ Timeout waiting for element: " + element);
+            System.err.println("❌ Timeout waiting for element to be visible: " + element);
+            System.err.println("   Check if element exists, or increase timeout in configurations.properties");
             throw e;
         } catch (Exception e) {
             System.err.println("❌ Error clicking element: " + element + " - " + e.getMessage());
@@ -53,24 +55,62 @@ public class utils extends base {
         }
     }
 
-    public static void selectDropDownValueByText(String element, String Text) {
-        page.locator(element).click();
-    }
+    /**
+     * Selects a dropdown option by visible text after waiting for element visibility.
+     *
+     * @param element The locator string for the dropdown element
+     * @param text    The visible text of the option to select
+     */
+    public static void selectDropDownValueByText(String element, String text) {
+        try {
+            System.out.println("⏳ Waiting for dropdown to be visible: " + element);
+            // Auto-wait for element to be visible
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
 
-    public static void clearText(String by) {
-        page.locator(by).clear();
+            page.locator(element).selectOption(text);
+            System.out.println("✅ Selected dropdown option: " + text);
+        } catch (Exception e) {
+            System.err.println("❌ Error selecting dropdown option: " + element + " - " + e.getMessage());
+            throw e;
+        }
     }
 
     /**
-     * Enters text into an element after clearing and clicking it.
-     * 
+     * Clears text from an element after waiting for visibility.
+     *
+     * @param element The locator string for the element
+     */
+    public static void clearText(String element) {
+        try {
+            System.out.println("⏳ Waiting for element to be visible: " + element);
+            // Auto-wait for element to be visible
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+
+            page.locator(element).clear();
+            System.out.println("✅ Cleared text from element: " + element);
+        } catch (Exception e) {
+            System.err.println("❌ Error clearing text from element: " + element + " - " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Enters text into an element after automatically waiting for visibility.
+     * Clears existing text before entering new text.
+     *
      * @param element   The locator string for the element
      * @param inputText The text to enter
      */
     public static void enterText(String element, String inputText) {
         if (inputText != null && !inputText.isEmpty()) {
             try {
-                isElementPresent(element);
+                System.out.println("⏳ Waiting for element to be visible: " + element);
+                // Auto-wait for element to be visible
+                page.locator(element).waitFor(new Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+
                 page.locator(element).clear();
                 page.locator(element).fill(inputText);
                 System.out.println("✅ Entered text in element: " + element);
@@ -84,15 +124,19 @@ public class utils extends base {
     }
 
     /**
-     * Clears and enters text into an element.
-     * 
+     * Clears and enters text into an element after automatically waiting for visibility.
+     *
      * @param element   The locator string for the element
      * @param inputText The text to enter
      */
     public static void clearAndEnterText(String element, String inputText) {
         if (inputText != null && !inputText.isEmpty()) {
             try {
-                isElementPresent(element);
+                System.out.println("⏳ Waiting for element to be visible: " + element);
+                // Auto-wait for element to be visible
+                page.locator(element).waitFor(new Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+
                 page.locator(element).clear();
                 page.locator(element).fill(inputText);
                 System.out.println("✅ Cleared and entered text in element: " + element);
@@ -106,22 +150,47 @@ public class utils extends base {
     }
 
     /**
-     * Gets the text content of an element.
-     * 
+     * Gets the text content of an element after waiting for visibility.
+     *
      * @param element The locator string for the element
      * @return The element's text content
      */
     public static String getElementText(String element) {
-        String elementText = page.locator(element).innerText();
-        System.out.println("Element text: " + elementText);
-        return elementText;
+        try {
+            System.out.println("⏳ Waiting for element to be visible: " + element);
+            // Auto-wait for element to be visible
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+
+            String elementText = page.locator(element).innerText();
+            System.out.println("📝 Element text: " + elementText);
+            return elementText;
+        } catch (Exception e) {
+            System.err.println("❌ Error getting text from element: " + element + " - " + e.getMessage());
+            throw e;
+        }
     }
 
+    /**
+     * Gets the visible text of an element after waiting for visibility.
+     *
+     * @param element The locator string for the element
+     * @return The element's visible text
+     */
     public static String getText(String element) {
+        try {
+            System.out.println("⏳ Waiting for element to be visible: " + element);
+            // Auto-wait for element to be visible
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
 
-        String elementText = page.locator(element).innerText();
-        System.out.println("Visible text: " + elementText);
-        return elementText;
+            String elementText = page.locator(element).innerText();
+            System.out.println("📝 Visible text: " + elementText);
+            return elementText;
+        } catch (Exception e) {
+            System.err.println("❌ Error getting text from element: " + element + " - " + e.getMessage());
+            throw e;
+        }
     }
 
     public static String generateRandomText(int length) {
@@ -340,12 +409,11 @@ public class utils extends base {
      */
     public static Path handleDownload(Runnable downloadTrigger) {
         try {
-            com.microsoft.playwright.Download download = page.waitForDownload(() -> {
-                downloadTrigger.run();
-            });
+            com.microsoft.playwright.Download download = page.waitForDownload(downloadTrigger::run);
 
+            String version = loadProps.getProperty("Version");
             Path downloadPath = Paths.get(System.getProperty("user.dir") + "/MRITestExecutionReports/" +
-                    loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") + "/downloads/" +
+                    (version != null ? version.replaceAll("[()-+.^:, ]", "") : "default") + "/downloads/" +
                     download.suggestedFilename());
 
             if (!Files.exists(downloadPath.getParent())) {
@@ -372,9 +440,27 @@ public class utils extends base {
         return dateFormat.format(date);
     }
 
+    /**
+     * Checks if an element is present and visible on the page.
+     * Uses a short timeout to avoid long waits.
+     *
+     * @param element The locator string for the element
+     * @return true if element is visible, false otherwise
+     */
     public static boolean isElementPresent(String element) {
-        return page.locator(element).isVisible();
-
+        try {
+            // Wait for element with a short timeout (3 seconds)
+            page.locator(element).waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                    .setTimeout(3000));
+            return page.locator(element).isVisible();
+        } catch (TimeoutError e) {
+            System.out.println("ℹ️ Element not visible: " + element);
+            return false;
+        } catch (Exception e) {
+            System.err.println("⚠️ Error checking element presence: " + element + " - " + e.getMessage());
+            return false;
+        }
     }
 
     public static void UploadFile(String by, String args) {
@@ -408,7 +494,7 @@ public class utils extends base {
     public static String version() throws IOException {
         try {
             String systemVersion = page.locator(VERSION_LOCATOR).innerText();
-            String sanitizedVersion = systemVersion.replaceAll("[()-+.^:,. ]", "");
+            String sanitizedVersion = systemVersion.replaceAll("[()\\-+.^:, ]", "");
 
             Path reportPath = Paths.get(REPORT_BASE_PATH, sanitizedVersion);
             loadProps.setProperty("Version", sanitizedVersion);
@@ -485,17 +571,147 @@ public class utils extends base {
         Files.delete(path);
     }
 
-    public String getScreenShotPath(String TestName) throws IOException, AWTException {
-        String screenshotPath = System.getProperty("user.dir") + "/MRITestExecutionReports/" +
-                loadProps.getProperty("Version").replaceAll("[()-+.^:, ]", "") +
-                "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png";
+    /**
+     * Click element using smart locator strategy with automatic fallbacks.
+     * Tries multiple locator strategies until one succeeds.
+     *
+     * @param strategies Variable number of locator strategies to try
+     */
+    public static void clickElementSmart(String... strategies) {
+        try {
+            System.out.println("🎯 Smart click: Trying " + strategies.length + " strategies...");
+            Locator element = SmartLocatorStrategy.findElement(page, strategies);
+            element.click();
+            System.out.println("✅ Smart click successful");
+        } catch (Exception e) {
+            System.err.println("❌ Smart click failed: " + e.getMessage());
+            throw e;
+        }
+    }
 
-        page.screenshot(new Page.ScreenshotOptions()
-                .setPath(Paths.get(screenshotPath))
-                .setFullPage(true));
+    // ============================================================
+    // SMART LOCATOR METHODS (Auto-fallback to multiple strategies)
+    // ============================================================
 
-        System.out.println("📸 Screenshot saved: " + screenshotPath);
-        return screenshotPath;
+    /**
+     * Enter text using smart locator strategy with automatic fallbacks.
+     *
+     * @param text       Text to enter
+     * @param strategies Variable number of locator strategies to try
+     */
+    public static void enterTextSmart(String text, String... strategies) {
+        if (text != null && !text.isEmpty()) {
+            try {
+                System.out.println("⌨️ Smart text entry: Trying " + strategies.length + " strategies...");
+                Locator element = SmartLocatorStrategy.findElement(page, strategies);
+                element.clear();
+                element.fill(text);
+                System.out.println("✅ Smart text entry successful");
+            } catch (Exception e) {
+                System.err.println("❌ Smart text entry failed: " + e.getMessage());
+                throw e;
+            }
+        } else {
+            System.out.println("⚠️ Skipped text entry - input is null or empty");
+        }
+    }
+
+    /**
+     * Get text using smart locator strategy with automatic fallbacks.
+     *
+     * @param strategies Variable number of locator strategies to try
+     * @return Element's text content
+     */
+    public static String getTextSmart(String... strategies) {
+        try {
+            System.out.println("📝 Smart get text: Trying " + strategies.length + " strategies...");
+            Locator element = SmartLocatorStrategy.findElement(page, strategies);
+            String text = element.innerText();
+            System.out.println("✅ Smart get text successful: " + text);
+            return text;
+        } catch (Exception e) {
+            System.err.println("❌ Smart get text failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Check if element exists using smart locator strategy.
+     *
+     * @param strategies Variable number of locator strategies to try
+     * @return true if element found and visible, false otherwise
+     */
+    public static boolean isElementPresentSmart(String... strategies) {
+        try {
+            System.out.println("🔍 Smart element check: Trying " + strategies.length + " strategies...");
+            boolean exists = SmartLocatorStrategy.elementExists(page, strategies);
+            System.out.println(exists ? "✅ Element found" : "ℹ️ Element not found");
+            return exists;
+        } catch (Exception e) {
+            System.err.println("⚠️ Smart element check error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Select dropdown option using smart locator strategy.
+     *
+     * @param option     Option text to select
+     * @param strategies Variable number of locator strategies to try
+     */
+    public static void selectDropdownSmart(String option, String... strategies) {
+        try {
+            System.out.println("🔽 Smart dropdown select: Trying " + strategies.length + " strategies...");
+            Locator element = SmartLocatorStrategy.findElement(page, strategies);
+            element.selectOption(option);
+            System.out.println("✅ Smart dropdown select successful: " + option);
+        } catch (Exception e) {
+            System.err.println("❌ Smart dropdown select failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    public String getScreenShotPath(String TestName) {
+        try {
+            // Validate page instance before screenshot
+            if (page == null) {
+                System.out.println("⚠️ Cannot take screenshot: Page is null");
+                return null;
+            }
+
+            // Check if page is closed
+            if (page.isClosed()) {
+                System.out.println("⚠️ Cannot take screenshot: Page is closed");
+                return null;
+            }
+
+            // Check browser connection
+            try {
+                if (page.context() != null && page.context().browser() != null &&
+                        !page.context().browser().isConnected()) {
+                    System.out.println("⚠️ Cannot take screenshot: Browser connection lost");
+                    return null;
+                }
+            } catch (Exception e) {
+                System.out.println("⚠️ Cannot verify browser connection: " + e.getMessage());
+                return null;
+            }
+
+            String version = loadProps.getProperty("Version");
+            String screenshotPath = System.getProperty("user.dir") + "/MRITestExecutionReports/" +
+                    (version != null ? version.replaceAll("[()-+.^:, ]", "") : "default") +
+                    "/screenShots/" + TestName + "_" + utils.timeStamp() + ".png";
+
+            page.screenshot(new Page.ScreenshotOptions()
+                    .setPath(Paths.get(screenshotPath))
+                    .setFullPage(true));
+
+            System.out.println("📸 Screenshot saved: " + screenshotPath);
+            return screenshotPath;
+        } catch (Exception e) {
+            System.out.println("⚠️ Failed to create screenshot: " + e.getMessage());
+            return null;
+        }
     }
 
 }

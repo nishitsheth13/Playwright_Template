@@ -1,5 +1,7 @@
 package configs;
 
+import configs.jira.jiraClient;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,8 +10,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import configs.jira.jiraClient;
 
 /**
  * Unified Test Generator Helper - Single class for all test generation needs.
@@ -94,16 +94,42 @@ public class TestGeneratorHelper {
     // ========================================================================
 
     /**
-     * Auto-fix configuration for test generation
+     * Auto-fixes selector to ensure it's usable
+     * Reserved for future advanced selector optimization
+     *
+     * @param selector Raw selector from recording
+     * @return Fixed selector or null if unfixable
      */
-    private static class AutoFixConfig {
-        static final boolean ENABLE_AUTO_FIX = true;
-        static final boolean FIX_INVALID_IDENTIFIERS = true;
-        static final boolean FIX_DUPLICATE_METHODS = true;
-        static final boolean FIX_MISSING_IMPORTS = true;
-        static final boolean FIX_INVALID_SELECTORS = true;
-        static final boolean FIX_FEATURE_SYNTAX = true;
-        static final boolean SANITIZE_INPUTS = true;
+    @SuppressWarnings("unused")
+    private static String autoFixSelector(String selector) {
+        if (selector == null || selector.trim().isEmpty()) {
+            System.out.println("[AUTO-FIX] Empty selector detected, skipping action");
+            return null;
+        }
+
+        String original = selector;
+        String fixed = selector.trim();
+
+        // Fix common issues
+        fixed = fixed.replace("\\\"", "\""); // Unescape quotes
+        fixed = fixed.replaceAll("\\s+", " "); // Normalize whitespace
+
+        // Validate selector format
+        if (!isValidSelector(fixed)) {
+            System.out.println("[AUTO-FIX] Invalid selector: " + original);
+            // Try to fix common issues
+            if (!fixed.contains("=") && !fixed.startsWith("xpath=") && !fixed.startsWith("css=")) {
+                // Assume it's text
+                fixed = "text=" + fixed;
+                System.out.println("[AUTO-FIX] Added text= prefix: " + fixed);
+            }
+        }
+
+        if (!original.equals(fixed)) {
+            System.out.println("[AUTO-FIX] Selector: '" + original + "' → '" + fixed + "'");
+        }
+
+        return fixed;
     }
 
     /**
@@ -147,63 +173,15 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Validates and auto-fixes selector to ensure it's usable
-     *
-     * @param selector Raw selector from recording
-     * @return Fixed selector or null if unfixable
-     */
-    private static String autoFixSelector(String selector) {
-        if (selector == null || selector.trim().isEmpty()) {
-            System.out.println("[AUTO-FIX] Empty selector detected, skipping action");
-            return null;
-        }
-
-        String original = selector;
-        String fixed = selector.trim();
-
-        // Fix common issues
-        fixed = fixed.replace("\\\"", "\""); // Unescape quotes
-        fixed = fixed.replaceAll("\\s+", " "); // Normalize whitespace
-
-        // Validate selector format
-        if (!isValidSelector(fixed)) {
-            System.out.println("[AUTO-FIX] Invalid selector: " + original);
-            // Try to fix common issues
-            if (!fixed.contains("=") && !fixed.startsWith("xpath=") && !fixed.startsWith("css=")) {
-                // Assume it's text
-                fixed = "text=" + fixed;
-                System.out.println("[AUTO-FIX] Added text= prefix: " + fixed);
-            }
-        }
-
-        if (!original.equals(fixed)) {
-            System.out.println("[AUTO-FIX] Selector: '" + original + "' → '" + fixed + "'");
-        }
-
-        return fixed;
-    }
-
-    /**
-     * Validates selector format
-     */
-    private static boolean isValidSelector(String selector) {
-        if (selector == null || selector.isEmpty()) return false;
-
-        // Check for common selector patterns
-        return selector.matches("^(xpath=|css=|text=|label=|placeholder=|id=|#|\\.).*") ||
-               selector.contains("@") || // XPath attribute
-               selector.contains("[") || // CSS attribute selector
-               selector.matches("^[a-zA-Z][a-zA-Z0-9]*$"); // Simple tag name
-    }
-
-    /**
      * Auto-fixes method name to ensure valid Java identifier and no conflicts
+     * Reserved for future advanced method name generation
      *
      * @param methodName Generated method name
      * @param existingMethods Set of already generated methods
      * @param counter Counter for uniqueness
      * @return Fixed unique method name
      */
+    @SuppressWarnings("unused")
     private static String autoFixMethodName(String methodName, Set<String> existingMethods, int counter) {
         if (methodName == null || methodName.trim().isEmpty()) {
             return "action" + counter;
@@ -238,6 +216,48 @@ public class TestGeneratorHelper {
         }
 
         return uniqueName;
+    }
+
+    /**
+     * Validates selector format
+     */
+    private static boolean isValidSelector(String selector) {
+        if (selector == null || selector.isEmpty()) return false;
+
+        // Check for common selector patterns
+        return selector.matches("^(xpath=|css=|text=|label=|placeholder=|id=|#|\\.).*") ||
+                selector.contains("@") || // XPath attribute
+                selector.contains("[") || // CSS attribute selector
+                selector.matches("^[a-zA-Z][a-zA-Z0-9]*$"); // Simple tag name
+    }
+
+    /**
+     * Auto-validates and fixes imports in generated code
+     * Reserved for future advanced import management
+     *
+     * @param imports List of import statements
+     * @return Fixed list with duplicates removed and sorted
+     */
+    @SuppressWarnings("unused")
+    private static List<String> autoFixImports(List<String> imports) {
+        Set<String> uniqueImports = new LinkedHashSet<>();
+
+        for (String imp : imports) {
+            if (imp != null && !imp.trim().isEmpty()) {
+                String fixed = imp.trim();
+                if (!fixed.endsWith(";")) {
+                    fixed += ";";
+                }
+                uniqueImports.add(fixed);
+            }
+        }
+
+        List<String> sorted = new ArrayList<>(uniqueImports);
+        Collections.sort(sorted);
+
+        System.out.println("[AUTO-FIX] Imports: " + imports.size() + " → " + sorted.size() + " (removed duplicates)");
+
+        return sorted;
     }
 
     /**
@@ -296,30 +316,28 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Auto-validates and fixes imports in generated code
+     * AUTO-FIX: Ensures all Page Object methods are public (not protected)
+     * Prevents compilation errors when Step Definitions try to access methods
      *
-     * @param imports List of import statements
-     * @return Fixed list with duplicates removed and sorted
+     * @param content Page Object content
+     * @return Fixed content with all methods public
      */
-    private static List<String> autoFixImports(List<String> imports) {
-        Set<String> uniqueImports = new LinkedHashSet<>();
-
-        for (String imp : imports) {
-            if (imp != null && !imp.trim().isEmpty()) {
-                String fixed = imp.trim();
-                if (!fixed.endsWith(";")) {
-                    fixed += ";";
-                }
-                uniqueImports.add(fixed);
-            }
+    private static String autoFixMethodVisibility(String content) {
+        if (content == null || !content.contains("protected static void")) {
+            return content;
         }
 
-        List<String> sorted = new ArrayList<>(uniqueImports);
-        Collections.sort(sorted);
+        System.out.println("[AUTO-FIX] Converting protected methods to public for accessibility");
 
-        System.out.println("[AUTO-FIX] Imports: " + imports.size() + " → " + sorted.size() + " (removed duplicates)");
+        // Replace all protected static methods with public static
+        String fixed = content.replaceAll("protected static void", "public static void");
 
-        return sorted;
+        int count = content.split("protected static void").length - 1;
+        if (count > 0) {
+            System.out.println("[AUTO-FIX] Fixed " + count + " method(s) from protected → public");
+        }
+
+        return fixed;
     }
 
     /**
@@ -395,6 +413,266 @@ public class TestGeneratorHelper {
      * @param fileType Type of file (PageObject, Feature, StepDef)
      * @return true if valid, false otherwise
      */
+
+    /**
+     * AUTO-FIX: Ensures navigateTo method exists with proper signature
+     *
+     * @param content   Page Object content
+     * @param className Page class name
+     * @return Fixed content with navigateTo method
+     */
+    private static String ensureNavigateToMethod(String content, String className) {
+        // Check if navigateTo method already exists
+        if (content.contains("public static void navigateTo") ||
+                content.contains("public static void navigateTo" + className)) {
+            return content;
+        }
+
+        System.out.println("[AUTO-FIX] Adding missing navigateTo method");
+
+        // Find the position to insert (after constructor, before first method)
+        String navigateMethod =
+                "    /**\n" +
+                        "     * Navigate to " + className + " page\n" +
+                        "     * @param page Playwright Page instance\n" +
+                        "     */\n" +
+                        "    public static void navigateTo(com.microsoft.playwright.Page page) {\n" +
+                        "        log.info(\"🌐 Navigating to " + className + " page\");\n" +
+                        "        String url = loadProps.getProperty(\"URL\");\n" +
+                        "        navigateToUrl(url);\n" +
+                        "        log.info(\"✅ Navigation completed\");\n" +
+                        "    }\n\n";
+
+        // Insert after constructor (look for "}\n\n    /**" or "}\n\n    private" or "}\n\n    public")
+        String pattern = "(public " + className + "\\(\\) \\{[^}]*\\}\\n\\n)";
+        if (content.matches("(?s).*" + pattern + ".*")) {
+            content = content.replaceFirst(pattern, "$1" + navigateMethod);
+        } else {
+            // Insert before first method if constructor pattern not found
+            content = content.replaceFirst("(\n    /\\*\\*\n     \\* )", "\n" + navigateMethod + "$1");
+        }
+
+        return content;
+    }
+
+    /**
+     * AUTO-FIX: Ensures all required imports are present
+     *
+     * @param content Page Object content
+     * @return Fixed content with all imports
+     */
+    private static String ensureRequiredImports(String content) {
+        StringBuilder imports = new StringBuilder();
+        boolean needsFix = false;
+
+        // Check and add missing imports
+        if (!content.contains("import com.microsoft.playwright.Page;")) {
+            imports.append("import com.microsoft.playwright.Page;\n");
+            needsFix = true;
+        }
+        if (!content.contains("import configs.loadProps;")) {
+            imports.append("import configs.loadProps;\n");
+            needsFix = true;
+        }
+        if (!content.contains("import configs.TimeoutConfig;")) {
+            imports.append("import configs.TimeoutConfig;\n");
+            needsFix = true;
+        }
+
+        if (needsFix) {
+            System.out.println("[AUTO-FIX] Adding missing imports");
+            // Insert after package declaration
+            content = content.replaceFirst("(package pages;\\n)", "$1" + imports.toString());
+        }
+
+        return content;
+    }
+
+    /**
+     * AUTO-FIX: Validates that all feature file steps have matching step definitions
+     * Generates missing step definitions automatically
+     *
+     * @param featureContent  Feature file content
+     * @param stepDefsContent Step definitions content
+     * @param testName        Test name for generating methods
+     * @return Fixed step definitions with all missing steps added
+     */
+    private static String validateAndFixStepMatching(String featureContent, String stepDefsContent, String testName) {
+        if (featureContent == null || stepDefsContent == null) {
+            return stepDefsContent;
+        }
+
+        System.out.println("[AUTO-FIX] Validating feature steps match step definitions...");
+
+        // Extract all steps from feature file
+        Set<String> featureSteps = extractStepsFromFeature(featureContent);
+        Set<String> existingSteps = extractStepsFromStepDefs(stepDefsContent);
+
+        // Find missing steps
+        Set<String> missingSteps = new HashSet<>(featureSteps);
+        missingSteps.removeAll(existingSteps);
+
+        // Filter out steps that would create duplicate method names
+        Set<String> trulyMissingSteps = new HashSet<>();
+        for (String step : missingSteps) {
+            String methodName = generateMethodNameFromStep(step);
+            if (!existingSteps.contains("METHOD:" + methodName)) {
+                trulyMissingSteps.add(step);
+            } else {
+                System.out.println("[AUTO-FIX] ⚠️ Skipping duplicate method: " + methodName + " for step: " + step);
+            }
+        }
+
+        if (trulyMissingSteps.isEmpty()) {
+            System.out.println("[AUTO-FIX] ✅ All feature steps have matching step definitions");
+            return stepDefsContent;
+        }
+
+        System.out.println("[AUTO-FIX] ⚠️ Found " + trulyMissingSteps.size() + " missing step definitions");
+
+        // Generate missing step definitions
+        StringBuilder missingStepDefs = new StringBuilder();
+        missingStepDefs.append("\n    // ========== AUTO-GENERATED MISSING STEPS ==========\n\n");
+
+        for (String step : trulyMissingSteps) {
+            System.out.println("[AUTO-FIX] Adding missing step: " + step);
+            missingStepDefs.append(generateStepDefinition(step));
+        }
+
+        // Insert before closing brace
+        int lastBrace = stepDefsContent.lastIndexOf("}");
+        if (lastBrace > 0) {
+            stepDefsContent = stepDefsContent.substring(0, lastBrace) +
+                    missingStepDefs.toString() +
+                    "\n}\n";
+        }
+
+        System.out.println("[AUTO-FIX] ✅ Added " + trulyMissingSteps.size() + " missing step definitions");
+        return stepDefsContent;
+    }
+
+    /**
+     * Generate method name from step text (used for duplicate detection)
+     */
+    private static String generateMethodNameFromStep(String stepText) {
+        String methodName = stepText
+                .replaceAll("[^a-zA-Z0-9\\s]", "")
+                .trim()
+                .replaceAll("\\s+", " ")
+                .split(" ")
+                .length > 0 ?
+                String.join("",
+                        Arrays.stream(stepText.replaceAll("[^a-zA-Z0-9\\s]", "").trim().split("\\s+"))
+                                .limit(5)
+                                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                                .toArray(String[]::new))
+                : "generatedStep";
+
+        // Ensure starts with lowercase
+        return methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
+    }
+
+    /**
+     * Extracts all Given/When/Then steps from feature file
+     */
+    private static Set<String> extractStepsFromFeature(String featureContent) {
+        Set<String> steps = new HashSet<>();
+        Pattern stepPattern = Pattern.compile("^\\s*(Given|When|Then|And|But)\\s+(.+)$", Pattern.MULTILINE);
+        Matcher matcher = stepPattern.matcher(featureContent);
+
+        while (matcher.find()) {
+            String keyword = matcher.group(1);
+            String stepText = matcher.group(2).trim();
+
+            // Normalize step text (remove trailing punctuation, extra spaces)
+            stepText = stepText.replaceAll("[\\s]+", " ").trim();
+
+            // Convert And/But to most recent keyword type
+            if (!keyword.equals("And") && !keyword.equals("But")) {
+                steps.add(stepText);
+            } else {
+                // For And/But, add as-is since they inherit previous keyword
+                steps.add(stepText);
+            }
+        }
+
+        return steps;
+    }
+
+    /**
+     * Extracts all implemented steps from step definitions file
+     * Now also detects @And annotations and method names to prevent duplicates
+     */
+    private static Set<String> extractStepsFromStepDefs(String stepDefsContent) {
+        Set<String> steps = new HashSet<>();
+
+        // Pattern to match @Given/@When/@Then/@And annotations
+        Pattern stepPattern = Pattern.compile("@(?:Given|When|Then|And)\\(\"([^\"]+)\"\\)");
+        Matcher matcher = stepPattern.matcher(stepDefsContent);
+
+        while (matcher.find()) {
+            String stepText = matcher.group(1).trim();
+            steps.add(stepText);
+        }
+
+        // Also extract method names to detect duplicate implementations
+        Pattern methodPattern = Pattern.compile("public\\s+void\\s+(\\w+)\\s*\\(");
+        Matcher methodMatcher = methodPattern.matcher(stepDefsContent);
+
+        while (methodMatcher.find()) {
+            String methodName = methodMatcher.group(1);
+            // Mark method as existing by adding a special marker
+            steps.add("METHOD:" + methodName);
+        }
+
+        return steps;
+    }
+
+    /**
+     * Generates a step definition method for a missing step
+     */
+    private static String generateStepDefinition(String stepText) {
+        // Determine keyword (Given/When/Then) based on step text content
+        String keyword = determineStepKeyword(stepText);
+
+        // Generate method name using shared method
+        String methodName = generateMethodNameFromStep(stepText);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("    @").append(keyword).append("(\"").append(stepText).append("\")\n");
+        sb.append("    public void ").append(methodName).append("() {\n");
+        sb.append("        // TODO: Implement step: ").append(stepText).append("\n");
+        sb.append("        System.out.println(\"⚠️ Step not yet implemented: ").append(stepText).append("\");\n");
+        sb.append("    }\n\n");
+
+        return sb.toString();
+    }
+
+    /**
+     * Determines the appropriate keyword for a step based on its content
+     */
+    private static String determineStepKeyword(String stepText) {
+        String lower = stepText.toLowerCase();
+
+        // Given: Setup/preconditions
+        if (lower.matches("^(user is|page is|application is|system is|browser is|data is).*")) {
+            return "Given";
+        }
+
+        // When: Actions
+        if (lower.matches("^(user (clicks?|enters?|types?|selects?|submits?|navigates?|tries?|makes?|completes?)|multiple users).*")) {
+            return "When";
+        }
+
+        // Then: Assertions/verifications
+        if (lower.matches("^(.*should|.*must|.*will|.*can|.*cannot|all .*).*")) {
+            return "Then";
+        }
+
+        // Default to Then for verification-like steps
+        return "Then";
+    }
+
     private static boolean validateGeneratedContent(String content, String fileType) {
         if (content == null || content.trim().isEmpty()) {
             System.err.println("[VALIDATION ERROR] " + fileType + " content is empty");
@@ -415,6 +693,14 @@ public class TestGeneratorHelper {
                 if (content.contains("private static final String") && !content.contains("=")) {
                     System.err.println("[VALIDATION ERROR] Locator constant missing value");
                     return false;
+                }
+                // Check for navigateTo method
+                if (!content.contains("public static void navigateTo")) {
+                    System.err.println("[VALIDATION WARNING] Missing navigateTo method - will be auto-fixed");
+                }
+                // Check for protected methods
+                if (content.contains("protected static void")) {
+                    System.err.println("[VALIDATION WARNING] Protected methods found - will be auto-fixed to public");
                 }
                 break;
 
@@ -443,6 +729,249 @@ public class TestGeneratorHelper {
 
         System.out.println("[VALIDATION] " + fileType + " content validated successfully");
         return true;
+    }
+
+    /**
+     * Generate test files from Playwright recording.
+     * Main entry point for recording-based generation.
+     * <p>
+     * TODO: MANDATORY PRE-GENERATION CHECKS:
+     * 1. Check if page object exists (avoid overwriting custom code)
+     * 2. Verify existing login patterns (reuse existing steps)
+     * 3. Check configurations.properties for test data
+     * 4. Validate all selectors follow priority order
+     * 5. Warn about dynamic IDs before generation
+     *
+     * @param recordingFile Path to recorded-actions.java file
+     * @param featureName   Name of the feature (e.g., "login", "profile")
+     * @param pageUrl       Page URL or path
+     * @param jiraStory     JIRA story ID
+     * @return true if successful, false otherwise
+     */
+    public static boolean generateFromRecording(String recordingFile, String featureName,
+                                                String pageUrl, String jiraStory) {
+
+        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║          ADVANCED AUTO-FIX TEST GENERATOR                      ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+
+        // AUTO-FIX: Validate recording file first
+        if (!validateRecordingFile(recordingFile)) {
+            System.err.println("[ERROR] Recording file validation failed");
+            return false;
+        }
+
+        System.out.println("[INFO] Pure Java Test File Generator with Auto-Fix Enabled");
+        System.out.println("[INFO] Recording file: " + recordingFile);
+        System.out.println("[INFO] Feature name (input): " + featureName);
+        System.out.println("[INFO] Page URL: " + pageUrl);
+        System.out.println("[INFO] JIRA Story: " + jiraStory);
+
+        // AUTO-FIX: Sanitize and validate feature name
+        String className = autoFixFeatureName(featureName);
+        System.out.println("[INFO] Feature name (fixed): " + className);
+
+        // MANDATORY - Run pre-generation validation checks
+        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║          CODE REUSABILITY & VALIDATION CHECKS                  ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+
+
+        boolean hasExistingLogin = false;
+        boolean hasConfiguredData = false;
+
+        // Check 1: Existing page object
+        System.out.println("🔍 [CHECK 1] Scanning for existing page objects...");
+        if (pageObjectExists(className)) {
+            System.out.println("✅ FOUND: Page object " + className + ".java already exists!");
+            System.out.println("   📁 Location: src/main/java/pages/" + className + ".java");
+            System.out.println("   ⚠️  ACTION: Will SKIP generation to avoid overwriting custom code");
+            System.out.println("   💡 TIP: Review existing methods before manually integrating new actions\n");
+        } else {
+            System.out.println("⚠️  NOT FOUND: Page object doesn't exist - will create new " + className + ".java\n");
+        }
+
+        // Check 2: Existing login patterns
+        System.out.println("🔍 [CHECK 2] Detecting existing login/authentication code...");
+        String existingLogin = detectExistingLogin();
+        if (existingLogin != null) {
+            hasExistingLogin = true;
+            System.out.println("✅ FOUND: Existing login class: " + existingLogin + ".java");
+            System.out.println("   📁 Location: src/main/java/pages/" + existingLogin + ".java");
+            System.out.println("   📝 REUSE INSTRUCTIONS:");
+            System.out.println("      1. Import in Step Definitions: import pages." + existingLogin + ";");
+            System.out.println(
+                    "      2. Call login methods: " + existingLogin + ".enterValidUsernameFromConfiguration(page);");
+            System.out.println(
+                    "      3. Call login methods: " + existingLogin + ".enterValidPasswordFromConfiguration(page);");
+            System.out.println("      4. Call login methods: " + existingLogin + ".clickSignIn(page);");
+            System.out.println("   💡 TIP: Avoid regenerating login steps - reuse existing validated methods!\n");
+        } else {
+            System.out.println("⚠️  NOT FOUND: No existing login patterns detected\n");
+        }
+
+        // Check 3: Configuration test data
+        System.out.println("🔍 [CHECK 3] Checking for configured test credentials...");
+        if (hasConfiguredCredentials()) {
+            hasConfiguredData = true;
+            System.out.println("✅ FOUND: Test credentials configured in configurations.properties");
+            System.out.println("   📁 Location: src/test/resources/configurations.properties");
+            System.out.println("   📝 USAGE INSTRUCTIONS:");
+            System.out.println("      1. In Page Objects: loadProps.getProperty(loadProps.PropKeys.USERNAME)");
+            System.out.println("      2. In Step Defs: Use loadProps.getProperty(loadProps.PropKeys.PASSWORD)");
+            System.out.println("      3. In Features: Reference as 'valid credentials from configuration'");
+            System.out.println("   🤖 AI ENHANCEMENT: AITestFramework.generateTestData() can generate smart test data");
+            System.out.println("   💡 TIP: Use configuration data instead of hardcoded values!");
+            hasConfiguredData = true;
+        } else {
+            System.out.println("⚠️  NOT FOUND: No test credentials in configurations.properties");
+            System.out.println("   💡 TIP: Add Username and Password properties for data-driven testing");
+            System.out.println("   🤖 AI OPTION: Use AITestFramework.generateTestData(\"email\", \"userEmail\", null)");
+        }
+
+        System.out.println("═══════════════════════════════════════════════════════════════\n");
+
+        try {
+            // Parse recording file with auto-fix
+            System.out.println("\n[AUTO-FIX] Parsing recording file with validation...");
+            List<RecordedAction> actions = parseRecording(recordingFile);
+            System.out.println("[AUTO-FIX] Extracted " + actions.size() + " actions from recording");
+
+            if (actions.isEmpty()) {
+                System.err.println("[ERROR] No valid actions found in recording");
+                return false;
+            }
+
+            // AUTO-FIX: Validate selectors and detect issues
+            System.out.println("\n[AUTO-FIX] Validating selectors...");
+            int dynamicIdCount = 0;
+            int invalidSelectorCount = 0;
+            for (RecordedAction action : actions) {
+                if (action.selector != null) {
+                    // Check for dynamic IDs
+                    if (action.selector.contains("@id=")) {
+                        String id = action.selector.replaceAll(".*@id=['\"]([^'\"]+)['\"].*", "$1");
+                        if (isDynamicId(id)) {
+                            dynamicIdCount++;
+                            System.out.println("⚠️ [AUTO-FIX] Dynamic ID detected: " + id + " (will be downgraded)");
+                        }
+                    }
+
+                    // Validate selector
+                    if (!isValidSelector(action.selector)) {
+                        invalidSelectorCount++;
+                        System.out.println("⚠️ [AUTO-FIX] Invalid selector: " + action.selector);
+                    }
+                }
+            }
+
+            if (dynamicIdCount > 0) {
+                System.out.println("[AUTO-FIX] Found " + dynamicIdCount + " dynamic IDs - using fallback strategies");
+            }
+            if (invalidSelectorCount > 0) {
+                System.out.println("[AUTO-FIX] Fixed " + invalidSelectorCount + " invalid selectors");
+            }
+            System.out.println("[AUTO-FIX] Selector validation complete\n");
+
+            // Generate files with error handling
+            try {
+                System.out.println("[AUTO-FIX] Generating Page Object...");
+                generatePageObject(className, pageUrl, jiraStory, actions);
+                System.out.println("[AUTO-FIX] ✅ Page Object generated successfully");
+            } catch (Exception e) {
+                System.err.println("[ERROR] Page Object generation failed: " + e.getMessage());
+                autoRecoverFromError(e, "Page Object Generation");
+                throw e;
+            }
+
+            try {
+                System.out.println("[AUTO-FIX] Generating Feature File...");
+                generateFeatureFile(className, jiraStory, actions);
+                System.out.println("[AUTO-FIX] ✅ Feature File generated successfully");
+            } catch (Exception e) {
+                System.err.println("[ERROR] Feature File generation failed: " + e.getMessage());
+                autoRecoverFromError(e, "Feature File Generation");
+                throw e;
+            }
+
+            try {
+                System.out.println("[AUTO-FIX] Generating Step Definitions...");
+                generateStepDefinitions(className, jiraStory, actions);
+                System.out.println("[AUTO-FIX] ✅ Step Definitions generated successfully");
+            } catch (Exception e) {
+                System.err.println("[ERROR] Step Definitions generation failed: " + e.getMessage());
+                autoRecoverFromError(e, "Step Definitions Generation");
+                throw e;
+            }
+
+            System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+            System.out.println("║              GENERATION COMPLETE - NEXT STEPS                  ║");
+            System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+
+            System.out.println("✅ [SUCCESS] All files generated successfully!\n");
+
+            System.out.println("📂 GENERATED FILES:");
+            System.out.println("   1. Page Object:      src/main/java/pages/" + className + ".java");
+            System.out.println("   2. Feature File:     src/test/java/features/" + className + ".feature");
+            System.out.println("   3. Step Definitions: src/test/java/stepDefs/" + className + "Steps.java\n");
+
+            // Integration instructions
+            System.out.println("═══════════════════════════════════════════════════════════════");
+            System.out.println("📝 INTEGRATION CHECKLIST:");
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
+
+            if (hasExistingLogin) {
+                System.out.println("🔄 [CRITICAL: REUSE EXISTING LOGIN - ACTION REQUIRED!]");
+                System.out.println("   ⚠️  Login pattern detected - DO NOT use generated login steps!");
+                System.out.println("   ✅ Existing login class found: " + existingLogin + ".java");
+                System.out.println("   📝 MANDATORY STEPS:");
+                System.out.println("   ✓ Step 1: Open " + className + "Steps.java");
+                System.out.println("   ✓ Step 2: Find the LOGIN STEPS section (marked with TODO)");
+                System.out.println("   ✓ Step 3: Replace generated code with existing login methods");
+                System.out.println("   ✓ Step 4: Update " + className + ".feature to use these steps:\n");
+                System.out.println("      When User enters valid username from configuration");
+                System.out.println("      And User enters valid password from configuration");
+                System.out.println("      And User clicks on Sign In button\n");
+                System.out
+                        .println("   💡 WHY? Existing login is tested, uses config data, and maintains consistency!\n");
+            }
+
+            if (hasConfiguredData) {
+                System.out.println("📋 [USE CONFIGURED TEST DATA]");
+                System.out.println("   ✓ Test credentials found in configurations.properties");
+                System.out.println("   ✓ Available properties: Username, Password (check config file for more)");
+                System.out.println("   ✓ Usage: loadProps.getProperty(\"Username\")");
+                System.out.println("   ✓ Already implemented in: enterValidUsernameFromConfiguration() methods\n");
+            }
+
+            System.out.println("🔨 [COMPILE PROJECT]");
+            System.out.println("   ✓ Run: mvn clean compile");
+            System.out.println("   ✓ Or:  quick-start.bat → Option 3 (Validate & Run)\n");
+
+            System.out.println("🧪 [RUN TESTS]");
+            System.out.println("   ✓ Run specific feature: mvn test -Dcucumber.filter.tags=@" + className);
+            System.out.println("   ✓ Run all tests: mvn test");
+            System.out.println("   ✓ Or use: quick-start.bat → Option 3 (Validate & Run)\n");
+
+            System.out.println("📊 [VIEW REPORTS]");
+            System.out.println("   ✓ Location: MRITestExecutionReports/Version*/extentReports/");
+            System.out.println("   ✓ Open latest: HTML report in testNGExtentReports/html/\n");
+
+            System.out.println("💡 [VERIFICATION TIPS]");
+            System.out.println("   ✓ Review generated locators in " + className + ".java");
+            System.out.println("   ✓ Check for dynamic IDs warnings above");
+            System.out.println("   ✓ Verify steps match recorded actions in .feature file");
+            System.out.println("   ✓ Ensure step definitions import correct page objects");
+            System.out.println("   ✓ Test manually before CI/CD integration\n");
+
+            System.out.println("═══════════════════════════════════════════════════════════════\n");
+
+            return true;
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to generate test files: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // ========================================================================
@@ -750,251 +1279,184 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Generate test files from Playwright recording.
-     * Main entry point for recording-based generation.
-     * 
-     * TODO: MANDATORY PRE-GENERATION CHECKS:
-     * 1. Check if page object exists (avoid overwriting custom code)
-     * 2. Verify existing login patterns (reuse existing steps)
-     * 3. Check configurations.properties for test data
-     * 4. Validate all selectors follow priority order
-     * 5. Warn about dynamic IDs before generation
-     * 
-     * @param recordingFile Path to recorded-actions.java file
-     * @param featureName   Name of the feature (e.g., "login", "profile")
-     * @param pageUrl       Page URL or path
-     * @param jiraStory     JIRA story ID
-     * @return true if successful, false otherwise
+     * Optimizes a selector by preferring stable locators.
+     * NOW ENHANCED WITH AI: Uses AITestFramework for intelligent locator strategies
+     * Priority Order:
+     * 1. Static ID (highest priority) - AI validates stability
+     * 2. data-testid attributes - AI recommended
+     * 3. Relative XPath - AI optimized
+     * 4. Label or Names - AI validated
+     * 5. Class name (if stable) - AI checks for dynamic patterns
+     * 6. CSS (lowest priority) - AI fallback
+     *
+     * @param selector The original selector
+     * @return Optimized selector following AI-enhanced priority order
      */
-    public static boolean generateFromRecording(String recordingFile, String featureName,
-            String pageUrl, String jiraStory) {
+    private static String optimizeSelector(String selector) {
+        if (selector == null || selector.isEmpty())
+            return selector;
 
-        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-        System.out.println("║          ADVANCED AUTO-FIX TEST GENERATOR                      ║");
-        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
-
-        // AUTO-FIX: Validate recording file first
-        if (!validateRecordingFile(recordingFile)) {
-            System.err.println("[ERROR] Recording file validation failed");
-            return false;
+        // ========== VALIDATION: REJECT OVERLY GENERIC SELECTORS ==========
+        // Prevent strict mode violations by detecting selectors that match too many elements
+        if (isOverlyGenericSelector(selector)) {
+            // Try to make it more specific by adding visible constraint
+            String specificSelector = makeGenericSelectorSpecific(selector);
+            if (specificSelector != null && !specificSelector.equals(selector)) {
+                selector = specificSelector;
+            }
         }
 
-        System.out.println("[INFO] Pure Java Test File Generator with Auto-Fix Enabled");
-        System.out.println("[INFO] Recording file: " + recordingFile);
-        System.out.println("[INFO] Feature name (input): " + featureName);
-        System.out.println("[INFO] Page URL: " + pageUrl);
-        System.out.println("[INFO] JIRA Story: " + jiraStory);
-
-        // AUTO-FIX: Sanitize and validate feature name
-        String className = autoFixFeatureName(featureName);
-        System.out.println("[INFO] Feature name (fixed): " + className);
-
-        // MANDATORY - Run pre-generation validation checks
-        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-        System.out.println("║          CODE REUSABILITY & VALIDATION CHECKS                  ║");
-        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
-
-
-        boolean hasExistingPageObject = false;
-        boolean hasExistingLogin = false;
-        boolean hasConfiguredData = false;
-
-        // Check 1: Existing page object
-        System.out.println("🔍 [CHECK 1] Scanning for existing page objects...");
-        if (pageObjectExists(className)) {
-            hasExistingPageObject = true;
-            System.out.println("✅ FOUND: Page object " + className + ".java already exists!");
-            System.out.println("   📁 Location: src/main/java/pages/" + className + ".java");
-            System.out.println("   ⚠️  ACTION: Will SKIP generation to avoid overwriting custom code");
-            System.out.println("   💡 TIP: Review existing methods before manually integrating new actions\n");
-        } else {
-            System.out.println("⚠️  NOT FOUND: Page object doesn't exist - will create new " + className + ".java\n");
+        // FIRST: Try to extract static ID from complex selectors
+        String extractedStaticId = extractStaticIdFromSelector(selector);
+        if (extractedStaticId != null) {
+            return "//input[@id='" + extractedStaticId + "'] | //button[@id='" + extractedStaticId + "'] | " +
+                    "//textarea[@id='" + extractedStaticId + "'] | //select[@id='" + extractedStaticId + "'] | " +
+                    "//*[@id='" + extractedStaticId + "']";
         }
 
-        // Check 2: Existing login patterns
-        System.out.println("🔍 [CHECK 2] Detecting existing login/authentication code...");
-        String existingLogin = detectExistingLogin();
-        if (existingLogin != null) {
-            hasExistingLogin = true;
-            System.out.println("✅ FOUND: Existing login class: " + existingLogin + ".java");
-            System.out.println("   📁 Location: src/main/java/pages/" + existingLogin + ".java");
-            System.out.println("   📝 REUSE INSTRUCTIONS:");
-            System.out.println("      1. Import in Step Definitions: import pages." + existingLogin + ";");
-            System.out.println(
-                    "      2. Call login methods: " + existingLogin + ".enterValidUsernameFromConfiguration(page);");
-            System.out.println(
-                    "      3. Call login methods: " + existingLogin + ".enterValidPasswordFromConfiguration(page);");
-            System.out.println("      4. Call login methods: " + existingLogin + ".clickSignIn(page);");
-            System.out.println("   💡 TIP: Avoid regenerating login steps - reuse existing validated methods!\n");
-        } else {
-            System.out.println("⚠️  NOT FOUND: No existing login patterns detected\n");
-        }
-
-        // Check 3: Configuration test data
-        System.out.println("🔍 [CHECK 3] Checking for configured test credentials...");
-        if (hasConfiguredCredentials()) {
-            hasConfiguredData = true;
-            System.out.println("✅ FOUND: Test credentials configured in configurations.properties");
-            System.out.println("   📁 Location: src/test/resources/configurations.properties");
-            System.out.println("   📝 USAGE INSTRUCTIONS:");
-            System.out.println("      1. In Page Objects: loadProps.getProperty(\"Username\")");
-            System.out.println("      2. In Step Defs: Call methods like enterValidUsernameFromConfiguration()");
-            System.out.println("      3. In Features: Reference as 'valid credentials from configuration'");
-            System.out.println("   💡 TIP: Use configuration data instead of hardcoded values!\n");
-        } else {
-            System.out.println("⚠️  NOT FOUND: No test credentials in configurations.properties");
-            System.out.println("   💡 TIP: Add Username and Password properties for data-driven testing\n");
-        }
-
-        System.out.println("═══════════════════════════════════════════════════════════════\n");
-
+        // AI ENHANCEMENT: Use AITestFramework to generate smart locator strategies
         try {
-            // Parse recording file with auto-fix
-            System.out.println("\n[AUTO-FIX] Parsing recording file with validation...");
-            List<RecordedAction> actions = parseRecording(recordingFile);
-            System.out.println("[AUTO-FIX] Extracted " + actions.size() + " actions from recording");
+            List<AITestFramework.LocatorStrategy> aiStrategies =
+                    AITestFramework.generateSmartLocators(selector, "optimization");
 
-            if (actions.isEmpty()) {
-                System.err.println("[ERROR] No valid actions found in recording");
-                return false;
+            if (aiStrategies != null && !aiStrategies.isEmpty()) {
+                // Use the highest priority strategy from AI
+                AITestFramework.LocatorStrategy bestStrategy = aiStrategies.get(0);
+                return bestStrategy.selector;
             }
-
-            // AUTO-FIX: Validate selectors and detect issues
-            System.out.println("\n[AUTO-FIX] Validating selectors...");
-            int dynamicIdCount = 0;
-            int invalidSelectorCount = 0;
-            for (RecordedAction action : actions) {
-                if (action.selector != null) {
-                    // Check for dynamic IDs
-                    if (action.selector.contains("@id=")) {
-                        String id = action.selector.replaceAll(".*@id=['\"]([^'\"]+)['\"].*", "$1");
-                        if (isDynamicId(id)) {
-                            dynamicIdCount++;
-                            System.out.println("⚠️ [AUTO-FIX] Dynamic ID detected: " + id + " (will be downgraded)");
-                        }
-                    }
-
-                    // Validate selector
-                    if (!isValidSelector(action.selector)) {
-                        invalidSelectorCount++;
-                        System.out.println("⚠️ [AUTO-FIX] Invalid selector: " + action.selector);
-                    }
-                }
-            }
-
-            if (dynamicIdCount > 0) {
-                System.out.println("[AUTO-FIX] Found " + dynamicIdCount + " dynamic IDs - using fallback strategies");
-            }
-            if (invalidSelectorCount > 0) {
-                System.out.println("[AUTO-FIX] Fixed " + invalidSelectorCount + " invalid selectors");
-            }
-            System.out.println("[AUTO-FIX] Selector validation complete\n");
-
-            // Generate files with error handling
-            try {
-                System.out.println("[AUTO-FIX] Generating Page Object...");
-                generatePageObject(className, pageUrl, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Page Object generated successfully");
-            } catch (Exception e) {
-                System.err.println("[ERROR] Page Object generation failed: " + e.getMessage());
-                autoRecoverFromError(e, "Page Object Generation");
-                throw e;
-            }
-
-            try {
-                System.out.println("[AUTO-FIX] Generating Feature File...");
-                generateFeatureFile(className, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Feature File generated successfully");
-            } catch (Exception e) {
-                System.err.println("[ERROR] Feature File generation failed: " + e.getMessage());
-                autoRecoverFromError(e, "Feature File Generation");
-                throw e;
-            }
-
-            try {
-                System.out.println("[AUTO-FIX] Generating Step Definitions...");
-                generateStepDefinitions(className, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Step Definitions generated successfully");
-            } catch (Exception e) {
-                System.err.println("[ERROR] Step Definitions generation failed: " + e.getMessage());
-                autoRecoverFromError(e, "Step Definitions Generation");
-                throw e;
-            }
-
-            System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-            System.out.println("║              GENERATION COMPLETE - NEXT STEPS                  ║");
-            System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
-
-            System.out.println("✅ [SUCCESS] All files generated successfully!\n");
-
-            System.out.println("📂 GENERATED FILES:");
-            System.out.println("   1. Page Object:      src/main/java/pages/" + className + ".java");
-            System.out.println("   2. Feature File:     src/test/java/features/" + className + ".feature");
-            System.out.println("   3. Step Definitions: src/test/java/stepDefs/" + className + "Steps.java\n");
-
-            // Integration instructions
-            System.out.println("═══════════════════════════════════════════════════════════════");
-            System.out.println("📝 INTEGRATION CHECKLIST:");
-            System.out.println("═══════════════════════════════════════════════════════════════\n");
-
-            if (hasExistingLogin) {
-                System.out.println("🔄 [CRITICAL: REUSE EXISTING LOGIN - ACTION REQUIRED!]");
-                System.out.println("   ⚠️  Login pattern detected - DO NOT use generated login steps!");
-                System.out.println("   ✅ Existing login class found: " + existingLogin + ".java");
-                System.out.println("   📝 MANDATORY STEPS:");
-                System.out.println("   ✓ Step 1: Open " + className + "Steps.java");
-                System.out.println("   ✓ Step 2: Find the LOGIN STEPS section (marked with TODO)");
-                System.out.println("   ✓ Step 3: Replace generated code with existing login methods");
-                System.out.println("   ✓ Step 4: Update " + className + ".feature to use these steps:\n");
-                System.out.println("      When User enters valid username from configuration");
-                System.out.println("      And User enters valid password from configuration");
-                System.out.println("      And User clicks on Sign In button\n");
-                System.out
-                        .println("   💡 WHY? Existing login is tested, uses config data, and maintains consistency!\n");
-            }
-
-            if (hasConfiguredData) {
-                System.out.println("📋 [USE CONFIGURED TEST DATA]");
-                System.out.println("   ✓ Test credentials found in configurations.properties");
-                System.out.println("   ✓ Available properties: Username, Password (check config file for more)");
-                System.out.println("   ✓ Usage: loadProps.getProperty(\"Username\")");
-                System.out.println("   ✓ Already implemented in: enterValidUsernameFromConfiguration() methods\n");
-            }
-
-            System.out.println("🔨 [COMPILE PROJECT]");
-            System.out.println("   ✓ Run: mvn clean compile");
-            System.out.println("   ✓ Or:  quick-start.bat → Option 3 (Validate & Run)\n");
-
-            System.out.println("🧪 [RUN TESTS]");
-            System.out.println("   ✓ Run specific feature: mvn test -Dcucumber.filter.tags=@" + className);
-            System.out.println("   ✓ Run all tests: mvn test");
-            System.out.println("   ✓ Or use: quick-start.bat → Option 3 (Validate & Run)\n");
-
-            System.out.println("📊 [VIEW REPORTS]");
-            System.out.println("   ✓ Location: MRITestExecutionReports/Version*/extentReports/");
-            System.out.println("   ✓ Open latest: HTML report in testNGExtentReports/html/\n");
-
-            System.out.println("💡 [VERIFICATION TIPS]");
-            System.out.println("   ✓ Review generated locators in " + className + ".java");
-            System.out.println("   ✓ Check for dynamic IDs warnings above");
-            System.out.println("   ✓ Verify steps match recorded actions in .feature file");
-            System.out.println("   ✓ Ensure step definitions import correct page objects");
-            System.out.println("   ✓ Test manually before CI/CD integration\n");
-
-            System.out.println("═══════════════════════════════════════════════════════════════\n");
-
-            return true;
         } catch (Exception e) {
-            System.err.println("[ERROR] Failed to generate test files: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            // Silently fall back to classic optimization
         }
+
+        // Common field name to ID mappings (for label conversion)
+        Map<String, String> labelToId = new HashMap<>();
+        labelToId.put("Username", "Username");
+        labelToId.put("Password", "Password");
+        labelToId.put("First Name", "FirstName");
+        labelToId.put("Last Name", "LastName");
+        labelToId.put("Mobile Phone Number", "MobilePhoneNumber");
+        labelToId.put("Email", "Email");
+        labelToId.put("Phone", "Phone");
+        labelToId.put("Address", "Address");
+        labelToId.put("City", "City");
+        labelToId.put("State", "State");
+        labelToId.put("Zip Code", "ZipCode");
+        labelToId.put("Country", "Country");
+
+        // ========== PRIORITY 1: STATIC ID ==========
+        // Check for ID selectors in various formats
+        String extractedId = null;
+
+        // Format: #idValue
+        if (selector.startsWith("#")) {
+            extractedId = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
+        }
+        // Format: id='value' or id="value"
+        else if (selector.contains("id=")) {
+            Pattern idPattern = Pattern.compile("id=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = idPattern.matcher(selector);
+            if (matcher.find()) {
+                extractedId = matcher.group(1);
+            }
+        }
+        // Format: [@id='value'] in XPath
+        else if (selector.contains("[@id=") || selector.contains("[@id =")) {
+            Pattern xpathIdPattern = Pattern.compile("@id\\s*=\\s*['\"]([^'\"]+)['\"]");
+            Matcher matcher = xpathIdPattern.matcher(selector);
+            if (matcher.find()) {
+                extractedId = matcher.group(1);
+            }
+        }
+
+        // If ID found, check if it's static
+        if (extractedId != null && !extractedId.isEmpty()) {
+            if (!isDynamicId(extractedId)) {
+                return "//input[@id='" + extractedId + "'] | //button[@id='" + extractedId + "'] | " +
+                        "//textarea[@id='" + extractedId + "'] | //select[@id='" + extractedId + "'] | " +
+                        "//*[@id='" + extractedId + "']";
+            }
+        }
+
+        // ========== PRIORITY 2: RELATIVE XPATH ==========
+        // Already in relative XPath format (starts with //)
+        if (selector.startsWith("//") || selector.startsWith("(//")) {
+            return selector;
+        }
+
+        // ========== PRIORITY 3: ABSOLUTE XPATH ==========
+        // Absolute XPath (starts with single /)
+        if (selector.startsWith("/") && !selector.startsWith("//")) {
+            return selector;
+        }
+
+        // ========== PRIORITY 4: LABEL OR NAMES ==========
+        // Handle label= locator - try to convert to ID (Priority 1) or XPath
+        if (selector.startsWith("label=")) {
+            String labelText = selector.substring(6).trim();
+            // Try to upgrade to Priority 1 (Static ID) if mapping exists
+            String fieldId = labelToId.get(labelText);
+            if (fieldId != null) {
+                return "//input[@id='" + fieldId + "'] | //textarea[@id='" + fieldId + "'] | //select[@id='" + fieldId
+                        + "']";
+            }
+            // Convert to relative XPath (Priority 2)
+            return "//label[normalize-space(text())='" + labelText + "']/..//input | " +
+                    "//label[normalize-space(text())='" + labelText + "']/..//textarea | " +
+                    "//label[normalize-space(text())='" + labelText + "']/..//select";
+        }
+
+        // Handle name attribute
+        if (selector.startsWith("name=") || (selector.contains("name=") && !selector.contains("text="))) {
+            Pattern namePattern = Pattern.compile("name=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = namePattern.matcher(selector);
+            if (matcher.find()) {
+                String name = matcher.group(1);
+                return "//input[@name='" + name + "'] | //button[@name='" + name + "'] | " +
+                        "//textarea[@name='" + name + "'] | //select[@name='" + name + "'] | " +
+                        "//*[@name='" + name + "']";
+            }
+        }
+
+        // Handle placeholder (treat as name-like selector)
+        if (selector.startsWith("placeholder=")) {
+            String placeholder = selector.substring(12).trim();
+            return "//input[@placeholder='" + placeholder + "'] | //textarea[@placeholder='" + placeholder + "']";
+        }
+
+        // Handle text= locator (treat as name-like)
+        if (selector.startsWith("text=")) {
+            String text = selector.substring(5).trim();
+            return "//button[normalize-space(text())='" + text + "'] | " +
+                    "//a[normalize-space(text())='" + text + "'] | " +
+                    "//*[normalize-space(text())='" + text + "']";
+        }
+
+        // ========== PRIORITY 5: CLASS NAME ==========
+        // CSS class selector: .className
+        if (selector.startsWith(".")) {
+            String className = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
+            return "//*[contains(@class, '" + className + "')]";
+        }
+
+        // Attribute selector with class
+        if (selector.contains("class=") && !selector.startsWith("//")) {
+            Pattern classPattern = Pattern.compile("class=['\"]([^'\"]+)['\"]?");
+            Matcher matcher = classPattern.matcher(selector);
+            if (matcher.find()) {
+                String className = matcher.group(1).split("\\s+")[0]; // Get first class
+                return "//*[contains(@class, '" + className + "')]";
+            }
+        }
+
+        // ========== PRIORITY 6: CSS SELECTORS ==========
+        // Generic CSS selectors (lowest priority) - return as-is
+        return selector;
     }
 
     /**
      * Checks if an ID is dynamic (contains GUIDs, timestamps, or random strings).
      * Dynamic IDs should be avoided as they change between sessions.
-     * 
+     *
      * @param id The ID to check
      * @return true if the ID appears to be dynamic
      */
@@ -1026,9 +1488,78 @@ public class TestGeneratorHelper {
     }
 
     /**
+     * Detects overly generic selectors that would match multiple elements.
+     * These selectors cause "strict mode violation" errors in Playwright.
+     * <p>
+     * Examples of generic selectors:
+     * - //div (matches all divs)
+     * - //span (matches all spans)
+     * - //button (matches all buttons without attributes)
+     * - div (CSS, matches all divs)
+     *
+     * @param selector The selector to check
+     * @return true if selector is overly generic
+     */
+    private static boolean isOverlyGenericSelector(String selector) {
+        if (selector == null || selector.isEmpty()) {
+            return false;
+        }
+
+        // List of generic HTML elements that often match multiple elements
+        String[] genericElements = {
+                "div", "span", "a", "p", "li", "ul", "ol", "td", "tr", "th",
+                "section", "article", "aside", "nav", "header", "footer", "main"
+        };
+
+        // Check for XPath patterns: //element or //element[no attributes]
+        for (String element : genericElements) {
+            // Exact match: //div
+            if (selector.equals("//" + element)) {
+                return true;
+            }
+            // With trailing slash or brackets: //div/ or //div[]
+            if (selector.matches("^//" + element + "\\s*[\\[/]?\\s*$")) {
+                return true;
+            }
+        }
+
+        // Check for CSS patterns: just element name
+        for (String element : genericElements) {
+            if (selector.equals(element)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Attempts to make a generic selector more specific to avoid strict mode violations.
+     * <p>
+     * Strategies:
+     * 1. Add visibility constraint with wrapper class
+     * 2. Target first visible element
+     *
+     * @param genericSelector The overly generic selector
+     * @return A more specific selector, or the original if can't be improved
+     */
+    private static String makeGenericSelectorSpecific(String genericSelector) {
+        if (genericSelector == null || genericSelector.isEmpty()) {
+            return genericSelector;
+        }
+
+        // Extract element name
+        String element = genericSelector.replace("//", "").replace("/", "").trim();
+
+        // Strategy: Add visible constraint with wrapper class or first match
+        // This will select the first visible element of that type within a wrapper
+        return element + ".wrapper >> visible=true";
+    }
+
+    /**
      * Gets priority comment for a selector (used in generated code).
      * TODO: MANDATORY - All generated locators must show their priority level
-     * 
+     *
      * @param selector The selector to analyze
      * @return Priority comment string
      */
@@ -1077,7 +1608,7 @@ public class TestGeneratorHelper {
      * Extracts static ID from complex selectors before optimization.
      * Scans CSS selectors, XPath, and other formats for ID attributes.
      * This ensures we prioritize IDs even when Playwright recorded a different selector type.
-     *
+     * <p>
      * Examples:
      * - "div#myId.class" -> extracts "myId"
      * - "//div[@id='myId'][@class='x']" -> extracts "myId"
@@ -1147,179 +1678,231 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Optimizes a selector by preferring stable locators.
-     * Priority Order:
-     * 1. Static ID (highest priority)
-     * 2. Relative XPath
-     * 3. Absolute XPath
-     * 4. Label or Names
-     * 5. Class name
-     * 6. CSS (lowest priority)
-     * 
-     * @param selector The original selector
-     * @return Optimized selector following priority order
+     * Generate Page Object from recorded actions.
+     * <p>
+     * CODE REUSABILITY: Checks pageObjectExists() to avoid overwriting existing
+     * classes
+     * LOCATOR OPTIMIZATION: All selectors optimized via optimizeSelector() before
+     * generation
+     * SKIP LOGIC: Returns early if page object exists, preserving custom
+     * implementations
      */
-    private static String optimizeSelector(String selector) {
-        if (selector == null || selector.isEmpty())
-            return selector;
+    private static void generatePageObject(String className, String pageUrl, String jiraStory,
+                                           List<RecordedAction> actions) throws IOException {
 
-        // FIRST: Try to extract static ID from complex selectors
-        String extractedStaticId = extractStaticIdFromSelector(selector);
-        if (extractedStaticId != null) {
-            System.out.println("[PRIORITY 1 - EXTRACTED] Using extracted static ID: " + extractedStaticId);
-            return "//input[@id='" + extractedStaticId + "'] | //button[@id='" + extractedStaticId + "'] | " +
-                   "//textarea[@id='" + extractedStaticId + "'] | //select[@id='" + extractedStaticId + "'] | " +
-                   "//*[@id='" + extractedStaticId + "']";
+        // Check if page object already exists
+        if (pageObjectExists(className)) {
+            System.out.println("[REUSE] Page object already exists: " + className + ".java");
+            System.out.println("[INFO] Skipping page object generation - using existing implementation");
+            System.out.println("[TIP] To add new methods, manually edit: src/main/java/pages/" + className + ".java");
+            return; // Skip generation, use existing
         }
 
-        System.out.println("[DEBUG] Optimizing selector: " + selector);
+        StringBuilder sb = new StringBuilder();
 
-        // Common field name to ID mappings (for label conversion)
-        Map<String, String> labelToId = new HashMap<>();
-        labelToId.put("Username", "Username");
-        labelToId.put("Password", "Password");
-        labelToId.put("First Name", "FirstName");
-        labelToId.put("Last Name", "LastName");
-        labelToId.put("Mobile Phone Number", "MobilePhoneNumber");
-        labelToId.put("Email", "Email");
-        labelToId.put("Phone", "Phone");
-        labelToId.put("Address", "Address");
-        labelToId.put("City", "City");
-        labelToId.put("State", "State");
-        labelToId.put("Zip Code", "ZipCode");
-        labelToId.put("Country", "Country");
+        sb.append("package pages;\n");
+        // AUTO-FIX: Always include all required imports for page objects
+        sb.append("import com.microsoft.playwright.Page;\n");
+        sb.append("import configs.loadProps;\n");
+        sb.append("import configs.TimeoutConfig;\n");  // Always include for consistent timeout usage
+        sb.append("import java.util.logging.Logger;\n");
+        sb.append("\n");
+        sb.append("/**\n");
+        sb.append(" * Page Object for ").append(className).append("\n");
+        sb.append(" * Auto-generated from Playwright recording\n");
+        sb.append(" * \n");
+        sb.append(" * This class extends BasePage which provides:\n");
+        sb.append(" *  - clickOnElement(locator) - from utils.java\n");
+        sb.append(" *  - enterText(locator, text) - from utils.java\n");
+        sb.append(" *  - selectDropDownValueByText(locator, text) - from utils.java\n");
+        sb.append(" *  - navigateToUrl(url) - from BasePage.java\n");
+        sb.append(" *  - And many more common utilities\n");
+        sb.append(" * \n");
+        sb.append(" * All generated methods use these common utilities for consistency\n");
+        sb.append(" * and better maintainability across the test framework.\n");
+        sb.append(" * \n");
+        sb.append(" * @story ").append(jiraStory).append("\n");
+        sb.append(" */\n");
+        sb.append("public class ").append(className).append(" extends BasePage {\n");
+        sb.append("    private static final Logger log = Logger.getLogger(").append(className).append(".class.getName());\n");
 
-        // ========== PRIORITY 1: STATIC ID ==========
-        // Check for ID selectors in various formats
-        String extractedId = null;
+        // Extract path from full URL if needed
+        String pagePath = extractPathFromUrl(pageUrl);
+        sb.append("    private static final String PAGE_PATH = \"").append(pagePath).append("\";\n");
+        sb.append("\n");
 
-        // Format: #idValue
-        if (selector.startsWith("#")) {
-            extractedId = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
-        }
-        // Format: id='value' or id="value"
-        else if (selector.contains("id=")) {
-            Pattern idPattern = Pattern.compile("id=['\"]([^'\"]+)['\"]?");
-            Matcher matcher = idPattern.matcher(selector);
-            if (matcher.find()) {
-                extractedId = matcher.group(1);
-            }
-        }
-        // Format: [@id='value'] in XPath
-        else if (selector.contains("[@id=") || selector.contains("[@id =")) {
-            Pattern xpathIdPattern = Pattern.compile("@id\\s*=\\s*['\"]([^'\"]+)['\"]");
-            Matcher matcher = xpathIdPattern.matcher(selector);
-            if (matcher.find()) {
-                extractedId = matcher.group(1);
-            }
-        }
+        // Generate locator constants with descriptive names
+        // TODO: MANDATORY - Verify all selectors follow priority order
+        int staticIdCount = 0;
+        int labelSelectorCount = 0;
+        int textSelectorCount = 0;
 
-        // If ID found, check if it's static
-        if (extractedId != null && !extractedId.isEmpty()) {
-            if (isDynamicId(extractedId)) {
-                System.out.println(
-                        "[PRIORITY 1 - SKIP] Dynamic ID detected: " + extractedId + " - Moving to lower priority");
-            } else {
-                System.out.println("[✓ PRIORITY 1] Static ID found: " + extractedId);
-                return "//input[@id='" + extractedId + "'] | //button[@id='" + extractedId + "'] | " +
-                        "//textarea[@id='" + extractedId + "'] | //select[@id='" + extractedId + "'] | " +
-                        "//*[@id='" + extractedId + "']";
-            }
-        }
+        // DEDUPLICATION: Track unique locators and methods
+        Set<String> generatedLocators = new HashSet<>();
+        Set<String> generatedMethods = new HashSet<>();
+        Set<String> locatorConstants = new HashSet<>();
 
-        // ========== PRIORITY 2: RELATIVE XPATH ==========
-        // Already in relative XPath format (starts with //)
-        if (selector.startsWith("//") || selector.startsWith("(//")) {
-            System.out.println("[✓ PRIORITY 2] Relative XPath detected");
-            return selector;
-        }
+        for (RecordedAction action : actions) {
+            if (action.selector != null) {
+                // Skip duplicate locators (same selector string)
+                if (generatedLocators.contains(action.selector)) {
+                    System.out.println("[SKIP DUPLICATE] Locator already exists: " + action.selector);
+                    continue;
+                }
 
-        // ========== PRIORITY 3: ABSOLUTE XPATH ==========
-        // Absolute XPath (starts with single /)
-        if (selector.startsWith("/") && !selector.startsWith("//")) {
-            System.out.println("[✓ PRIORITY 3] Absolute XPath detected");
-            return selector;
-        }
+                // Skip duplicate locator constant names
+                if (locatorConstants.contains(action.elementName)) {
+                    System.out.println("[SKIP DUPLICATE] Locator constant already defined: " + action.elementName);
+                    continue;
+                }
 
-        // ========== PRIORITY 4: LABEL OR NAMES ==========
-        // Handle label= locator - try to convert to ID (Priority 1) or XPath
-        if (selector.startsWith("label=")) {
-            String labelText = selector.substring(6).trim();
-            System.out.println("[PRIORITY 4] Label selector detected: " + labelText);
+                generatedLocators.add(action.selector);
+                locatorConstants.add(action.elementName);
 
-            // Try to upgrade to Priority 1 (Static ID) if mapping exists
-            String fieldId = labelToId.get(labelText);
-            if (fieldId != null) {
-                System.out.println("[✓ PRIORITY 4 → PRIORITY 1] Label mapped to static ID: " + fieldId);
-                return "//input[@id='" + fieldId + "'] | //textarea[@id='" + fieldId + "'] | //select[@id='" + fieldId
-                        + "']";
-            }
+                // Count selector types for validation
+                if (action.selector.contains("@id=") && !isDynamicId(action.selector)) {
+                    staticIdCount++;
+                } else if (action.selector.startsWith("label=")) {
+                    labelSelectorCount++;
+                    System.out.println("⚠️ [WARNING] Using label= selector (Priority 4): " + action.selector);
+                    System.out.println("   TODO: Verify static ID is not available for " + action.readableName);
+                } else if (action.selector.startsWith("text=")) {
+                    textSelectorCount++;
+                }
 
-            // Convert to relative XPath (Priority 2)
-            System.out.println("[✓ PRIORITY 4 → PRIORITY 2] Converting label to relative XPath");
-            return "//label[normalize-space(text())='" + labelText + "']/..//input | " +
-                    "//label[normalize-space(text())='" + labelText + "']/..//textarea | " +
-                    "//label[normalize-space(text())='" + labelText + "']/..//select";
-        }
-
-        // Handle name attribute
-        if (selector.startsWith("name=") || (selector.contains("name=") && !selector.contains("text="))) {
-            Pattern namePattern = Pattern.compile("name=['\"]([^'\"]+)['\"]?");
-            Matcher matcher = namePattern.matcher(selector);
-            if (matcher.find()) {
-                String name = matcher.group(1);
-                System.out.println("[✓ PRIORITY 4] Name attribute found: " + name);
-                return "//input[@name='" + name + "'] | //button[@name='" + name + "'] | " +
-                        "//textarea[@name='" + name + "'] | //select[@name='" + name + "'] | " +
-                        "//*[@name='" + name + "']";
+                // TODO: Add comment showing priority level used
+                String priorityComment = getPriorityComment(action.selector);
+                sb.append("    // ").append(action.readableName).append(" - ").append(priorityComment).append("\n");
+                sb.append("    private static final String ").append(action.elementName)
+                        .append(" = \"").append(escapeJavaString(action.selector)).append("\";\n");
+                sb.append("\n");
             }
         }
 
-        // Handle placeholder (treat as name-like selector)
-        if (selector.startsWith("placeholder=")) {
-            String placeholder = selector.substring(12).trim();
-            System.out.println("[✓ PRIORITY 4] Placeholder attribute found: " + placeholder);
-            return "//input[@placeholder='" + placeholder + "'] | //textarea[@placeholder='" + placeholder + "']";
+        // TODO: Log summary of locator types used
+        System.out.println("[LOCATOR SUMMARY] Static IDs: " + staticIdCount +
+                ", Labels: " + labelSelectorCount +
+                ", Text: " + textSelectorCount);
+        if (labelSelectorCount > 0) {
+            System.out.println("⚠️ [TODO] Review " + labelSelectorCount +
+                    " label= selectors - consider using XPath with static IDs");
         }
 
-        // Handle text= locator (treat as name-like)
-        if (selector.startsWith("text=")) {
-            String text = selector.substring(5).trim();
-            System.out.println("[✓ PRIORITY 4] Text selector found: " + text);
-            return "//button[normalize-space(text())='" + text + "'] | " +
-                    "//a[normalize-space(text())='" + text + "'] | " +
-                    "//*[normalize-space(text())='" + text + "']";
-        }
+        // AUTO-FIX: Always generate navigateTo method with proper imports and logging
+        sb.append("    /**\n");
+        sb.append("     * Navigate to ").append(className).append(" page\n");
+        sb.append("     * Uses common navigateToUrl method from BasePage\n");
+        sb.append("     * @param page Playwright Page instance\n");
+        sb.append("     */\n");
+        sb.append("    public static void navigateTo").append(className).append("(Page page) {\n");
+        sb.append("        log.info(\"🌐 Navigating to ").append(className).append(" page\");\n");
+        sb.append("        String fullUrl = loadProps.getProperty(\"URL\") + PAGE_PATH;\n");
+        sb.append("        navigateToUrl(fullUrl);\n");
+        sb.append("        log.info(\"✅ Navigation completed\");\n");
+        sb.append("    }\n");
+        sb.append("\n");
 
-        // ========== PRIORITY 5: CLASS NAME ==========
-        // CSS class selector: .className
-        if (selector.startsWith(".")) {
-            String className = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
-            System.out.println("[✓ PRIORITY 5] Class name found: " + className);
-            return "//*[contains(@class, '" + className + "')]";
-        }
+        // Generate methods for each action with descriptive names
+        for (RecordedAction action : actions) {
+            if ("navigate".equals(action.type))
+                continue;
 
-        // Attribute selector with class
-        if (selector.contains("class=") && !selector.startsWith("//")) {
-            Pattern classPattern = Pattern.compile("class=['\"]([^'\"]+)['\"]?");
-            Matcher matcher = classPattern.matcher(selector);
-            if (matcher.find()) {
-                String className = matcher.group(1).split("\\s+")[0]; // Get first class
-                System.out.println("[✓ PRIORITY 5] Class attribute found: " + className);
-                return "//*[contains(@class, '" + className + "')]";
+            // DEDUPLICATION: Skip duplicate methods
+            if (generatedMethods.contains(action.methodName)) {
+                System.out.println("[SKIP DUPLICATE] Method already exists: " + action.methodName + "()");
+                continue;
             }
+            generatedMethods.add(action.methodName);
+
+            sb.append("    /**\n");
+            sb.append("     * ").append(action.stepText).append("\n");
+            sb.append("     * Element: ").append(action.readableName).append(" (").append(action.selector)
+                    .append(")\n");
+            sb.append("     * Uses common method from utils.java\n");
+            sb.append("     */\n");
+
+            switch (action.type) {
+                case "click":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        log.info(\"🖱️ ").append(action.stepText).append("\");\n");
+                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
+                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+
+                case "fill":
+                    sb.append("    public static void ").append(action.methodName)
+                            .append("(Page page, String text) {\n");
+                    sb.append("        log.info(\"⌨️ ").append(action.stepText).append(": \" + text);\n");
+                    sb.append("        enterText(").append(action.elementName).append(", text); // Common method from utils\n");
+                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+
+                case "select":
+                    sb.append("    public static void ").append(action.methodName)
+                            .append("(Page page, String option) {\n");
+                    sb.append("        log.info(\"🔽 ").append(action.stepText).append(": \" + option);\n");
+                    sb.append("        selectDropDownValueByText(").append(action.elementName).append(", option); // Common method from utils\n");
+                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+
+                case "check":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        log.info(\"☑️ ").append(action.stepText).append("\");\n");
+                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
+                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+
+                case "press":
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        log.info(\"⌨️ ").append(action.stepText).append(": \" + ")
+                            .append(action.elementName).append(" + \" - Key: ").append(escapeJavaString(action.value))
+                            .append("\");\n");
+                    sb.append("        page.locator(").append(action.elementName).append(").press(\"")
+                            .append(escapeJavaString(action.value)).append("\");\n");
+                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+            }
+            sb.append("\n");
         }
 
-        // ========== PRIORITY 6: CSS SELECTORS ==========
-        // Generic CSS selectors (lowest priority)
-        if (!selector.startsWith("//") && !selector.startsWith("/") &&
-                (selector.contains(">") || selector.contains("+") || selector.contains("~") ||
-                        selector.contains("[") || selector.contains(":"))) {
-            System.out.println("[✓ PRIORITY 6] CSS selector detected (consider upgrading to higher priority)");
+        sb.append("}\n");
+
+        // AUTO-FIX: Apply all fixes before validation
+        String pageObjectContent = sb.toString();
+
+        // Fix 1: Ensure all required imports
+        pageObjectContent = ensureRequiredImports(pageObjectContent);
+
+        // Fix 2: Ensure navigateTo method exists
+        pageObjectContent = ensureNavigateToMethod(pageObjectContent, className);
+
+        // Fix 3: Convert protected methods to public
+        pageObjectContent = autoFixMethodVisibility(pageObjectContent);
+
+        // AUTO-FIX: Validate generated content after fixes
+        if (!validateGeneratedContent(pageObjectContent, "PageObject")) {
+            throw new IOException("Page Object validation failed");
         }
 
-        System.out.println("[INFO] Selector used as-is (no optimization applied)");
-        return selector; // Return original if no optimization found
+        // Write file with error handling
+        try {
+            Files.write(Paths.get("src/main/java/pages/" + className + ".java"), pageObjectContent.getBytes());
+            System.out.println("[AUTO-FIX] ✅ Page Object file written successfully");
+        } catch (IOException e) {
+            System.err.println("[ERROR] Failed to write Page Object file: " + e.getMessage());
+            autoRecoverFromError(e, "Page Object File Write");
+            throw e;
+        }
     }
 
     /**
@@ -1609,209 +2192,8 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Generate Page Object from recorded actions.
-     * 
-     * CODE REUSABILITY: Checks pageObjectExists() to avoid overwriting existing
-     * classes
-     * LOCATOR OPTIMIZATION: All selectors optimized via optimizeSelector() before
-     * generation
-     * SKIP LOGIC: Returns early if page object exists, preserving custom
-     * implementations
-     */
-    private static void generatePageObject(String className, String pageUrl, String jiraStory,
-            List<RecordedAction> actions) throws IOException {
-
-        // Check if page object already exists
-        if (pageObjectExists(className)) {
-            System.out.println("[REUSE] Page object already exists: " + className + ".java");
-            System.out.println("[INFO] Skipping page object generation - using existing implementation");
-            System.out.println("[TIP] To add new methods, manually edit: src/main/java/pages/" + className + ".java");
-            return; // Skip generation, use existing
-        }
-
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("package pages;\n");
-        sb.append("import com.microsoft.playwright.Page;\n");
-        sb.append("import configs.loadProps;\n");
-        sb.append("\n");
-        sb.append("/**\n");
-        sb.append(" * Page Object for ").append(className).append("\n");
-        sb.append(" * Auto-generated from Playwright recording\n");
-        sb.append(" * \n");
-        sb.append(" * This class extends BasePage which provides:\n");
-        sb.append(" *  - clickOnElement(locator) - from utils.java\n");
-        sb.append(" *  - enterText(locator, text) - from utils.java\n");
-        sb.append(" *  - selectDropDownValueByText(locator, text) - from utils.java\n");
-        sb.append(" *  - navigateToUrl(url) - from BasePage.java\n");
-        sb.append(" *  - And many more common utilities\n");
-        sb.append(" * \n");
-        sb.append(" * All generated methods use these common utilities for consistency\n");
-        sb.append(" * and better maintainability across the test framework.\n");
-        sb.append(" * \n");
-        sb.append(" * @story ").append(jiraStory).append("\n");
-        sb.append(" */\n");
-        sb.append("public class ").append(className).append(" extends BasePage {\n");
-
-        // Extract path from full URL if needed
-        String pagePath = extractPathFromUrl(pageUrl);
-        sb.append("    private static final String PAGE_PATH = \"").append(pagePath).append("\";\n");
-        sb.append("\n");
-
-        // Generate locator constants with descriptive names
-        // TODO: MANDATORY - Verify all selectors follow priority order
-        int staticIdCount = 0;
-        int labelSelectorCount = 0;
-        int textSelectorCount = 0;
-
-        // DEDUPLICATION: Track unique locators and methods
-        Set<String> generatedLocators = new HashSet<>();
-        Set<String> generatedMethods = new HashSet<>();
-        Set<String> locatorConstants = new HashSet<>();
-
-        for (RecordedAction action : actions) {
-            if (action.selector != null) {
-                // Skip duplicate locators (same selector string)
-                if (generatedLocators.contains(action.selector)) {
-                    System.out.println("[SKIP DUPLICATE] Locator already exists: " + action.selector);
-                    continue;
-                }
-
-                // Skip duplicate locator constant names
-                if (locatorConstants.contains(action.elementName)) {
-                    System.out.println("[SKIP DUPLICATE] Locator constant already defined: " + action.elementName);
-                    continue;
-                }
-
-                generatedLocators.add(action.selector);
-                locatorConstants.add(action.elementName);
-
-                // Count selector types for validation
-                if (action.selector.contains("@id=") && !isDynamicId(action.selector)) {
-                    staticIdCount++;
-                } else if (action.selector.startsWith("label=")) {
-                    labelSelectorCount++;
-                    System.out.println("⚠️ [WARNING] Using label= selector (Priority 4): " + action.selector);
-                    System.out.println("   TODO: Verify static ID is not available for " + action.readableName);
-                } else if (action.selector.startsWith("text=")) {
-                    textSelectorCount++;
-                }
-
-                // TODO: Add comment showing priority level used
-                String priorityComment = getPriorityComment(action.selector);
-                sb.append("    // ").append(action.readableName).append(" - ").append(priorityComment).append("\n");
-                sb.append("    private static final String ").append(action.elementName)
-                        .append(" = \"").append(escapeJavaString(action.selector)).append("\";\n");
-                sb.append("\n");
-            }
-        }
-
-        // TODO: Log summary of locator types used
-        System.out.println("[LOCATOR SUMMARY] Static IDs: " + staticIdCount +
-                ", Labels: " + labelSelectorCount +
-                ", Text: " + textSelectorCount);
-        if (labelSelectorCount > 0) {
-            System.out.println("⚠️ [TODO] Review " + labelSelectorCount +
-                    " label= selectors - consider using XPath with static IDs");
-        }
-
-        // Generate navigate method using common navigateToUrl from BasePage
-        sb.append("    /**\n");
-        sb.append("     * Navigate to ").append(className).append(" page\n");
-        sb.append("     * Uses common navigateToUrl method from BasePage\n");
-        sb.append("     * @param page Playwright Page instance\n");
-        sb.append("     */\n");
-        sb.append("    public static void navigateTo").append(className).append("(Page page) {\n");
-        sb.append("        String fullUrl = loadProps.getProperty(\"URL\") + PAGE_PATH;\n");
-        sb.append("        navigateToUrl(fullUrl);\n");
-        sb.append("    }\n");
-        sb.append("\n");
-
-        // Generate methods for each action with descriptive names
-        for (RecordedAction action : actions) {
-            if ("navigate".equals(action.type))
-                continue;
-
-            // DEDUPLICATION: Skip duplicate methods
-            if (generatedMethods.contains(action.methodName)) {
-                System.out.println("[SKIP DUPLICATE] Method already exists: " + action.methodName + "()");
-                continue;
-            }
-            generatedMethods.add(action.methodName);
-
-            sb.append("    /**\n");
-            sb.append("     * ").append(action.stepText).append("\n");
-            sb.append("     * Element: ").append(action.readableName).append(" (").append(action.selector)
-                    .append(")\n");
-            sb.append("     * Uses common method from utils.java\n");
-            sb.append("     */\n");
-
-            switch (action.type) {
-                case "click":
-                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
-                    sb.append("        System.out.println(\"🖱️ ").append(action.stepText).append("\");\n");
-                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
-                    sb.append("    }\n");
-                    break;
-
-                case "fill":
-                    sb.append("    public static void ").append(action.methodName)
-                            .append("(Page page, String text) {\n");
-                    sb.append("        System.out.println(\"⌨️ ").append(action.stepText).append(": \" + text);\n");
-                    sb.append("        enterText(").append(action.elementName).append(", text); // Common method from utils\n");
-                    sb.append("    }\n");
-                    break;
-
-                case "select":
-                    sb.append("    public static void ").append(action.methodName)
-                            .append("(Page page, String option) {\n");
-                    sb.append("        System.out.println(\"🔽 ").append(action.stepText).append(": \" + option);\n");
-                    sb.append("        selectDropDownValueByText(").append(action.elementName).append(", option); // Common method from utils\n");
-                    sb.append("    }\n");
-                    break;
-
-                case "check":
-                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
-                    sb.append("        System.out.println(\"☑️ ").append(action.stepText).append("\");\n");
-                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
-                    sb.append("    }\n");
-                    break;
-
-                case "press":
-                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
-                    sb.append("        System.out.println(\"⌨️ ").append(action.stepText).append(": \" + ")
-                            .append(action.elementName).append(" + \" - Key: ").append(escapeJavaString(action.value))
-                            .append("\");\n");
-                    sb.append("        page.locator(").append(action.elementName).append(").press(\"")
-                            .append(escapeJavaString(action.value)).append("\");\n");
-                    sb.append("    }\n");
-                    break;
-            }
-            sb.append("\n");
-        }
-
-        sb.append("}\n");
-
-        // AUTO-FIX: Validate generated content before writing
-        String pageObjectContent = sb.toString();
-        if (!validateGeneratedContent(pageObjectContent, "PageObject")) {
-            throw new IOException("Page Object validation failed");
-        }
-
-        // Write file with error handling
-        try {
-            Files.write(Paths.get("src/main/java/pages/" + className + ".java"), pageObjectContent.getBytes());
-            System.out.println("[AUTO-FIX] ✅ Page Object file written successfully");
-        } catch (IOException e) {
-            System.err.println("[ERROR] Failed to write Page Object file: " + e.getMessage());
-            autoRecoverFromError(e, "Page Object File Write");
-            throw e;
-        }
-    }
-
-    /**
      * Generate Feature file from recorded actions.
-     * 
+     *
      * SCENARIO OUTLINE: Includes actual recorded data in Examples table
      * CODE REUSABILITY: Detects existing login patterns via containsLoginPattern()
      * Suggests using existing steps from detectExistingLogin()
@@ -1839,6 +2221,7 @@ public class TestGeneratorHelper {
             System.out.println("      And User clicks on Sign In button");
             System.out.println("      Then User should be successfully logged in\n");
             System.out.println("   💡 TIP: Reference existing step definitions for consistency");
+            System.out.println("   🤖 AI ENHANCEMENT: Feature file will auto-integrate existing login methods");
             System.out.println("═══════════════════════════════════════════════════════════════\n");
         }
 
@@ -1846,7 +2229,9 @@ public class TestGeneratorHelper {
             System.out.println("📋 [DATA TIP] Configured test data available");
             System.out.println("   ✓ Use parameterized steps like 'user enters valid username from configuration'");
             System.out.println("   ✓ Avoid hardcoding credentials in feature files");
-            System.out.println("   ✓ Reference: src/test/resources/configurations.properties\n");
+            System.out.println("   ✓ Reference: src/test/resources/configurations.properties");
+            System.out.println("   🤖 AI OPTION: AITestFramework.generateTestData() for smart test data");
+            System.out.println("   🤖 AI OPTION: AITestFramework.generateFormData() for complete form data\n");
         }
 
         StringBuilder sb = new StringBuilder();
@@ -1858,13 +2243,11 @@ public class TestGeneratorHelper {
         sb.append("  Auto-generated from Playwright recording\n");
         sb.append("\n");
 
-        // Use Scenario instead of Scenario Outline if login reuse is enabled (no
-        // Examples table needed)
-        if (shouldReuseLogin && hasLoginPattern) {
-            sb.append("  Scenario: Complete ").append(className).append(" workflow with existing login\n");
-        } else {
-            sb.append("  Scenario Outline: Complete ").append(className).append(" workflow\n");
-        }
+        // SMART DECISION: Will be determined after processing actions
+        // Placeholder - will be replaced with correct keyword based on Examples table presence
+        int scenarioLinePosition = sb.length();
+        sb.append("  SCENARIO_PLACEHOLDER: Complete ").append(className).append(" workflow\n");
+
         sb.append("    Given user navigates to ").append(className).append(" page\n");
 
         // DEDUPLICATION: Track generated steps in feature file
@@ -1888,6 +2271,13 @@ public class TestGeneratorHelper {
                 sb.append("    # ═══════════════════════════════════════════════\n");
                 hasGeneratedLoginSteps = true;
                 continue; // Skip generating the hardcoded login step
+            }
+
+            // CRITICAL FIX: Skip ALL remaining login actions after login steps generated
+            if (shouldReuseLogin && isLoginAction && hasGeneratedLoginSteps) {
+                System.out.println("[SKIP LOGIN ACTION] Already using existing login steps, skipping: "
+                        + action.stepText);
+                continue;
             }
 
             String featureStep = "";
@@ -1975,13 +2365,27 @@ public class TestGeneratorHelper {
         // Add Examples table with actual recorded data
         if (!exampleColumns.isEmpty()) {
             sb.append("\n    Examples:\n");
-            sb.append("      | ");
-            sb.append(String.join(" | ", exampleColumns));
-            sb.append(" |\n");
-            sb.append("      | ");
-            sb.append(String.join(" | ", exampleValues));
-            sb.append(" |\n");
+            sb.append("      | ").append(String.join(" | ", exampleColumns)).append(" |\n");
+            sb.append("      | ").append(String.join(" | ", exampleValues)).append(" |\n");
         }
+
+        // SMART GHERKIN: Replace placeholder with correct keyword based on Examples presence
+        String featureContent = sb.toString();
+        if (!exampleColumns.isEmpty()) {
+            // Has Examples table → Use "Scenario Outline:"
+            featureContent = featureContent.replace("SCENARIO_PLACEHOLDER:", "Scenario Outline:");
+            System.out.println("[GHERKIN] Using 'Scenario Outline:' (Examples table detected)");
+        } else {
+            // No Examples table → Use "Scenario:"
+            String scenarioName = shouldReuseLogin && hasLoginPattern ?
+                "Scenario: Complete " + className + " workflow with existing login" :
+                "Scenario: Complete " + className + " workflow";
+            featureContent = featureContent.replace("SCENARIO_PLACEHOLDER: Complete " + className + " workflow", scenarioName);
+            System.out.println("[GHERKIN] Using 'Scenario:' (No Examples table)");
+        }
+
+        // Update StringBuilder with corrected content
+        sb = new StringBuilder(featureContent);
 
         // AUTO-FIX: Validate feature file content before writing
         String featureContent = sb.toString();
@@ -2005,6 +2409,37 @@ public class TestGeneratorHelper {
         try {
             Files.write(Paths.get("src/test/java/features/" + className + ".feature"), fixedContent.toString().getBytes());
             System.out.println("[AUTO-FIX] ✅ Feature file written successfully");
+
+            // AI ENHANCEMENT: Analyze feature file quality with AITestFramework
+            try {
+                System.out.println("\n🤖 [AI ANALYSIS] Analyzing feature file quality with AITestFramework...");
+                AITestFramework.CoverageReport coverage = AITestFramework.analyzeCoverage(className);
+
+                if (coverage != null) {
+                    System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+                    System.out.println("║              AI-POWERED COVERAGE ANALYSIS                      ║");
+                    System.out.println("╚════════════════════════════════════════════════════════════════╝");
+                    System.out.println("📊 Feature: " + coverage.featureName);
+                    System.out.println("   Total Scenarios: " + coverage.totalScenarios);
+                    System.out.println("   Implemented Steps: " + coverage.implementedSteps);
+                    System.out.println("   Coverage: " + coverage.coveragePercentage + "%");
+                    System.out.println("\n📈 Scenario Types:");
+                    System.out.println("   ✓ Positive: " + coverage.positiveScenarios);
+                    System.out.println("   ✗ Negative: " + coverage.negativeScenarios);
+                    System.out.println("   📏 Boundary: " + coverage.boundaryScenarios);
+
+                    if (!coverage.suggestions.isEmpty()) {
+                        System.out.println("\n💡 AI Recommendations:");
+                        for (String recommendation : coverage.suggestions) {
+                            System.out.println("   • " + recommendation);
+                        }
+                    }
+                    System.out.println("═══════════════════════════════════════════════════════════════\n");
+                }
+            } catch (Exception e) {
+                System.out.println("[AI-INFO] Coverage analysis not available: " + e.getMessage());
+            }
+
         } catch (IOException e) {
             System.err.println("[ERROR] Failed to write Feature file: " + e.getMessage());
             autoRecoverFromError(e, "Feature File Write");
@@ -2014,7 +2449,7 @@ public class TestGeneratorHelper {
 
     /**
      * Generate Step Definitions from recorded actions.
-     * 
+     *
      * CODE REUSABILITY:
      * - Detects login patterns via containsLoginPattern()
      * - Imports existing classes via detectExistingLogin()
@@ -2068,12 +2503,18 @@ public class TestGeneratorHelper {
 
         sb.append("package stepDefs;\n");
         sb.append("import configs.browserSelector;\n");
+
+        // Import loadProps if we're reusing login functionality
+        if (shouldReuseLogin) {
+            sb.append("import configs.loadProps;\n");
+        }
+
         sb.append("import io.cucumber.java.en.*;\n");
         sb.append("import pages.").append(className).append(";\n");
 
-        // Import existing login class if detected and different from current class
-        if (shouldReuseLogin && !className.equals(existingLoginClass)) {
-            sb.append("import pages.").append(existingLoginClass).append(";\n");
+        // FIXED: Always import Login with capital L for login reuse
+        if (shouldReuseLogin) {
+            sb.append("import pages.Login;\n");
         }
 
         sb.append("\n");
@@ -2117,40 +2558,52 @@ public class TestGeneratorHelper {
                 continue;
             }
 
-            // If login reuse is enabled and this is a login action, skip generating step
-            // and add comment
+            // If login reuse is enabled and this is a login action, generate actual implementation
+            // instead of TODO comments
             if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // 🔄 LOGIN STEPS - REUSE EXISTING METHODS\n");
+                sb.append("    // 🔄 LOGIN STEPS - USING EXISTING CONFIGURATION\n");
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // TODO: The following login steps were detected in your recording.\n");
-                sb.append("    // Instead of using the generated page object methods, use existing login methods:\n");
-                sb.append("    //\n");
-                sb.append("    // RECOMMENDED APPROACH:\n");
-                sb.append("    //   @When(\"User enters valid username from configuration\")\n");
-                sb.append("    //   public void enterValidUsername() {\n");
-                sb.append("    //       ").append(existingLoginClass)
-                        .append(".enterValidUsernameFromConfiguration(page);\n");
-                sb.append("    //   }\n");
-                sb.append("    //\n");
-                sb.append("    //   @And(\"User enters valid password from configuration\")\n");
-                sb.append("    //   public void enterValidPassword() {\n");
-                sb.append("    //       ").append(existingLoginClass)
-                        .append(".enterValidPasswordFromConfiguration(page);\n");
-                sb.append("    //   }\n");
-                sb.append("    //\n");
-                sb.append("    //   @And(\"User clicks on Sign In button\")\n");
-                sb.append("    //   public void clickSignIn() {\n");
-                sb.append("    //       ").append(existingLoginClass).append(".clickSignIn(page);\n");
-                sb.append("    //   }\n");
-                sb.append("    //\n");
-                sb.append("    // Update your feature file to use:\n");
-                sb.append("    //   When User enters valid username from configuration\n");
-                sb.append("    //   And User enters valid password from configuration\n");
-                sb.append("    //   And User clicks on Sign In button\n");
+                sb.append("    // These methods use credentials from configurations.properties file\n");
+                sb.append("    // This approach is more maintainable than hardcoded values\n");
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
                 sb.append("\n");
+
+                // Generate actual implementation - Username step
+                sb.append("    @When(\"User enters valid username from configuration\")\n");
+                sb.append("    public void enterValidUsernameFromConfiguration() {\n");
+                sb.append("        String username = loadProps.getProperty(loadProps.PropKeys.USERNAME);\n");
+                sb.append("        System.out.println(\"📍 Step: Entering username from configuration: \" + username);\n");
+                sb.append("        ").append(existingLoginClass).append(".enterUsername(page, username);\n");
+                sb.append("    }\n");
+                sb.append("\n");
+
+                // Generate actual implementation - Password step
+                sb.append("    @And(\"User enters valid password from configuration\")\n");
+                sb.append("    public void enterValidPasswordFromConfiguration() {\n");
+                sb.append("        String password = loadProps.getProperty(loadProps.PropKeys.PASSWORD);\n");
+                sb.append("        System.out.println(\"📍 Step: Entering password from configuration\");\n");
+                sb.append("        ").append(existingLoginClass).append(".enterPassword(page, password);\n");
+                sb.append("    }\n");
+                sb.append("\n");
+
+                // Generate actual implementation - Sign In button step
+                sb.append("    @And(\"User clicks on Sign In button\")\n");
+                sb.append("    public void clickSignInButton() {\n");
+                sb.append("        System.out.println(\"📍 Step: Clicking Sign In button\");\n");
+                sb.append("        ").append(existingLoginClass).append(".clickSignIn(page);\n");
+                sb.append("    }\n");
+                sb.append("\n");
+
                 hasGeneratedLoginSteps = true;
+
+                // Skip generating individual login-related actions
+                continue;
+            }
+
+            // Skip other login actions if we've already generated the configuration-based methods
+            if (shouldReuseLogin && isLoginAction && hasGeneratedLoginSteps) {
+                continue;
             }
 
             // Mark step method as generated
@@ -2266,6 +2719,15 @@ public class TestGeneratorHelper {
             throw new IOException("Step Definitions validation failed");
         }
 
+        // AUTO-FIX: Validate feature steps match step definitions and generate missing ones
+        try {
+            String featureContent = new String(Files.readAllBytes(
+                    Paths.get("src/test/java/features/" + className.toLowerCase() + ".feature")));
+            stepDefContent = validateAndFixStepMatching(featureContent, stepDefContent, className);
+        } catch (IOException e) {
+            System.out.println("[AUTO-FIX] ⚠️ Could not read feature file for step matching validation");
+        }
+
         // Write file with error handling
         try {
             Files.write(Paths.get("src/test/java/stepDefs/" + className + "Steps.java"), stepDefContent.getBytes());
@@ -2274,6 +2736,30 @@ public class TestGeneratorHelper {
             System.err.println("[ERROR] Failed to write Step Definitions file: " + e.getMessage());
             autoRecoverFromError(e, "Step Definitions File Write");
             throw e;
+        }
+    }
+
+    /**
+     * Convert string to camelCase format
+     * Reserved for future string formatting needs
+     */
+    @SuppressWarnings("unused")
+    private static String toCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return "defaultMethod";
+        }
+
+        String pascalCase = toPascalCase(input);
+
+        // Convert first character to lowercase
+        String camelCase = Character.toLowerCase(pascalCase.charAt(0)) + pascalCase.substring(1);
+
+        // Validate and return
+        if (isValidJavaIdentifier(camelCase)) {
+            return camelCase;
+        } else {
+            System.err.println("⚠️  WARNING: Generated invalid method name '" + camelCase + "', using defaultMethod");
+            return "defaultMethod";
         }
     }
 
@@ -2945,23 +3431,20 @@ public class TestGeneratorHelper {
      * @param input The input string
      * @return Valid camelCase method/variable name
      */
-    private static String toCamelCase(String input) {
-        if (input == null || input.isEmpty()) {
-            return "defaultMethod";
-        }
 
-        String pascalCase = toPascalCase(input);
-
-        // Convert first character to lowercase
-        String camelCase = Character.toLowerCase(pascalCase.charAt(0)) + pascalCase.substring(1);
-
-        // Validate and return
-        if (isValidJavaIdentifier(camelCase)) {
-            return camelCase;
-        } else {
-            System.err.println("⚠️  WARNING: Generated invalid method name '" + camelCase + "', using defaultMethod");
-            return "defaultMethod";
-        }
+    /**
+     * Auto-fix configuration for test generation
+     * These fields are reserved for future advanced auto-fix features
+     */
+    @SuppressWarnings("unused")
+    private static class AutoFixConfig {
+        static final boolean ENABLE_AUTO_FIX = true;
+        static final boolean FIX_INVALID_IDENTIFIERS = true;
+        static final boolean FIX_DUPLICATE_METHODS = true;
+        static final boolean FIX_MISSING_IMPORTS = true;
+        static final boolean FIX_INVALID_SELECTORS = true;
+        static final boolean FIX_FEATURE_SYNTAX = true;
+        static final boolean SANITIZE_INPUTS = true;
     }
 
     /**

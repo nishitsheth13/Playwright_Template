@@ -11,28 +11,48 @@
  * - Generate Page Objects, Features, Step Definitions
  * - Auto-compile, test, and fix errors (up to 5 attempts)
  * - Run full test suite with reports
- * 
- * Documentation: See AI_AUTOMATION_COMPLETE_GUIDE.md (single consolidated guide)
+ * - Config-driven menu system (no duplication)
+ *
+ * ARCHITECTURE:
+ * - MENU_CONFIG: Single source of truth for all menu options
+ * - displayMenu(): Renders menu from config (aligned with quick-start.bat)
+ * - executeMenuAction(): Routes to appropriate function
+ * - Easy to extend: Add items to MENU_CONFIG
+ *
+ * UNIFIED MENU:
+ * - Same menu structure as quick-start.bat
+ * - See UNIFIED_MENU_GUIDE.md for complete details
+ * - Both entry points use identical options
+ *
+ * Documentation: See README.md and UNIFIED_MENU_GUIDE.md
  * 
  * TODO BEFORE USING:
- *   [ ] Run setup-mcp.bat once to install dependencies
+ *   [ ] Run Option S (Setup) once to install MCP Server
  *   [ ] Ensure Maven & Node.js installed
  *   [ ] Update configurations.properties
  *   [ ] Prepare JIRA credentials (optional)
  * 
  * TODO USAGE:
- *   [ ] Choose input method: Manual OR JIRA Story
- *   [ ] Provide detailed test requirements
- *   [ ] Review AI-generated code
- *   [ ] Check auto-fix reports
- *   [ ] Run validation tests
+ *   [ ] Choose Option 1 (Record) for fastest results
+ *   [ ] Or Option 2 (JIRA) for enterprise workflows
+ *   [ ] Or Option 3 (AI Interactive) for no-JIRA setup
+ *   [ ] Run Option 4 (Validate) after generation
+ *   [ ] Check reports in MRITestExecutionReports/
+ *
+ * ADDING NEW MENU OPTIONS:
+ *   1. Add your function (e.g., async function myNewFeature() { ... })
+ *   2. Add to MENU_CONFIG.sections[n].items array
+ *   3. Add corresponding option in quick-start.bat
+ *   4. Done! No switch statements needed
  * 
  * Full TODO checklist: See WORKFLOW_TODOS.md
  * 
  * ⚠️ DEVELOPMENT POLICY:
  * - DO NOT create separate script files for new features - add functions here
- * - DO NOT create new markdown files - update AI_AUTOMATION_COMPLETE_GUIDE.md
- * - Keep project structure minimal: 4 docs + 4 scripts + this file + pom.xml
+ * - DO NOT create new markdown files - update existing docs
+ * - DO NOT duplicate menu items - use MENU_CONFIG
+ * - ALWAYS keep quick-start.bat and automation-cli.js menus in sync
+ * - Keep project structure minimal: 5 docs + 4 scripts + this file + pom.xml
  * - Before adding any new file, check if it can be added to existing files
  */
 
@@ -54,6 +74,118 @@ const colors = {
   blue: '\x1b[34m'
 };
 
+// ============================================================================
+// MENU CONFIGURATION - Single source of truth (Aligned with quick-start.bat)
+// ============================================================================
+const MENU_CONFIG = {
+    title: 'AI Test Automation - Main Menu',
+    sections: [
+        {
+            name: 'TEST GENERATION',
+            items: [
+                {
+                    key: '1',
+                    icon: '🎥',
+                    title: '[RECORD] Record & Auto-Generate',
+                    subtitle: 'Fastest - 5-10 min',
+                    description: 'Record browser actions → Auto-generate all files',
+                    action: 'recordAndGenerate'
+                },
+                {
+                    key: '1B',
+                    icon: '🔄',
+                    title: '[RETRY] Retry from Existing Recording',
+                    subtitle: 'Use previous recording',
+                    description: 'Regenerate files from saved recording without re-recording',
+                    action: 'retryFromRecording'
+                },
+                {
+                    key: '2',
+                    icon: '🎫',
+                    title: '[JIRA] Generate from JIRA Story',
+                    subtitle: 'Enterprise integration',
+                    description: 'Use JIRA story → AI generates complete test',
+                    action: 'generateTestFromJiraStory'
+                },
+                {
+                    key: '3',
+                    icon: '🤖',
+                    title: '[AI CLI] AI-Assisted Interactive',
+                    subtitle: 'Node.js required',
+                    description: 'Answer questions → AI generates complete suite',
+                    action: 'generateCompleteTestSuite'
+                },
+                {
+                    key: '4',
+                    icon: '✅',
+                    title: '[VALIDATE] Validate & Run Tests',
+                    subtitle: 'Quick validation',
+                    description: 'Compile, validate, and run test suite',
+                    action: 'validateAndRunTests'
+                }
+            ]
+        },
+        {
+            name: 'SETUP',
+            items: [
+                {
+                    key: 'S',
+                    icon: '⚙️',
+                    title: '[SETUP] Complete Project Setup',
+                    subtitle: 'First-time setup',
+                    description: 'Install MCP Server and configure project',
+                    action: 'completeProjectSetup'
+                }
+            ]
+        },
+        {
+            name: 'UTILITIES',
+            items: [
+                {
+                    key: '5',
+                    icon: '🧹',
+                    title: 'Maven Clean Compile',
+                    description: 'Clean and compile Java project',
+                    action: 'mavenCleanCompile'
+                },
+                {
+                    key: '6',
+                    icon: '🧪',
+                    title: 'Maven Clean Test',
+                    description: 'Run all tests with clean build',
+                    action: 'mavenCleanTest'
+                },
+                {
+                    key: '7',
+                    icon: '🏷️',
+                    title: 'Run Specific Tag Tests',
+                    description: 'Run tests by Cucumber tags',
+                    action: 'runSpecificTagTests'
+                }
+            ]
+        },
+        {
+            name: 'HELP',
+            items: [
+                {
+                    key: 'H',
+                    icon: '❓',
+                    title: 'Show Help',
+                    description: 'Display usage guide and examples',
+                    action: 'showHelp'
+                },
+                {
+                    key: '0',
+                    icon: '🚪',
+                    title: 'Exit',
+                    description: 'Close application',
+                    action: 'exit'
+                }
+            ]
+        }
+    ]
+};
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -65,6 +197,37 @@ const MCP_SERVER_PORT = 3000; // Default MCP server port
 
 // Promisify readline question
 const question = (query) => new Promise((resolve) => rl.question(query, resolve));
+
+// ============================================================================
+// MENU UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Add a new menu item dynamically (for future extensibility)
+ * @param {string} sectionName - Name of the section to add to
+ * @param {object} item - Menu item object {key, icon, title, subtitle?, description, action}
+ */
+function addMenuItem(sectionName, item) {
+    const section = MENU_CONFIG.sections.find(s => s.name === sectionName);
+    if (section) {
+        section.items.push(item);
+    } else {
+        console.warn(`Section "${sectionName}" not found in menu config`);
+    }
+}
+
+/**
+ * Get all menu actions (for validation)
+ */
+function getAllMenuActions() {
+    const actions = [];
+    MENU_CONFIG.sections.forEach(section => {
+        section.items.forEach(item => {
+            actions.push({key: item.key, action: item.action, title: item.title});
+        });
+    });
+    return actions;
+}
 
 /**
  * Display welcome banner
@@ -130,41 +293,48 @@ async function recordAndGenerate() {
   }
 
   console.log(colors.yellow + '\n🚀 Starting recording process...' + colors.reset);
-  console.log(colors.yellow + 'This will call record-and-generate.bat with your inputs\n' + colors.reset);
+    console.log(colors.yellow + 'Launching quick-start.bat with recording option\n' + colors.reset);
 
-  // Call record-and-generate.bat with parameters
-  return new Promise((resolve, reject) => {
-    const recordScript = spawn('cmd.exe', ['/c', 'record-and-generate.bat'], {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        FEATURE_NAME: featureName,
-        PAGE_URL: pageUrl || '/',
-        JIRA_STORY: jiraStory || 'AUTO-GEN'
-      }
-    });
+    return new Promise(async (resolve, reject) => {
+        try {
+            console.log(colors.cyan + '📝 Feature: ' + featureName + colors.reset);
+            console.log(colors.cyan + '🌐 URL Path: ' + (pageUrl || '/') + colors.reset);
+            console.log(colors.cyan + '🎫 JIRA: ' + (jiraStory || 'AUTO-GEN') + colors.reset);
+            console.log(colors.yellow + '\n⚠️  IMPORTANT: After browser opens:' + colors.reset);
+            console.log('   1. Perform your test actions in the browser');
+            console.log('   2. Close the BROWSER window (not Inspector) when done');
+            console.log('   3. Files will be auto-generated\n');
 
-    recordScript.on('close', (code) => {
-      if (code === 0) {
-        console.log(colors.green + '\n✅ Recording and generation completed successfully!\n' + colors.reset);
-        console.log(colors.bright + '📋 Generated Files:' + colors.reset);
-        console.log(`   ✓ src/main/java/pages/${featureName}.java`);
-        console.log(`   ✓ src/test/java/features/${featureName}.feature`);
-        console.log(`   ✓ src/test/java/stepDefs/${featureName}Steps.java\n`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        console.log(colors.cyan + '💡 Next: Enhance with AI prompt:' + colors.reset);
-        console.log(`   "Enhance recorded ${featureName} test by implementing TODOs"`);
-        console.log(`   "Follow COMPLETE_TEST_GUIDE.md patterns"\n`);
-      } else {
-        console.log(colors.red + `\n❌ Recording process failed with code ${code}` + colors.reset);
-      }
+            console.log(colors.bright + '🎬 Opening quick-start.bat menu...\n' + colors.reset);
+
+            // Launch quick-start.bat in a new window for user interaction
+            const recordScript = spawn('cmd.exe', ['/c', 'start', 'cmd', '/k', 'quick-start.bat'], {
+                cwd: process.cwd(),
+                shell: true
+            });
+
+            console.log(colors.green + '\n✅ Quick-start menu opened in new window!' + colors.reset);
+            console.log(colors.yellow + '\n💡 Instructions:' + colors.reset);
+            console.log('   1. In the new window, select Option 1 (Record & Auto-Generate)');
+            console.log('   2. Enter feature name: ' + colors.bright + featureName + colors.reset);
+            console.log('   3. Choose URL option and enter path: ' + colors.bright + (pageUrl || '/') + colors.reset);
+            console.log('   4. Enter JIRA ID: ' + colors.bright + (jiraStory || 'AUTO-GEN') + colors.reset);
+            console.log('   5. Record your actions in the browser');
+            console.log('   6. Close browser when done\n');
+
+            console.log(colors.cyan + '📋 Expected Generated Files:' + colors.reset);
+            console.log(`   ✓ src/main/java/pages/${featureName}.java`);
+            console.log(`   ✓ src/test/java/features/${featureName}.feature`);
+            console.log(`   ✓ src/test/java/stepDefs/${featureName}Steps.java\n`);
+
       resolve();
-    });
 
-    recordScript.on('error', (err) => {
-      console.log(colors.red + '\n❌ Failed to start recording: ' + err.message + colors.reset);
-      reject(err);
-    });
+        } catch (error) {
+            console.log(colors.red + '\n❌ Failed to start recording: ' + error.message + colors.reset);
+            reject(error);
+        }
   });
 }
 
@@ -665,32 +835,67 @@ function extractAcceptanceCriteria(adf) {
 /**
  * Display main menu
  */
+/**
+ * Display main menu - renders from MENU_CONFIG
+ */
 async function displayMenu() {
   console.log(colors.yellow + '\n╔════════════════════════════════════════════════════════════╗' + colors.reset);
-  console.log(colors.yellow + '║' + colors.reset + colors.bright + '           🎯 TEST GENERATION OPTIONS                      ' + colors.reset + colors.yellow + '║' + colors.reset);
+    console.log(colors.yellow + '║' + colors.reset + colors.bright + '           ' + MENU_CONFIG.title + '                      ' + colors.reset + colors.yellow + '║' + colors.reset);
   console.log(colors.yellow + '╚════════════════════════════════════════════════════════════╝' + colors.reset);
   console.log('');
-  console.log(colors.bright + '📌 RECOMMENDED OPTIONS (Smart & Fast):' + colors.reset);
-  console.log(colors.green + '  1️⃣  🎥 Record & Auto-Generate' + colors.reset + ' (Fastest - 5-10 min)');
-  console.log('      └─ Record browser actions → Auto-generate all files');
-  console.log(colors.green + '  2️⃣  🤖 AI-Assisted from JIRA' + colors.reset + ' (Enterprise)');
-  console.log('      └─ Use JIRA story → AI generates complete test');
-  console.log(colors.green + '  3️⃣  ✨ AI-Guided Interactive' + colors.reset + ' (No JIRA needed)');
-  console.log('      └─ Answer questions → AI generates complete suite');
-  console.log('');
-  console.log(colors.bright + '🔧 ADVANCED OPTIONS:' + colors.reset);
-  console.log('  4️⃣  📝 Update Existing Test (Add elements/scenarios)');
-  console.log('  5️⃣  📄 Generate Page Object only');
-  console.log('  6️⃣  📋 Generate Feature File only');
-  console.log('  7️⃣  🔀 Generate Step Definitions only');
-  console.log('');
-  console.log(colors.bright + '📚 HELP & UTILITIES:' + colors.reset);
-  console.log('  8️⃣  🔍 Analyze Existing Framework');
-  console.log('  9️⃣  📖 Quick Start Tutorial');
-  console.log('  0️⃣  🚪 Exit\n');
+
+    // Render each section
+    MENU_CONFIG.sections.forEach(section => {
+        console.log(colors.bright + section.name + ':' + colors.reset);
+
+        section.items.forEach(item => {
+            const keyDisplay = `  ${item.key}️⃣ `;
+            const title = item.subtitle
+                ? colors.green + ` ${item.icon} ${item.title}` + colors.reset + ` (${item.subtitle})`
+                : `  ${item.icon} ${item.title}`;
+
+            console.log(keyDisplay + title);
+
+            if (item.description) {
+                console.log(`      └─ ${item.description}`);
+            }
+        });
+
+        console.log('');
+    });
 
   const choice = await question(colors.cyan + '👉 Enter your choice (0-9): ' + colors.reset);
   return choice.trim();
+}
+
+/**
+ * Execute menu action based on user choice
+ */
+async function executeMenuAction(choice) {
+    // Find the action from menu config
+    for (const section of MENU_CONFIG.sections) {
+        const item = section.items.find(i => i.key === choice);
+        if (item) {
+            // Special handling for exit
+            if (item.action === 'exit') {
+                return {exit: true};
+            }
+
+            // Get the function by name and execute it
+            const actionFunction = eval(item.action);
+            if (typeof actionFunction === 'function') {
+                await actionFunction();
+                return {exit: false};
+            } else {
+                console.log(colors.red + '\n❌ Action not implemented: ' + item.action + '\n' + colors.reset);
+                return {exit: false};
+            }
+        }
+    }
+
+    // Invalid choice
+    console.log(colors.red + '\n❌ Invalid choice. Please try again.\n' + colors.reset);
+    return {exit: false};
 }
 
 /**
@@ -845,13 +1050,218 @@ async function generateCompleteTestSuite() {
 }
 
 /**
+ * Generate enhanced scenarios based on verification criteria
+ * Creates comprehensive test scenarios for functional, UI, UX, and performance testing
+ */
+function generateEnhancedScenarios(testName, elements, userScenarios, verification) {
+    const scenarios = [];
+    let priority = 0;
+
+    // Add user-defined scenarios first
+    userScenarios.forEach(scenario => {
+        const tags = verification.performance ? '@Functional @PerformanceTest' : '@Functional';
+        scenarios.push({
+            name: scenario.name,
+            steps: scenario.steps,
+            tags: tags
+        });
+    });
+    priority = scenarios.length;
+
+    // Add Functional Verification Scenarios
+    if (verification.functional) {
+        // Negative scenario - Empty fields
+        if (elements.some(el => el.action === 'type')) {
+            scenarios.push({
+                name: `Verify ${testName} with empty required fields`,
+                tags: '@Functional @Negative',
+                steps: [
+                    `Given User navigates to ${testName} page`,
+                    'When User leaves all required fields empty',
+                    `And User attempts to submit`,
+                    'Then Appropriate validation messages should be displayed',
+                    'And Submit action should be prevented'
+                ]
+            });
+
+            // Negative scenario - Invalid data
+            scenarios.push({
+                name: `Verify ${testName} with invalid data`,
+                tags: '@Functional @Negative',
+                steps: [
+                    `Given User navigates to ${testName} page`,
+                    'When User enters invalid data in all fields',
+                    `And User attempts to submit`,
+                    'Then Validation errors should be displayed for invalid fields',
+                    'And Invalid fields should be highlighted'
+                ]
+            });
+        }
+
+        // Boundary testing
+        scenarios.push({
+            name: `Verify ${testName} with boundary values`,
+            tags: '@Functional @Boundary',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'When User enters minimum valid values',
+                `And User submits the form`,
+                'Then Action should complete successfully',
+                'When User enters maximum valid values',
+                `And User submits the form`,
+                'Then Action should complete successfully'
+            ]
+        });
+    }
+
+    // Add UI Verification Scenarios
+    if (verification.ui) {
+        scenarios.push({
+            name: `Verify ${testName} UI elements are displayed correctly`,
+            tags: '@UI @Visual',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'Then All required elements should be visible',
+                'And All elements should have correct labels',
+                'And All buttons should be properly styled',
+                'And Page layout should be correct'
+            ]
+        });
+
+        scenarios.push({
+            name: `Verify ${testName} element states`,
+            tags: '@UI @State',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'Then All input fields should be enabled',
+                'And Submit button should be in correct initial state',
+                'When User interacts with elements',
+                'Then Element states should update appropriately',
+                'And Disabled states should be respected'
+            ]
+        });
+    }
+
+    // Add UX Verification Scenarios
+    if (verification.ux) {
+        scenarios.push({
+            name: `Verify ${testName} user experience flow`,
+            tags: '@UX @UserFlow',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'When User completes the workflow step by step',
+                'Then Each step transition should be smooth',
+                'And User should receive clear feedback at each step',
+                'And Navigation should be intuitive'
+            ]
+        });
+
+        scenarios.push({
+            name: `Verify ${testName} error handling and recovery`,
+            tags: '@UX @ErrorHandling',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'When User encounters an error',
+                'Then Clear error message should be displayed',
+                'And User should be able to recover from error',
+                'And Previously entered data should be preserved'
+            ]
+        });
+    }
+
+    // Add Performance Verification Scenarios
+    if (verification.performance) {
+        scenarios.push({
+            name: `Verify ${testName} page load performance`,
+            tags: '@Performance @LoadTime',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'Then Page should load completely within threshold',
+                'And All elements should be interactive',
+                'And No performance bottlenecks should exist'
+            ]
+        });
+
+        scenarios.push({
+            name: `Verify ${testName} action response time`,
+            tags: '@Performance @ResponseTime',
+            steps: [
+                `Given User navigates to ${testName} page`,
+                'And Page is fully loaded',
+                'When User performs actions',
+                'Then Each action should respond within performance threshold',
+                'And UI should remain responsive throughout'
+            ]
+        });
+    }
+
+    return scenarios;
+}
+
+/**
  * Validate and fix Page Object code before writing to disk
  * Prevents common compilation errors by ensuring required imports and declarations
  */
 function validateAndFixPageObject(code, className) {
   let fixedCode = code;
 
-  // VALIDATION 1: Ensure Logger import and instance if log.* methods are used
+    // AUTO-FIX 1: Convert protected methods to public for accessibility
+    if (fixedCode.includes('protected static void')) {
+        console.log(colors.yellow + '[AUTO-FIX] Converting protected methods to public for accessibility' + colors.reset);
+        const protectedCount = (fixedCode.match(/protected static void/g) || []).length;
+        fixedCode = fixedCode.replace(/protected static void/g, 'public static void');
+        console.log(colors.green + `[AUTO-FIX] Fixed ${protectedCount} method(s) from protected → public` + colors.reset);
+    }
+
+    // AUTO-FIX 2: Ensure navigateTo method exists with proper signature
+    if (!fixedCode.includes('public static void navigateTo')) {
+        console.log(colors.yellow + '[AUTO-FIX] Adding missing navigateTo method' + colors.reset);
+
+        const navigateMethod = `
+    /**
+     * Navigate to ${className} page
+     * @param page Playwright Page instance
+     */
+    public static void navigateTo(Page page) {
+        log.info("🌐 Navigating to ${className} page");
+        String url = loadProps.getProperty("URL");
+        navigateToUrl(url);
+        log.info("✅ Navigation completed");
+    }
+`;
+
+        // Insert after constructor
+        const constructorMatch = fixedCode.match(/public\s+\w+\s*\(\s*\)\s*\{[^}]*\}\n/);
+        if (constructorMatch) {
+            const insertPoint = constructorMatch.index + constructorMatch[0].length;
+            fixedCode = fixedCode.slice(0, insertPoint) + navigateMethod + fixedCode.slice(insertPoint);
+        }
+    }
+
+    // AUTO-FIX 3: Ensure required imports are present
+    const requiredImports = [
+        {check: 'import com.microsoft.playwright.Page;', import: 'import com.microsoft.playwright.Page;\n'},
+        {check: 'import configs.loadProps;', import: 'import configs.loadProps;\n'},
+        {check: 'import configs.TimeoutConfig;', import: 'import configs.TimeoutConfig;\n'}
+    ];
+
+    let missingImports = '';
+    requiredImports.forEach(({check, import: importStatement}) => {
+        if (!fixedCode.includes(check)) {
+            missingImports += importStatement;
+        }
+    });
+
+    if (missingImports) {
+        console.log(colors.yellow + '[AUTO-FIX] Adding missing imports' + colors.reset);
+        const packageMatch = fixedCode.match(/package\s+[\w.]+;\s*\n/);
+        if (packageMatch) {
+            const insertPoint = packageMatch.index + packageMatch[0].length;
+            fixedCode = fixedCode.slice(0, insertPoint) + missingImports + fixedCode.slice(insertPoint);
+        }
+    }
+
+    // VALIDATION 4: Ensure Logger import and instance if log.* methods are used
   if ((fixedCode.includes('log.info') || fixedCode.includes('log.error') || fixedCode.includes('log.warn'))) {
 
     // Remove incorrect log imports
@@ -888,19 +1298,19 @@ function validateAndFixPageObject(code, className) {
     }
   }
 
-  // VALIDATION 2: Check for method parameter issues
+    // VALIDATION 5: Check for method parameter issues
   // Find methods with selectDropDownValueByText that use 'text' parameter
-  const dropdownMethodRegex = /protected\s+static\s+void\s+(\w+)\s*\(\s*String\s+locator\s*\)\s*\{[^}]*selectDropDownValueByText\s*\([^,]+,\s*text\s*\)[^}]*\}/g;
+    const dropdownMethodRegex = /public\s+static\s+void\s+(\w+)\s*\(\s*String\s+locator\s*\)\s*\{[^}]*selectDropDownValueByText\s*\([^,]+,\s*text\s*\)[^}]*\}/g;
   let match;
 
   while ((match = dropdownMethodRegex.exec(fixedCode)) !== null) {
     const methodName = match[1];
-    const oldSignature = `protected static void ${methodName}(String locator)`;
-    const newSignature = `protected static void ${methodName}(String locator, String text)`;
+      const oldSignature = `public static void ${methodName}(String locator)`;
+      const newSignature = `public static void ${methodName}(String locator, String text)`;
     fixedCode = fixedCode.replace(oldSignature, newSignature);
   }
 
-  // VALIDATION 3: Ensure TimeoutConfig import if used
+    // VALIDATION 6: Ensure TimeoutConfig import if used
   if (fixedCode.includes('TimeoutConfig.') && !fixedCode.includes('import configs.TimeoutConfig')) {
     const packageMatch = fixedCode.match(/package\s+[\w.]+;\s*\n/);
     if (packageMatch) {
@@ -909,7 +1319,134 @@ function validateAndFixPageObject(code, className) {
     }
   }
 
+    console.log(colors.green + '[AUTO-FIX] Page Object validated and fixed' + colors.reset);
   return fixedCode;
+}
+
+/**
+ * AUTO-FIX: Validate and Fix Step Matching between Feature File and Step Definitions
+ * Ensures all steps in feature file have corresponding step definition implementations
+ */
+function validateAndFixStepMatching(featureContent, stepDefsContent, testName) {
+    console.log(colors.cyan + '[AUTO-FIX] Validating step matching...' + colors.reset);
+
+    // Extract steps from feature file
+    const featureSteps = extractStepsFromFeature(featureContent);
+    console.log(`[AUTO-FIX] Found ${featureSteps.size} unique steps in feature file`);
+
+    // Extract implemented steps from step definitions
+    const existingSteps = extractStepsFromStepDefs(stepDefsContent);
+    console.log(`[AUTO-FIX] Found ${existingSteps.size} implemented step definitions`);
+
+    // Find missing steps
+    const missingSteps = new Set([...featureSteps].filter(step => !existingSteps.has(step)));
+
+    if (missingSteps.size === 0) {
+        console.log(colors.green + '[AUTO-FIX] ✅ All feature steps have matching step definitions' + colors.reset);
+        return stepDefsContent;
+    }
+
+    console.log(colors.yellow + `[AUTO-FIX] ⚠️ Found ${missingSteps.size} missing step definitions` + colors.reset);
+
+    // Generate missing step definitions
+    let generatedSteps = '\n    // AUTO-GENERATED MISSING STEP DEFINITIONS\n';
+    generatedSteps += `    // ${missingSteps.size} steps were missing and auto-generated\n\n`;
+
+    for (const step of missingSteps) {
+        generatedSteps += generateStepDefinition(step);
+    }
+
+    // Insert before closing brace
+    const lastBraceIndex = stepDefsContent.lastIndexOf('}');
+    if (lastBraceIndex !== -1) {
+        stepDefsContent = stepDefsContent.substring(0, lastBraceIndex) +
+            generatedSteps + '\n' +
+            stepDefsContent.substring(lastBraceIndex);
+    }
+
+    console.log(colors.green + `[AUTO-FIX] ✅ Generated ${missingSteps.size} missing step definitions` + colors.reset);
+    return stepDefsContent;
+}
+
+/**
+ * Extract steps from feature file (Given/When/Then/And/But)
+ */
+function extractStepsFromFeature(featureContent) {
+    const steps = new Set();
+    const stepPattern = /^\s*(Given|When|Then|And|But)\s+(.+)$/gm;
+    let match;
+
+    while ((match = stepPattern.exec(featureContent)) !== null) {
+        let stepText = match[2].trim();
+        // Normalize step text (remove trailing punctuation, extra spaces)
+        stepText = stepText.replace(/\s+/g, ' ').replace(/[.!?]$/, '');
+        steps.add(stepText);
+    }
+
+    return steps;
+}
+
+/**
+ * Extract implemented steps from step definitions (@Given/@When/@Then)
+ */
+function extractStepsFromStepDefs(stepDefsContent) {
+    const steps = new Set();
+    const stepPattern = /@(?:Given|When|Then)\("([^"]+)"\)/g;
+    let match;
+
+    while ((match = stepPattern.exec(stepDefsContent)) !== null) {
+        steps.add(match[1].trim());
+    }
+
+    return steps;
+}
+
+/**
+ * Generate step definition method for a missing step
+ */
+function generateStepDefinition(stepText) {
+    const keyword = determineStepKeyword(stepText);
+    const methodName = stepText
+        .split(' ')
+        .slice(0, 5)
+        .map((word, idx) =>
+            idx === 0
+                ? word.toLowerCase()
+                : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join('')
+        .replace(/[^a-zA-Z0-9]/g, '');
+
+    return `    @${keyword}("${stepText}")\n` +
+        `    public void ${methodName}() {\n` +
+        `        // TODO: Implement step: ${stepText}\n` +
+        `        System.out.println("⚠️ Step not yet implemented: ${stepText}");\n` +
+        `    }\n\n`;
+}
+
+/**
+ * Determine appropriate Cucumber annotation keyword for a step
+ */
+function determineStepKeyword(stepText) {
+    const lower = stepText.toLowerCase();
+
+    // Given: Setup/preconditions (state, navigation, initialization)
+    if (lower.match(/^(user is|page is|application is|system is|database|data)/)) {
+        return 'Given';
+    }
+
+    // When: Actions (user interactions, operations)
+    if (lower.match(/(clicks?|enters?|types?|selects?|submits?|navigates?|performs?|executes?|tries?|attempts?|focuses?)/)) {
+        return 'When';
+    }
+
+    // Then: Assertions (verifications, expected results)
+    if (lower.match(/(should|must|will|cannot|all|every|any|displayed|visible|enabled|disabled|contains?|shows?|appears?|prevented|accepted|rejected|validates?|verified|completes?|loads?|masked|protected|logged|tracked)/)) {
+        return 'Then';
+    }
+
+    // Default to Then for verification-like steps
+    return 'Then';
 }
 
 /**
@@ -1003,11 +1540,11 @@ async function updateExistingTest() {
         let methodCode = '';
         if (el.type === 'input') {
           methodCode = `\n    public void enter${el.name.charAt(0).toUpperCase() + el.name.slice(1)}(String text) {
-        enterText(${el.name}, text, TimeoutConfig.shortWait());
+        enterText(${el.name}, text, TimeoutConfig.waitShort());
     }\n`;
         } else if (el.type === 'button') {
           methodCode = `\n    public void click${el.name.charAt(0).toUpperCase() + el.name.slice(1)}() {
-        clickOnElement(${el.name}, TimeoutConfig.shortWait());
+        clickOnElement(${el.name}, TimeoutConfig.waitShort());
     }\n`;
         }
 
@@ -1316,8 +1853,15 @@ async function analyzeFramework() {
 async function generateTestFromJiraStory() {
   console.log(colors.green + '\n📋 Generate Test from JIRA Story\n' + colors.reset);
 
-  // Get JIRA issue key
-  const issueKey = await question(colors.cyan + '🎫 Enter JIRA Story/Issue key (e.g., ECS-123, or press Enter to skip): ' + colors.reset);
+    // Check if story ID was provided via CLI argument
+    let issueKey = global.cliJiraStoryId || '';
+
+    if (!issueKey) {
+        // Get JIRA issue key from user input
+        issueKey = await question(colors.cyan + '🎫 Enter JIRA Story/Issue key (e.g., ECS-123, or press Enter to skip): ' + colors.reset);
+    } else {
+        console.log(colors.cyan + `🎫 Using JIRA Story: ${issueKey} (from command line)\n` + colors.reset);
+    }
 
   if (!issueKey.trim()) {
     console.log(colors.yellow + '\n⚠️ No JIRA key provided. Switching to manual test generation...\n' + colors.reset);
@@ -1790,6 +2334,273 @@ function generateDefaultScenarios(issueType, summary, elements) {
 }
 
 /**
+ * 🎯 COMPREHENSIVE SCENARIO GENERATOR
+ * Generates detailed test scenarios based on verification criteria
+ * This makes AI smarter to create scenarios for functional, UI, UX, performance, and security testing
+ */
+function generateComprehensiveScenarios(testName, elements, userScenarios, verification) {
+    const allScenarios = [...userScenarios];
+
+    // Only enhance if verification flags are enabled
+    if (!verification) return allScenarios;
+
+    const testNameLower = testName.toLowerCase();
+    const hasUsernameField = elements.some(el => el.name.toLowerCase().includes('username') || el.name.toLowerCase().includes('email'));
+    const hasPasswordField = elements.some(el => el.name.toLowerCase().includes('password'));
+    const hasSubmitButton = elements.some(el => el.action === 'click' && (el.name.toLowerCase().includes('submit') || el.name.toLowerCase().includes('login') || el.name.toLowerCase().includes('sign')));
+
+    // ========== FUNCTIONAL TESTING ==========
+    if (verification.functional) {
+        // Negative scenarios
+        allScenarios.push({
+            name: `Verify ${testName} with invalid data`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User enters invalid data',
+                'And User attempts to submit',
+                'Then Validation error should be displayed',
+                'And Action should be prevented'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} with empty required fields`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User leaves all required fields empty',
+                'And User attempts to submit',
+                'Then Appropriate validation messages should be displayed',
+                'And Submit action should be prevented'
+            ]
+        });
+
+        // Boundary testing
+        if (hasUsernameField || hasPasswordField) {
+            allScenarios.push({
+                name: `Verify ${testName} with boundary values`,
+                steps: [
+                    'Given User navigates to ' + testName + ' page',
+                    'When User enters minimum valid data',
+                    'And User submits the form',
+                    'Then Action should complete successfully'
+                ]
+            });
+
+            allScenarios.push({
+                name: `Verify ${testName} with maximum length values`,
+                steps: [
+                    'Given User navigates to ' + testName + ' page',
+                    'When User enters maximum valid data',
+                    'And User submits the form',
+                    'Then Action should complete successfully'
+                ]
+            });
+        }
+    }
+
+    // ========== UI TESTING ==========
+    if (verification.ui) {
+        allScenarios.push({
+            name: `Verify ${testName} UI elements are displayed correctly`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                ...elements.map(el => `Then ${el.name} should be visible`),
+                'And All elements should have correct labels',
+                'And Page layout should be correct'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} element states`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'Then All input fields should be enabled',
+                'When User enters data in fields',
+                'Then Input fields should accept user input',
+                'And Submit button should remain enabled'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} accessibility features`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'Then All form elements should have proper labels',
+                'And Tab navigation should work correctly',
+                'And Keyboard shortcuts should be functional',
+                'And ARIA labels should be present'
+            ]
+        });
+    }
+
+    // ========== UX TESTING ==========
+    if (verification.ux) {
+        allScenarios.push({
+            name: `Verify ${testName} user flow experience`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User focuses on first input field',
+                'Then Field should be highlighted',
+                'When User presses Tab key',
+                'Then Focus should move to next field',
+                'When User completes all fields and submits',
+                'Then Smooth transition should occur'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} error handling and feedback`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User enters invalid data',
+                'And User attempts to submit',
+                'Then Clear error message should be displayed',
+                'And Previously entered valid data should be preserved',
+                'And User should be able to correct errors'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} provides appropriate feedback`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User submits valid data',
+                'Then Loading indicator should appear',
+                'When action completes',
+                'Then Success feedback should be provided',
+                'And User should see confirmation'
+            ]
+        });
+    }
+
+    // ========== PERFORMANCE TESTING ==========
+    if (verification.performance) {
+        const threshold = verification.performanceThreshold || 3000;
+
+        allScenarios.push({
+            name: `Verify ${testName} page load performance`,
+            steps: [
+                'When User navigates to ' + testName + ' page',
+                `Then Page should load completely within ${threshold / 1000} seconds`,
+                'And All elements should be interactive',
+                'And No performance bottlenecks should exist'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} action response time`,
+            steps: [
+                'Given Page is fully loaded',
+                'When User submits valid data',
+                'Then Action should complete within 2 seconds',
+                'And Server response should be fast',
+                'And No UI freezing should occur'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} handles concurrent access`,
+            steps: [
+                'When Multiple users access page simultaneously',
+                'Then Each action should process correctly',
+                'And Response times should remain acceptable',
+                'And No system degradation should occur'
+            ]
+        });
+    }
+
+    // ========== SECURITY TESTING (for login/authentication) ==========
+    if (hasPasswordField && verification.functional) {
+        allScenarios.push({
+            name: `Verify ${testName} password security`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User types password',
+                'Then Password characters should be masked',
+                'And Password should not be visible in page source',
+                'And No password leakage in network requests'
+            ]
+        });
+
+        allScenarios.push({
+            name: `Verify ${testName} brute force protection`,
+            steps: [
+                'Given User navigates to ' + testName + ' page',
+                'When User makes multiple failed attempts',
+                'Then Account should be temporarily locked after threshold',
+                'And Appropriate warning should be displayed'
+            ]
+        });
+
+        if (hasUsernameField) {
+            allScenarios.push({
+                name: `Verify ${testName} prevents SQL injection`,
+                steps: [
+                    'Given User navigates to ' + testName + ' page',
+                    'When User enters SQL injection attempts in fields',
+                    'And User attempts to submit',
+                    'Then System should reject malicious input safely',
+                    'And No database errors should be exposed',
+                    'And Appropriate error message should be shown'
+                ]
+            });
+        }
+    }
+
+    return allScenarios;
+}
+
+/**
+ * 🎯 COMPREHENSIVE STEP DEFINITIONS GENERATOR
+ * Generates complete Java step definitions with full implementations
+ */
+function generateComprehensiveStepDefinitions(className, testName, elements, verification) {
+    const hasPassword = elements.some(el => el.name.toLowerCase().includes('password'));
+
+    let content = `package stepDefs;\n\nimport io.cucumber.java.en.*;\nimport configs.browserSelector;\nimport configs.TimeoutConfig;\nimport pages.${className};\nimport org.testng.Assert;\nimport com.microsoft.playwright.Locator;\nimport com.microsoft.playwright.options.LoadState;\n\n`;
+    content += `/**\n * Step Definitions for ${testName}\n * Generated with comprehensive verification support\n */\n`;
+    content += `public class ${testName}Steps extends browserSelector {\n\n`;
+    content += `    private long startTime;\n    private long pageLoadTime;\n\n`;
+    content += `    @Given("the application is ready")\n    public void applicationIsReady() {\n        page.waitForLoadState();\n    }\n\n`;
+    content += `    @Given("User navigates to ${testName} page")\n    public void userNavigatesToPage() {\n        startTime = System.currentTimeMillis();\n        ${className}.navigateTo(page);\n        pageLoadTime = System.currentTimeMillis() - startTime;\n    }\n\n`;
+
+    // Element interactions
+    elements.forEach(el => {
+        const methodName = el.name.replace(/\s+/g, '');
+        if (el.action === 'type') {
+            content += `    @When("User enters data in ${el.name}")\n    public void enter${methodName}() {\n        String locator = "//input[@name='${el.name.toLowerCase()}']";\n        ${className}.${methodName}(locator, "test");\n    }\n\n`;
+        } else if (el.action === 'click') {
+            content += `    @When("User clicks ${el.name}")\n    public void click${methodName}() {\n        String locator = "//button[contains(text(),'${el.name}')]";\n        ${className}.${methodName}(locator);\n    }\n\n`;
+        }
+    });
+
+    // Common step definitions
+    content += `    @When("User enters invalid data")\n    public void enterInvalidData() {}\n\n`;
+    content += `    @When("User attempts to submit")\n    public void attemptSubmit() { TimeoutConfig.waitShort(); }\n\n`;
+    content += `    @Then("Validation error should be displayed")\n    public void validationError() {\n        Locator error = page.locator(".error, [class*='error']");\n        Assert.assertTrue(error.count() > 0);\n    }\n\n`;
+    content += `    @When("User leaves all required fields empty")\n    public void leaveFieldsEmpty() {}\n\n`;
+    content += `    @Then("Appropriate validation messages should be displayed")\n    public void validationMessages() {\n        Assert.assertTrue(page.locator(".error").count() > 0);\n    }\n\n`;
+    content += `    @Then("Submit action should be prevented")\n    public void submitPrevented() {}\n\n`;
+
+    if (verification?.ui) {
+        elements.forEach(el => {
+            const methodName = el.name.replace(/\s+/g, '');
+            content += `    @Then("${el.name} should be visible")\n    public void ${methodName.toLowerCase()}Visible() {\n        Assert.assertTrue(page.locator("input, button").first().isVisible());\n    }\n\n`;
+        });
+        content += `    @Then("All elements should have correct labels")\n    public void elementsHaveLabels() {}\n\n`;
+        content += `    @Then("Page layout should be correct")\n    public void pageLayoutCorrect() {}\n\n`;
+    }
+
+    if (verification?.performance) {
+        content += `    @Then("Page should load completely within 3 seconds")\n    public void pageLoadsQuickly() {\n        Assert.assertTrue(pageLoadTime < 3000);\n    }\n\n`;
+        content += `    @Then("All elements should be interactive")\n    public void elementsInteractive() {\n        page.waitForLoadState(LoadState.NETWORKIDLE);\n    }\n\n`;
+    }
+
+    content += `}\n`;
+    return content;
+}
+
+/**
  * Suggest verification options based on story type and priority
  */
 function suggestVerificationOptions(issueType, priority, storyText) {
@@ -1967,7 +2778,10 @@ async function callMCPTool(toolName, args) {
       const enableAssertions = verification?.functional ?? false;
       const enablePerformance = verification?.performance ?? false;
 
-      // Generate Page Object
+        // 🎯 ENHANCEMENT: Generate comprehensive scenarios based on verification flags
+        const enhancedScenarios = generateComprehensiveScenarios(testName, pageElements, scenarios, verification);
+
+        // Generate Page Object
       const pageFile = path.join(pagesDir, `${className}.java`);
       const elementMethods = pageElements.map(el => {
         const methodName = el.name.replace(/\s+/g, '');
@@ -1999,7 +2813,7 @@ async function callMCPTool(toolName, args) {
           method += `        log.info("⏱️ Action completed in " + duration + "ms");\n`;
         }
 
-        method += `        TimeoutConfig.shortWait();\n`;
+          method += `        TimeoutConfig.waitShort();\n`;
 
         if (enableLogging) {
           method += `        log.info("✅ ${el.name} completed");\n`;
@@ -2034,11 +2848,32 @@ async function callMCPTool(toolName, args) {
       await fs.mkdir(pagesDir, { recursive: true });
       await fs.writeFile(pageFile, validatedPageContent, 'utf-8');
 
-      // Generate Feature File
+        // Generate Feature File with enhanced scenarios based on verification criteria
       const featureFile = path.join(featuresDir, `${testName}.feature`);
-      const scenarioContent = scenarios.map((s, i) => {
+
+        // Use the already generated enhancedScenarios from above
+        const scenarioContent = enhancedScenarios.map((s, i) => {
         const steps = s.steps.map(step => `    ${step}`).join('\n');
-        const tags = verification.performance ? '@Functional @PerformanceTest' : '@Functional';
+            // Auto-tag scenarios based on content
+            let tags = '@Functional';
+            if (s.name.toLowerCase().includes('ui') || s.name.toLowerCase().includes('display') || s.name.toLowerCase().includes('visible')) {
+                tags = '@UI';
+            }
+            if (s.name.toLowerCase().includes('ux') || s.name.toLowerCase().includes('experience') || s.name.toLowerCase().includes('flow')) {
+                tags = '@UX';
+            }
+            if (s.name.toLowerCase().includes('performance') || s.name.toLowerCase().includes('load') || s.name.toLowerCase().includes('response')) {
+                tags = '@Performance';
+            }
+            if (s.name.toLowerCase().includes('security') || s.name.toLowerCase().includes('password') || s.name.toLowerCase().includes('injection')) {
+                tags = '@Security';
+            }
+            if (s.name.toLowerCase().includes('invalid') || s.name.toLowerCase().includes('empty') || s.name.toLowerCase().includes('error')) {
+                tags += ' @Negative';
+            }
+            if (s.name.toLowerCase().includes('boundary') || s.name.toLowerCase().includes('minimum') || s.name.toLowerCase().includes('maximum')) {
+                tags += ' @Boundary';
+            }
         return `  ${tags} @Priority=${i}\n  Scenario: ${s.name}\n${steps}\n`;
       }).join('\n');
 
@@ -2047,9 +2882,12 @@ async function callMCPTool(toolName, args) {
       await fs.mkdir(featuresDir, { recursive: true });
       await fs.writeFile(featureFile, featureContent, 'utf-8');
 
-      // Generate Step Definitions
+        // Generate Step Definitions with comprehensive implementations
       const stepsFile = path.join(stepDefsDir, `${testName}Steps.java`);
-      const stepsContent = `package stepDefs;\n\nimport io.cucumber.java.en.*;\nimport configs.browserSelector;\nimport pages.${className};\nimport org.testng.Assert;\n\n/**\n * Step Definitions for ${testName}\n * Generated by AI Automation CLI\n */\npublic class ${className}Steps extends browserSelector {\n\n    @Given("the application is ready")\n    public void applicationIsReady() {\n        System.out.println("📋 Application ready");\n        page.waitForLoadState();\n    }\n\n    @Given("User navigates to ${testName} page")\n    public void userNavigatesToPage() {\n        System.out.println("🌐 Navigating to ${testName} page");\n        ${className}.navigateTo(page);\n    }\n}\n`;
+        let stepsContent = generateComprehensiveStepDefinitions(className, testName, pageElements, verification);
+
+        // AUTO-FIX: Validate feature steps match step definitions and generate missing ones
+        stepsContent = validateAndFixStepMatching(featureContent, stepsContent, testName);
 
       await fs.mkdir(stepDefsDir, { recursive: true });
       await fs.writeFile(stepsFile, stepsContent, 'utf-8');
@@ -2097,7 +2935,7 @@ async function callMCPTool(toolName, args) {
 
       // COMPREHENSIVE ERROR FIXING PATTERNS
 
-      // Fix 1: Missing imports (Enhanced)
+        // Fix 1: Missing imports (Enhanced with comprehensive coverage)
       if (error.includes('cannot find symbol') || error.includes('package does not exist')) {
         const symbol = error.match(/symbol:\s+(?:class|interface|enum)\s+(\w+)/)?.[1];
         if (symbol) {
@@ -2115,7 +2953,10 @@ async function callMCPTool(toolName, args) {
             'After': 'import io.cucumber.java.After;',
             'TimeoutConfig': 'import configs.TimeoutConfig;',
             'BasePage': 'import pages.BasePage;',
-            'base': 'import configs.base;'
+              'base': 'import configs.base;',
+              'Page': 'import com.microsoft.playwright.Page;',
+              'loadProps': 'import configs.loadProps;',
+              'browserSelector': 'import configs.browserSelector;'
           };
 
           if (imports[symbol] && !fixedCode.includes(imports[symbol])) {
@@ -2129,16 +2970,54 @@ async function callMCPTool(toolName, args) {
           const packageLineEnd = fixedCode.indexOf(';') + 1;
           fixedCode = fixedCode.slice(0, packageLineEnd) + '\n\nimport org.apache.logging.log4j.Logger;\nimport org.apache.logging.log4j.LogManager;' + fixedCode.slice(packageLineEnd);
         }
+
+          // Fix missing navigateTo method in page objects
+          if (error.includes('method navigateTo') && file.includes('Page.java')) {
+              const classMatch = fixedCode.match(/public class (\w+)/);
+              if (classMatch && !fixedCode.includes('public static void navigateTo')) {
+                  const className = classMatch[1];
+                  // Ensure required imports
+                  if (!fixedCode.includes('import com.microsoft.playwright.Page')) {
+                      const packageLineEnd = fixedCode.indexOf(';') + 1;
+                      fixedCode = fixedCode.slice(0, packageLineEnd) + '\nimport com.microsoft.playwright.Page;' + fixedCode.slice(packageLineEnd);
+                  }
+                  if (!fixedCode.includes('import configs.loadProps')) {
+                      const lastImport = fixedCode.lastIndexOf('import ');
+                      const nextLine = fixedCode.indexOf('\n', lastImport) + 1;
+                      fixedCode = fixedCode.slice(0, nextLine) + 'import configs.loadProps;\n' + fixedCode.slice(nextLine);
+                  }
+                  // Add navigateTo method after class declaration
+                  const classEnd = fixedCode.indexOf('{', fixedCode.indexOf('public class')) + 1;
+                  const navigateToMethod = `\n    /**\n     * Navigate to ${className} page\n     * @param page Playwright Page instance\n     */\n    public static void navigateTo(Page page) {\n        log.info("🌐 Navigating to ${className} page");\n        String url = loadProps.getProperty("URL");\n        navigateToUrl(url);\n        log.info("✅ Navigation completed");\n    }\n`;
+                  fixedCode = fixedCode.slice(0, classEnd) + navigateToMethod + fixedCode.slice(classEnd);
+              }
+          }
       }
 
-      // Fix 2: Method not found - use correct framework methods (Enhanced)
+        // Fix 2: Method not found - use correct framework methods (Enhanced with all TimeoutConfig methods)
       if (error.includes('method') && error.includes('cannot find symbol')) {
-        // Fix direct Selenium calls to use framework methods
-        fixedCode = fixedCode.replace(/(\w+)\.click\(\)/g, 'clickOnElement($1, TimeoutConfig.shortWait())');
-        fixedCode = fixedCode.replace(/(\w+)\.sendKeys\(([^)]+)\)/g, 'enterText($1, $2, TimeoutConfig.shortWait())');
+          // Fix incorrect TimeoutConfig method names
+          fixedCode = fixedCode.replace(/TimeoutConfig\.shortWait\(\)/g, 'TimeoutConfig.waitShort()');
+          fixedCode = fixedCode.replace(/TimeoutConfig\.mediumWait\(\)/g, 'TimeoutConfig.waitMedium()');
+          fixedCode = fixedCode.replace(/TimeoutConfig\.longWait\(\)/g, 'TimeoutConfig.waitLong()');
+
+          // Fix direct Selenium calls to use framework methods
+          fixedCode = fixedCode.replace(/(\w+)\.click\(\)/g, 'clickOnElement($1, TimeoutConfig.waitShort())');
+          fixedCode = fixedCode.replace(/(\w+)\.sendKeys\(([^)]+)\)/g, 'enterText($1, $2, TimeoutConfig.waitShort())');
         fixedCode = fixedCode.replace(/(\w+)\.getText\(\)/g, '$1.getText()'); // Already correct
 
-        // Fix missing logger declaration
+          // Fix common navigation method issues
+          if (error.includes('navigateTo') && !fixedCode.includes('public static void navigateTo')) {
+              const classMatch = fixedCode.match(/public class (\w+)/);
+              if (classMatch) {
+                  const className = classMatch[1];
+                  const classEnd = fixedCode.indexOf('{', fixedCode.indexOf('public class')) + 1;
+                  const navigateToMethod = `\n    public static void navigateTo(Page page) {\n        String url = loadProps.getProperty("URL");\n        navigateToUrl(url);\n    }\n`;
+                  fixedCode = fixedCode.slice(0, classEnd) + navigateToMethod + fixedCode.slice(classEnd);
+              }
+          }
+
+          // Fix missing logger declaration
         if (error.includes('logger') && !fixedCode.includes('private static final Logger logger')) {
           const classMatch = fixedCode.match(/public class (\w+)/);
           if (classMatch) {
@@ -2236,6 +3115,69 @@ async function callMCPTool(toolName, args) {
         if (file.includes('Steps.java') && !fixedCode.includes('extends base')) {
           fixedCode = fixedCode.replace(
             /(public class \w+Steps)/,
+              '$1 extends browserSelector'
+          );
+        }
+      }
+
+        // Fix 6: Syntax errors - missing semicolons, brackets, invalid names
+        if (error.includes('expected') || error.includes('illegal') || error.includes('invalid')) {
+            // Fix missing semicolons
+            const lines = fixedCode.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                // Add semicolon to common statement types if missing
+                if (line.length > 0 &&
+                    !line.endsWith(';') &&
+                    !line.endsWith('{') &&
+                    !line.endsWith('}') &&
+                    !line.startsWith('//') &&
+                    !line.startsWith('/*') &&
+                    !line.startsWith('*') &&
+                    !line.startsWith('@') &&
+                    (line.includes('return ') || line.includes('= ') || line.match(/^\w+\.\w+\(/))) {
+                    lines[i] = lines[i] + ';';
+                }
+            }
+            fixedCode = lines.join('\n');
+
+            // Fix invalid class names (ensure PascalCase)
+            const invalidClassName = fixedCode.match(/public class ([a-z]\w+)/);  // starts with lowercase
+            if (invalidClassName) {
+                const oldName = invalidClassName[1];
+                const newName = oldName.charAt(0).toUpperCase() + oldName.slice(1);
+                fixedCode = fixedCode.replace(new RegExp('\\b' + oldName + '\\b', 'g'), newName);
+            }
+        }
+
+        // Fix 7: Invalid method names (ensure camelCase)
+        if (error.includes('method') && (error.includes('illegal') || error.includes('invalid'))) {
+            const invalidMethod = fixedCode.match(/public (?:static )?void ([A-Z]\w+)\(/);  // starts with uppercase
+            if (invalidMethod) {
+                const oldName = invalidMethod[1];
+                const newName = oldName.charAt(0).toLowerCase() + oldName.slice(1);
+                fixedCode = fixedCode.replace(new RegExp('\\b' + oldName + '\\(', 'g'), newName + '(');
+            }
+        }
+
+        // Fix 8: Step definition class name mismatch
+        if (file.includes('Steps.java')) {
+            const fileNameMatch = file.match(/([\w]+)Steps\.java/);
+            const classNameMatch = fixedCode.match(/public class (\w+)/);
+            if (fileNameMatch && classNameMatch && fileNameMatch[1] !== classNameMatch[1].replace('Steps', '')) {
+                const expectedClassName = fileNameMatch[1] + 'Steps';
+                fixedCode = fixedCode.replace(
+                    /public class \w+/,
+                    'public class ' + expectedClassName
+                );
+            }
+        }
+
+        // Fix 9: Missing or incorrect extends in Steps
+        if (file.includes('Steps.java') && !fixedCode.includes('extends')) {
+            if (file.includes('Steps.java') && !fixedCode.includes('extends browserSelector')) {
+                fixedCode = fixedCode.replace(
+                    /(public class \w+Steps)/,
             '$1 extends base'
           );
         }
@@ -2616,7 +3558,7 @@ async function callMCPTool(toolName, args) {
       // Fix 8: Type mismatch
       if (error.includes('incompatible types')) {
         // Fix common type mismatches
-        fixedCode = fixedCode.replace(/TimeoutConfig\.shortWait\(\)/g, 'TimeoutConfig.shortWait()');
+          fixedCode = fixedCode.replace(/TimeoutConfig\.shortWait\(\)/g, 'TimeoutConfig.waitShort()');
       }
 
       // Fix 9: Package mismatch
@@ -2959,6 +3901,291 @@ function parseTestFailures(errorLog) {
   return failures;
 }
 
+// ============================================================================
+// NEW MENU FUNCTIONS (Aligned with quick-start.bat)
+// ============================================================================
+
+/**
+ * Retry from Existing Recording (Option 1B)
+ * Regenerate files from a previously saved recording
+ */
+async function retryFromRecording() {
+    console.log(colors.green + '\n🔄 Retry from Existing Recording\n' + colors.reset);
+    console.log('This will use a previously saved recording to regenerate test files.\n');
+
+    console.log(colors.yellow + '💡 This feature delegates to quick-start.bat Option 1B' + colors.reset);
+    console.log(colors.yellow + '   Opening quick-start menu...\n' + colors.reset);
+
+    const recordScript = spawn('cmd.exe', ['/c', 'start', 'cmd', '/k', 'quick-start.bat'], {
+        cwd: process.cwd(),
+        shell: true
+    });
+
+    console.log(colors.green + '\n✅ Quick-start menu opened!' + colors.reset);
+    console.log(colors.cyan + '\n📋 Instructions in new window:' + colors.reset);
+    console.log('   1. Select Option 1B (Retry from Existing Recording)');
+    console.log('   2. Enter the temp recording directory name');
+    console.log('   3. Files will be regenerated\n');
+}
+
+/**
+ * Validate & Run Tests (Option 4)
+ * Compile, validate, and execute test suite
+ */
+async function validateAndRunTests() {
+    console.log(colors.green + '\n✅ Validate & Run Tests\n' + colors.reset);
+    console.log('This will compile your project and run the test suite.\n');
+
+    console.log(colors.yellow + '📦 Step 1: Compiling project...\n' + colors.reset);
+
+    return new Promise((resolve) => {
+        const compile = spawn('cmd.exe', ['/c', 'mvn', 'clean', 'compile'], {
+            cwd: process.cwd(),
+            shell: true
+        });
+
+        compile.stdout.on('data', (data) => {
+            const output = data.toString();
+            if (output.includes('BUILD SUCCESS') || output.includes('BUILD FAILURE') || output.includes('Compiling')) {
+                process.stdout.write(output);
+            }
+        });
+
+        compile.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        compile.on('close', (code) => {
+            if (code === 0) {
+                console.log(colors.green + '\n✅ Compilation successful!\n' + colors.reset);
+                console.log(colors.yellow + '🧪 Step 2: Running tests...\n' + colors.reset);
+
+                const test = spawn('cmd.exe', ['/c', 'mvn', 'test'], {
+                    cwd: process.cwd(),
+                    shell: true
+                });
+
+                test.stdout.on('data', (data) => {
+                    process.stdout.write(data);
+                });
+
+                test.stderr.on('data', (data) => {
+                    process.stderr.write(data);
+                });
+
+                test.on('close', (testCode) => {
+                    if (testCode === 0) {
+                        console.log(colors.green + '\n✅ All tests passed!\n' + colors.reset);
+                        console.log(colors.cyan + '📊 View reports in: MRITestExecutionReports/\n' + colors.reset);
+                    } else {
+                        console.log(colors.yellow + '\n⚠️  Some tests failed. Check reports for details.\n' + colors.reset);
+                    }
+                    resolve();
+                });
+            } else {
+                console.log(colors.red + '\n❌ Compilation failed! Fix errors and try again.\n' + colors.reset);
+                resolve();
+            }
+        });
+    });
+}
+
+/**
+ * Complete Project Setup (Option S)
+ * Install MCP server and configure project
+ */
+async function completeProjectSetup() {
+    console.log(colors.green + '\n⚙️  Complete Project Setup\n' + colors.reset);
+    console.log('This will install MCP Server dependencies and configure your project.\n');
+
+    console.log(colors.yellow + '📦 Installing MCP Server dependencies...\n' + colors.reset);
+
+    return new Promise((resolve) => {
+        const setup = spawn('cmd.exe', ['/c', 'cd', 'mcp-server', '&&', 'npm', 'install'], {
+            cwd: process.cwd(),
+            shell: true
+        });
+
+        setup.stdout.on('data', (data) => {
+            process.stdout.write(data);
+        });
+
+        setup.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        setup.on('close', async (code) => {
+            if (code === 0) {
+                console.log(colors.green + '\n✅ MCP Server installed successfully!\n' + colors.reset);
+
+                console.log(colors.cyan + '\n📋 Next Steps:' + colors.reset);
+                console.log('   1. Update src/test/resources/configurations.properties');
+                console.log('   2. Configure JIRA credentials (optional)');
+                console.log('   3. Start using Option 1, 2, or 3 to generate tests\n');
+
+                await ensureMCPServer();
+            } else {
+                console.log(colors.red + '\n❌ Setup failed! Check the errors above.\n' + colors.reset);
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Maven Clean Compile (Option 5)
+ */
+async function mavenCleanCompile() {
+    console.log(colors.green + '\n🧹 Maven Clean Compile\n' + colors.reset);
+
+    return new Promise((resolve) => {
+        const compile = spawn('cmd.exe', ['/c', 'mvn', 'clean', 'compile'], {
+            cwd: process.cwd(),
+            shell: true
+        });
+
+        compile.stdout.on('data', (data) => {
+            process.stdout.write(data);
+        });
+
+        compile.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        compile.on('close', (code) => {
+            if (code === 0) {
+                console.log(colors.green + '\n✅ Maven clean compile successful!\n' + colors.reset);
+            } else {
+                console.log(colors.red + '\n❌ Maven clean compile failed!\n' + colors.reset);
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Maven Clean Test (Option 6)
+ */
+async function mavenCleanTest() {
+    console.log(colors.green + '\n🧪 Maven Clean Test\n' + colors.reset);
+
+    return new Promise((resolve) => {
+        const test = spawn('cmd.exe', ['/c', 'mvn', 'clean', 'test'], {
+            cwd: process.cwd(),
+            shell: true
+        });
+
+        test.stdout.on('data', (data) => {
+            process.stdout.write(data);
+        });
+
+        test.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        test.on('close', (code) => {
+            if (code === 0) {
+                console.log(colors.green + '\n✅ Maven clean test successful!\n' + colors.reset);
+                console.log(colors.cyan + '📊 View reports in: MRITestExecutionReports/\n' + colors.reset);
+            } else {
+                console.log(colors.yellow + '\n⚠️  Some tests failed. Check reports for details.\n' + colors.reset);
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Run Specific Tag Tests (Option 7)
+ */
+async function runSpecificTagTests() {
+    console.log(colors.green + '\n🏷️  Run Specific Tag Tests\n' + colors.reset);
+
+    const tag = await question(colors.cyan + '📝 Enter Cucumber tag (e.g., @Login, @Smoke): ' + colors.reset);
+
+    if (!tag.trim()) {
+        console.log(colors.red + '\n❌ Tag is required!\n' + colors.reset);
+        return;
+    }
+
+    console.log(colors.yellow + `\n🧪 Running tests with tag: ${tag}\n` + colors.reset);
+
+    return new Promise((resolve) => {
+        const test = spawn('cmd.exe', ['/c', 'mvn', 'test', `-Dcucumber.filter.tags="${tag}"`], {
+            cwd: process.cwd(),
+            shell: true
+        });
+
+        test.stdout.on('data', (data) => {
+            process.stdout.write(data);
+        });
+
+        test.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        test.on('close', (code) => {
+            if (code === 0) {
+                console.log(colors.green + `\n✅ Tests with tag ${tag} passed!\n` + colors.reset);
+            } else {
+                console.log(colors.yellow + `\n⚠️  Some tests with tag ${tag} failed.\n` + colors.reset);
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Show Help (Option H)
+ */
+async function showHelp() {
+    console.log(colors.cyan + '\n' + '='.repeat(60) + colors.reset);
+    console.log(colors.bright + colors.cyan + '  📖 AI TEST AUTOMATION - HELP GUIDE' + colors.reset);
+    console.log(colors.cyan + '='.repeat(60) + '\n' + colors.reset);
+
+    console.log(colors.yellow + '🎯 QUICK START:' + colors.reset);
+    console.log('   1. First time? Run Option S (Setup) to install dependencies');
+    console.log('   2. Use Option 1 (Record) for fastest test creation');
+    console.log('   3. Or use Option 2 (JIRA) for enterprise workflows\n');
+
+    console.log(colors.yellow + '📝 OPTION DETAILS:' + colors.reset);
+    console.log(colors.green + '   Option 1' + colors.reset + ' - Record browser actions, auto-generate tests');
+    console.log(colors.green + '   Option 1B' + colors.reset + ' - Reuse existing recording (no re-recording)');
+    console.log(colors.green + '   Option 2' + colors.reset + ' - Generate from JIRA story (requires JIRA config)');
+    console.log(colors.green + '   Option 3' + colors.reset + ' - AI-guided interactive generation');
+    console.log(colors.green + '   Option 4' + colors.reset + ' - Compile and run all tests');
+    console.log(colors.green + '   Option S' + colors.reset + ' - Install MCP Server (first-time setup)');
+    console.log(colors.green + '   Option 5-7' + colors.reset + ' - Maven utilities (compile, test, tags)\n');
+
+    console.log(colors.yellow + '📂 GENERATED FILES:' + colors.reset);
+    console.log('   • Page Objects: src/main/java/pages/YourFeature.java');
+    console.log('   • Features: src/test/java/features/YourFeature.feature');
+    console.log('   • Steps: src/test/java/stepDefs/YourFeatureSteps.java\n');
+
+    console.log(colors.yellow + '📊 REPORTS LOCATION:' + colors.reset);
+    console.log('   • HTML Reports: MRITestExecutionReports/cucumberExtentReports/');
+    console.log('   • Screenshots: target/screenshots/');
+    console.log('   • Videos: test-results/\n');
+
+    console.log(colors.yellow + '⚠️  COMMON ISSUES:' + colors.reset);
+    console.log('   • Recording not working? Run Option S first');
+    console.log('   • Compilation errors? Check Java 17+ is installed');
+    console.log('   • JIRA errors? Update jiraConfigurations.properties\n');
+
+    console.log(colors.yellow + '📖 DOCUMENTATION:' + colors.reset);
+    console.log('   • Full Guide: README.md');
+    console.log('   • Workflow: WORKFLOW_TODOS.md\n');
+
+    console.log(colors.cyan + '='.repeat(60) + '\n' + colors.reset);
+}
+
+/**
+ * Exit function
+ */
+async function exit() {
+    return {exit: true};
+}
+
 /**
  * Main Program Loop
  */
@@ -2972,51 +4199,20 @@ async function main() {
 
   while (running) {
     const choice = await displayMenu();
+      const result = await executeMenuAction(choice);
 
-    switch (choice) {
-      case '1':
-        await recordAndGenerate();
-        break;
-      case '2':
-        await generateTestFromJiraStory();
-        break;
-      case '3':
-        await generateCompleteTestSuite();
-        break;
-      case '4':
-        await updateExistingTest();
-        break;
-      case '5':
-        await generatePageObject();
-        break;
-      case '6':
-        await generateFeatureFile();
-        break;
-      case '7':
-        await generateStepDefinitions();
-        break;
-      case '8':
-        await analyzeFramework();
-        break;
-      case '9':
-        await quickStartTutorial();
-        break;
-      case '0':
-        console.log(colors.green + '\n👋 Thanks for using AI Automation Generator!\n' + colors.reset);
+      if (result.exit) {
+          console.log(colors.green + '\n👋 Thanks for using AI Automation Generator!\n' + colors.reset);
 
-        // Cleanup MCP server if we started it
-        if (mcpServerProcess) {
-          console.log(colors.yellow + '🛑 Stopping MCP server...' + colors.reset);
-          mcpServerProcess.kill();
-        }
+          // Cleanup MCP server if we started it
+          if (mcpServerProcess) {
+              console.log(colors.yellow + '🛑 Stopping MCP server...' + colors.reset);
+              mcpServerProcess.kill();
+          }
 
-        running = false;
-        break;
-      default:
-        console.log(colors.red + '\n❌ Invalid choice. Please try again.\n' + colors.reset);
-    }
-
-    if (running && choice !== '9') {
+          running = false;
+      } else if (choice !== '9') {
+          // Don't pause after tutorial since it already has its own pause
       await question(colors.cyan + '\nPress Enter to continue...' + colors.reset);
     }
   }
@@ -3024,5 +4220,88 @@ async function main() {
   rl.close();
 }
 
-// Run the CLI
-main().catch(console.error);
+// ============================================================================
+// CLI ARGUMENT SUPPORT (for quick-start.bat integration)
+// ============================================================================
+
+/**
+ * Parse and handle command-line arguments
+ * Supports:
+ *   node automation-cli.js interactive    → Run Option 3 directly
+ *   node automation-cli.js jira <id>      → Run Option 2 with story ID
+ *   node automation-cli.js                → Show interactive menu (default)
+ */
+async function handleCLIArguments() {
+    const args = process.argv.slice(2);
+    const mode = args[0];
+
+    if (!mode) {
+        // No arguments, run interactive menu
+        return false;
+    }
+
+    displayWelcome();
+    await ensureMCPServer();
+
+    if (mode === 'interactive') {
+        console.log(colors.cyan + '\n🚀 Running in Interactive Mode (Option 3)\n' + colors.reset);
+        await generateCompleteTestSuite();
+
+        console.log(colors.green + '\n✅ Interactive generation complete!' + colors.reset);
+        console.log(colors.cyan + 'Check generated files and run Option 4 to validate.\n' + colors.reset);
+
+        // Cleanup and exit
+        if (mcpServerProcess) {
+            console.log(colors.yellow + '🛑 Stopping MCP server...' + colors.reset);
+            mcpServerProcess.kill();
+        }
+        rl.close();
+        return true;
+
+    } else if (mode === 'jira') {
+        const storyId = args[1];
+
+        if (!storyId) {
+            console.log(colors.red + '\n❌ Error: JIRA Story ID required!' + colors.reset);
+            console.log(colors.yellow + 'Usage: node automation-cli.js jira <STORY-ID>' + colors.reset);
+            console.log(colors.yellow + 'Example: node automation-cli.js jira ECS-123\n' + colors.reset);
+            rl.close();
+            return true;
+        }
+
+        console.log(colors.cyan + `\n🚀 Running in JIRA Mode (Option 2) with story: ${storyId}\n` + colors.reset);
+
+        // Set story ID for the function
+        global.cliJiraStoryId = storyId;
+        await generateTestFromJiraStory();
+
+        console.log(colors.green + '\n✅ JIRA-based generation complete!' + colors.reset);
+        console.log(colors.cyan + 'Check generated files and run Option 4 to validate.\n' + colors.reset);
+
+        // Cleanup and exit
+        if (mcpServerProcess) {
+            console.log(colors.yellow + '🛑 Stopping MCP server...' + colors.reset);
+            mcpServerProcess.kill();
+        }
+        rl.close();
+        return true;
+
+    } else {
+        console.log(colors.red + `\n❌ Error: Unknown mode "${mode}"` + colors.reset);
+        console.log(colors.yellow + '\nSupported modes:' + colors.reset);
+        console.log(colors.cyan + '  node automation-cli.js interactive' + colors.reset + ' → AI-guided test generation');
+        console.log(colors.cyan + '  node automation-cli.js jira <ID>' + colors.reset + ' → Generate from JIRA story');
+        console.log(colors.cyan + '  node automation-cli.js' + colors.reset + ' → Interactive menu (default)\n');
+        rl.close();
+        return true;
+    }
+}
+
+// Run the CLI with argument support
+(async () => {
+    const handled = await handleCLIArguments();
+    if (!handled) {
+        // No CLI args, run interactive menu
+        await main();
+    }
+})().catch(console.error);

@@ -1,11 +1,14 @@
 package configs;
 
-import java.io.*;
-import java.nio.file.*;
-import java.time.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.regex.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -31,14 +34,17 @@ import java.util.stream.Collectors;
 public class AITestFramework {
 
     private static final String HEALTH_LOG_DIR = "test-health-logs/";
+    @SuppressWarnings("unused") // Reserved for future locator strategy persistence
     private static final String LOCATOR_STRATEGY_FILE = "src/test/resources/locator-strategies.properties";
     private static final int FLAKY_THRESHOLD = 2;
+    @SuppressWarnings("unused") // Reserved for future parallel execution enhancements
     private static final int DEFAULT_THREAD_COUNT = Runtime.getRuntime().availableProcessors();
 
     // Shared state
     private static Map<String, List<TestExecutionRecord>> executionHistory = new ConcurrentHashMap<>();
     private static Map<String, List<String>> locatorHistory = new ConcurrentHashMap<>();
     private static ExecutorService executorService;
+    @SuppressWarnings("unused") // Reserved for future test result tracking
     private static Map<String, TestExecutionResult> executionResults = new ConcurrentHashMap<>();
     private static final Map<String, Semaphore> resourceSemaphores = new ConcurrentHashMap<>();
 

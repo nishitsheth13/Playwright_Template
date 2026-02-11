@@ -1,6 +1,5 @@
 package pages;
 
-
 import configs.TimeoutConfig;
 import configs.utils;
 
@@ -28,13 +27,32 @@ public abstract class BasePage extends utils {
      * Navigate to specific URL with wait
      * 
      * @param url The URL to navigate to
+     * @throws IllegalArgumentException if URL is null or empty
+     * @throws IllegalStateException    if page is not initialized
      */
     public static void navigateToUrl(String url) {
+        // Validate URL
+        if (url == null || url.trim().isEmpty()) {
+            throw new IllegalArgumentException("❌ URL cannot be null or empty");
+        }
+
+        // Ensure page is initialized
+        if (page == null) {
+            throw new IllegalStateException("❌ Page is not initialized. Ensure browser is launched before navigation.");
+        }
+
         System.out.println("🌐 Navigating to: " + url);
-        page.navigate(url);
-        page.waitForLoadState();
-        TimeoutConfig.waitShort();
-        System.out.println("✅ Page loaded successfully");
+
+        try {
+            page.navigate(url);
+            page.waitForLoadState();
+            TimeoutConfig.waitShort();
+            System.out.println("✅ Page loaded successfully");
+            System.out.println("📍 Current URL: " + page.url());
+        } catch (Exception e) {
+            System.err.println("❌ Navigation failed: " + e.getMessage());
+            throw new RuntimeException("Failed to navigate to URL: " + url, e);
+        }
     }
 
     /**
@@ -273,6 +291,3 @@ public abstract class BasePage extends utils {
         return urlMatch && titleMatch;
     }
 }
-
-
-
