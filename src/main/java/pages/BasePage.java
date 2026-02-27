@@ -1,5 +1,7 @@
 package pages;
 
+import com.microsoft.playwright.Page;
+
 import configs.TimeoutConfig;
 import configs.utils;
 
@@ -11,6 +13,8 @@ import configs.utils;
  * @version 1.0
  */
 public abstract class BasePage extends utils {
+
+    public static Page popupPage;
 
     /**
      * Constructor - inherits page from base class through utils
@@ -24,7 +28,8 @@ public abstract class BasePage extends utils {
     // ============================================================
 
     /**
-     * Navigate to specific URL with wait
+     * Navigate to specific URL with comprehensive auto-wait
+     * Includes wait for LOAD state and network idle detection
      * 
      * @param url The URL to navigate to
      * @throws IllegalArgumentException if URL is null or empty
@@ -45,9 +50,17 @@ public abstract class BasePage extends utils {
 
         try {
             page.navigate(url);
-            page.waitForLoadState();
+            
+            // Auto-wait for page to be fully loaded
+            System.out.println("⏳ [Auto-Wait] Waiting for page LOAD state...");
+            page.waitForLoadState(com.microsoft.playwright.options.LoadState.LOAD);
+            
+            // Wait for network to be idle for stable state
+            System.out.println("⏳ [Auto-Wait] Waiting for network activity to settle...");
+            page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE);
+            
             TimeoutConfig.waitShort();
-            System.out.println("✅ Page loaded successfully");
+            System.out.println("✅ Page loaded successfully with auto-wait");
             System.out.println("📍 Current URL: " + page.url());
         } catch (Exception e) {
             System.err.println("❌ Navigation failed: " + e.getMessage());
@@ -248,12 +261,163 @@ public abstract class BasePage extends utils {
     }
 
     /**
-     * Wait for network to be idle
+     * Wait for network to be idle with auto-wait logging
      */
     public static void waitForNetworkIdle() {
-        System.out.println("⏳ Waiting for network idle...");
+        System.out.println("⏳ [Auto-Wait] Waiting for network idle...");
         page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE);
-        System.out.println("✅ Network idle");
+        System.out.println("✅ [Auto-Wait] Network idle - page fully loaded");
+    }
+
+    // ============================================================
+    // AUTO-WAIT VERIFICATION METHODS (Enhanced)
+    // ============================================================
+
+    /**
+     * Wait for element to be visible with integrated auto-wait
+     * Includes retry mechanism for stale elements
+     * 
+     * @param locator Element locator
+     * @param timeoutMs Maximum wait time in milliseconds
+     * @return true if element becomes visible within timeout
+     */
+    public static boolean waitForElementVisible(com.microsoft.playwright.Locator locator, double timeoutMs) {
+        try {
+            System.out.println("⏳ [Auto-Wait] Waiting for element to be visible...");
+            locator.waitFor(new com.microsoft.playwright.Locator.WaitForOptions()
+                .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                .setTimeout(timeoutMs));
+            System.out.println("✅ [Auto-Wait] Element is visible");
+            return true;
+        } catch (com.microsoft.playwright.TimeoutError e) {
+            System.err.println("❌ [Auto-Wait] Element not visible within " + timeoutMs + "ms");
+            return false;
+        }
+    }
+
+    /**
+     * Wait for element to contain specific text with integrated auto-retry
+     * Polls every 200ms until text is found or timeout
+     * 
+     * @param locator Element locator
+     * @param expectedText Expected text content
+     * @param timeoutMs Maximum wait time
+     * @return true if text found within timeout
+     */
+    public static boolean waitForElementText(com.microsoft.playwright.Locator locator, String expectedText, double timeoutMs) {
+        System.out.println("⏳ [Auto-Wait] Waiting for text: '" + expectedText + "'");
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + (long) timeoutMs;
+        
+        while (System.currentTimeMillis() < endTime) {
+            try {
+                String actualText = locator.textContent();
+                if (actualText != null && actualText.contains(expectedText)) {
+                    System.out.println("✅ [Auto-Wait] Text found: '" + expectedText + "'");
+                    return true;
+                }
+                try {
+                    Thread.sleep(200); // Poll every 200ms
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            } catch (Exception e) {
+                // Continue waiting
+            }
+        }
+        
+        System.err.println("❌ [Auto-Wait] Text not found within timeout: '" + expectedText + "'");
+        return false;
+    }
+
+    /**
+     * Wait for element to be clickable (visible + enabled) with auto-wait
+     * 
+     * @param locator Element locator
+     * @param timeoutMs Maximum wait time
+     * @return true if element becomes clickable
+     */
+    public static boolean waitForElementClickable(com.microsoft.playwright.Locator locator, double timeoutMs) {
+        try {
+            System.out.println("⏳ [Auto-Wait] Waiting for element to be clickable...");
+            
+            // Wait for visible
+            locator.waitFor(new com.microsoft.playwright.Locator.WaitForOptions()
+                .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                .setTimeout(timeoutMs));
+            
+            // Wait for enabled
+            long startTime = System.currentTimeMillis();
+            while (!locator.isEnabled() && (System.currentTimeMillis() - startTime) < timeoutMs) {
+                Thread.sleep(100);
+            }
+            
+            if (locator.isEnabled()) {
+                System.out.println("✅ [Auto-Wait] Element is clickable");
+                return true;
+            } else {
+                System.err.println("❌ [Auto-Wait] Element visible but not enabled");
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ [Auto-Wait] Element not clickable: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Wait for page URL to contain expected text with auto-retry
+     * 
+     * @param expectedUrlPart Expected URL substring
+     * @param timeoutSeconds Maximum wait time in seconds
+     * @return true if URL contains text within timeout
+     */
+    public static boolean waitForUrlContains(String expectedUrlPart, int timeoutSeconds) {
+        System.out.println("⏳ [Auto-Wait] Waiting for URL to contain: " + expectedUrlPart);
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + (timeoutSeconds * 1000L);
+
+        while (System.currentTimeMillis() < endTime) {
+            if (getCurrentUrl().contains(expectedUrlPart)) {
+                System.out.println("✅ [Auto-Wait] URL contains: " + expectedUrlPart);
+                return true;
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        
+        System.err.println("❌ [Auto-Wait] URL does not contain: " + expectedUrlPart);
+        return false;
+    }
+
+    /**
+     * Wait for multiple elements to be visible with auto-wait
+     * 
+     * @param locators Array of element locators
+     * @param timeoutMs Timeout for each element
+     * @return true if all elements become visible
+     */
+    public static boolean waitForMultipleElements(com.microsoft.playwright.Locator[] locators, double timeoutMs) {
+        System.out.println("⏳ [Auto-Wait] Waiting for " + locators.length + " elements to be visible...");
+        
+        for (int i = 0; i < locators.length; i++) {
+            try {
+                locators[i].waitFor(new com.microsoft.playwright.Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                    .setTimeout(timeoutMs));
+                System.out.println("✅ [Auto-Wait] Element " + (i + 1) + "/" + locators.length + " visible");
+            } catch (com.microsoft.playwright.TimeoutError e) {
+                System.err.println("❌ [Auto-Wait] Element " + (i + 1) + " not visible within timeout");
+                return false;
+            }
+        }
+        
+        System.out.println("✅ [Auto-Wait] All " + locators.length + " elements visible");
+        return true;
     }
 
     // ============================================================

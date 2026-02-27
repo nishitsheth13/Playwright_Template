@@ -1,16 +1,27 @@
 package pages;
 
-import java.util.logging.Logger;
-import org.testng.Assert;
-import configs.SmartLocatorStrategy;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.options.AriaRole;
 import configs.TimeoutConfig;
+import org.testng.Assert;
 
+/**
+ * Page Object for Login functionality.
+ * Uses Locator pattern and utils.java for all element interactions.
+ */
 public class Login extends BasePage {
-    private static final Logger log = Logger.getLogger(Login.class.getName());
 
-    private static final String[] USERNAME_LOCATORS = SmartLocatorStrategy.generateInputStrategies("username", "text");
-    private static final String[] PASSWORD_LOCATORS = SmartLocatorStrategy.generateInputStrategies("password", "password");
-    private static final String[] SIGNIN_BUTTON_LOCATORS = SmartLocatorStrategy.generateButtonStrategies("Sign In");
+    public static Locator usernameField() {
+        return page.locator("input[type='email'], input[name='username'], input[name*='user' i]");
+    }
+
+    public static Locator passwordField() {
+        return page.locator("input[type='password'], input[name='password']");
+    }
+
+    public static Locator signInButton() {
+        return page.getByRole(AriaRole.BUTTON, new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign In"));
+    }
 
     public Login() {
         super();
@@ -25,17 +36,17 @@ public class Login extends BasePage {
     }
 
     public static void UsernameField(String text) {
-        enterTextSmart(text, USERNAME_LOCATORS);
+        enterText(usernameField(), text);
         TimeoutConfig.waitShort();
     }
 
     public static void PasswordField(String text) {
-        enterTextSmart(text, PASSWORD_LOCATORS);
+        enterText(passwordField(), text);
         TimeoutConfig.waitShort();
     }
 
     public static void SignInButton() {
-        clickElementSmart(SIGNIN_BUTTON_LOCATORS);
+        clickOnElement(signInButton());
         TimeoutConfig.waitShort();
     }
 

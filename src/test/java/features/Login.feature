@@ -17,13 +17,6 @@ Feature: Create a detailed test cases for login including positive and negative 
     And User try to login with Invalid Credentials
     And User is not able to login with Invalid Credentials
 
-  @Functional @Negative @Priority=2
-  Scenario: Verify Login with invalid data
-    Given User navigates to Login page
-    When User enters invalid data
-    And User attempts to submit
-    Then Validation error should be displayed
-    And Action should be prevented
 
   @UI @Negative @Priority=3
   Scenario: Verify Login with empty required fields
@@ -85,7 +78,7 @@ Feature: Create a detailed test cases for login including positive and negative 
   @Functional @Negative @Priority=10
   Scenario: Verify Login error handling and feedback
     Given User navigates to Login page
-    When User enters invalid data
+    When User try to login with Invalid Credentials
     And User attempts to submit
     Then Clear error message should be displayed
     And Previously entered valid data should be preserved

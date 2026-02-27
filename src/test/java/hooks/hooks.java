@@ -1,11 +1,11 @@
 package hooks;
 
-import configs.browserSelector;
 import configs.AITestFramework;
+import configs.browserSelector;
 import io.cucumber.java.After;
+import io.cucumber.java.AfterAll;
 import io.cucumber.java.Before;
 import io.cucumber.java.BeforeAll;
-import io.cucumber.java.AfterAll;
 import io.cucumber.java.Scenario;
 
 /**
@@ -39,6 +39,7 @@ public class hooks extends browserSelector {
 
     /**
      * Cucumber After hook - runs after each scenario
+     * Note: Browser tearDown is handled by TestNG listener to ensure proper screenshot capture
      * @param scenario Current scenario that was executed
      */
     @After
@@ -56,7 +57,9 @@ public class hooks extends browserSelector {
         }
         AITestFramework.recordExecution(record);
 
-        browserSelector.tearDown();
+        // NOTE: tearDown() is intentionally NOT called here
+        // It's handled by the TestNG listener (listener.java) AFTER screenshot capture
+        // This ensures screenshots are captured while the browser is still open
     }
 
     /**

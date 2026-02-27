@@ -11,7 +11,7 @@
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListResourcesRequestSchema, ListToolsRequestSchema, ReadResourceRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -137,6 +137,8 @@ async function analyzeFeatures() {
 }
 /**
  * Tool: Generate Page Object
+ * Uses Playwright Locator pattern: locator methods + action methods.
+ * Follows the same pattern as Treecomponent.java and Login.java.
  */
 async function generatePageObject(args) {
     const { pageName, elements, description, verification } = args;
@@ -146,142 +148,124 @@ async function generatePageObject(args) {
     const enableLogging = verification?.logging ?? false;
     const enableAssertions = verification?.functional ?? false;
     const enablePerformance = verification?.performance ?? false;
-    // Generate element methods matching existing project pattern (using utils methods)
+    // ── helpers ────────────────────────────────────────────────────────────────
+    const toPascal = (name) => name.replace(/[^a-zA-Z0-9\s]/g, '').trim().split(/\s+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+    const toCamel = (name) => {
+        const p = toPascal(name);
+        return p.charAt(0).toLowerCase() + p.slice(1);
+    };
+    const smartLocator = (el) => {
+        const n = el.name.toLowerCase();
+        const act = (el.action || 'click').toLowerCase();
+        const label = el.name.replace(/\s+(field|button|btn|dropdown|select|input|checkbox|link|text|area|textbox)$/i, '').trim();
+        const cid = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (n.includes('password') || n.includes('pass'))
+            return "page.locator(\"input[type='password'], input[name*='password' i], input[id*='password' i]\")";
+        if (n.includes('email') || n.includes('e-mail'))
+            return "page.locator(\"input[type='email'], input[name*='email' i], input[id*='email' i]\")";
+        if (n.includes('username') || n.includes('user name'))
+            return "page.locator(\"input[type='email'], input[name*='user' i], input[id*='user' i]\")";
+        if (n.includes('search'))
+            return `page.locator("input[name*='search' i], input[id*='search' i], input[placeholder*='search' i]")`;
+        if (n.includes('checkbox') || (n.includes('check') && !n.includes('search')))
+            return `page.getByRole(AriaRole.CHECKBOX, new Page.GetByRoleOptions().setName("${label}"))`;
+        if (act === 'select' || n.includes('dropdown') || n.includes('select') || n.includes('combo'))
+            return `page.getByRole(AriaRole.COMBOBOX, new Page.GetByRoleOptions().setName("${label}"))`;
+        if (n.includes('link') || n.includes('menu') || n.includes('nav'))
+            return `page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("${label}"))`;
+        if (act === 'type' || n.includes('field') || n.includes('input') || n.includes('text') || n.includes('name'))
+            return `page.locator("input[name*='${cid}' i], input[id*='${cid}' i], input[placeholder*='${label}' i], textarea[name*='${cid}' i]")`;
+        // Default: button
+        return `page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("${label}"))`;
+    };
+    // ── generate locator + action methods ─────────────────────────────────────
+    const seenLocators = new Set();
     const elementMethods = elements.map((el) => {
-        const methodName = el.name.replace(/\s+/g, '');
-        const action = el.action || 'click';
-        let methodCode = `    /**
-     * ${el.description || `Interact with ${el.name}`}
-     * @param locator The element locator
-     */
-    protected static void ${methodName}(String locator${action === 'type' ? ', String text' : ''}) {`;
+        const locatorId = toCamel(el.name); // "usernameField"
+        const pascalId = toPascal(el.name); // "UsernameField"
+        const act = (el.action || 'click').toLowerCase();
+        const locExpr = smartLocator(el);
+        let block = '';
+        if (!seenLocators.has(locatorId)) {
+            seenLocators.add(locatorId);
+            block += `    /** Locator for ${el.name} */\n`;
+            block += `    public static Locator ${locatorId}() {\n`;
+            block += `        return ${locExpr};\n`;
+            block += `    }\n\n`;
+        }
+        const prefix = act === 'type' ? 'enter' : act === 'select' ? 'select' : 'click';
+        const methodName = `${prefix}${pascalId}`;
+        const sigParam = act === 'type' ? 'Page page, String text' : act === 'select' ? 'Page page, String option' : 'Page page';
+        block += `    /**\n     * ${el.description || el.name} - ${act} action\n     * @param page Playwright Page instance\n     */\n`;
+        block += `    public static void ${methodName}(${sigParam}) {\n`;
         if (enableLogging) {
-            methodCode += `\n        log.info("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+            block += `        log.info("${act === 'type' ? '⌨️' : '🖱️'} ${el.name}");\n`;
         }
         else {
-            methodCode += `\n        System.out.println("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+            block += `        System.out.println("📍 Step: ${prefix} ${el.name}");\n`;
         }
+        if (enablePerformance)
+            block += `        long startTime = System.currentTimeMillis();\n`;
+        if (act === 'click')
+            block += `        clickOnElement(${locatorId}());\n`;
+        else if (act === 'type')
+            block += `        enterText(${locatorId}(), text);\n`;
+        else if (act === 'select')
+            block += `        selectDropDownValueByText(${locatorId}(), option);\n`;
         if (enablePerformance) {
-            methodCode += `\n        long startTime = System.currentTimeMillis();`;
+            block += `        long duration = System.currentTimeMillis() - startTime;\n`;
+            block += `        log.info("⏱️ Action completed in " + duration + "ms");\n`;
         }
-        // Use actual project methods from utils class
-        methodCode += `\n        ${action === 'click' ? 'clickOnElement(locator);' :
-            action === 'type' ? 'enterText(locator, text);' :
-                action === 'select' ? 'selectDropDownValueByText(locator, text);' :
-                    'clickOnElement(locator);'}`;
-        if (enablePerformance) {
-            methodCode += `\n        long duration = System.currentTimeMillis() - startTime;`;
-            methodCode += `\n        log.info("⏱️ ${el.name} action completed in " + duration + "ms");`;
-        }
-        methodCode += `\n        TimeoutConfig.shortWait();`;
-        if (enableLogging) {
-            methodCode += `\n        log.info("✅ ${el.name} action completed successfully");`;
-        }
-        else {
-            methodCode += `\n        System.out.println("✅ ${el.name} action completed");`;
-        }
-        methodCode += `\n    }`;
-        return methodCode;
+        block += `        TimeoutConfig.waitShort();\n`;
+        if (enableLogging)
+            block += `        log.info("✅ ${el.name} completed");\n`;
+        block += `    }`;
+        return block;
     }).join('\n\n');
-    // Add verification methods if enabled
+    // ── verification methods ───────────────────────────────────────────────────
     let verificationMethods = '';
     if (enableAssertions) {
-        verificationMethods += `\n\n    /**
-     * Verify element is present and visible
-     * @param locator The element locator
-     * @param elementName Name for logging
-     */
-    protected static void verifyElementVisible(String locator, String elementName) {
-        log.info("🔍 Verifying " + elementName + " is visible");
-        Assert.assertTrue(isElementPresent(locator), 
-            elementName + " is not visible");
-        log.info("✓ " + elementName + " verification passed");
-    }`;
-        verificationMethods += `\n\n    /**
-     * Verify page is loaded successfully
-     * @param expectedUrlPart Expected URL substring
-     */
-    protected static void verifyPageLoaded(String expectedUrlPart) {
-        log.info("🔍 Verifying page loaded with URL: " + expectedUrlPart);
-        Assert.assertTrue(isUrlContains(expectedUrlPart), 
-            "Page URL does not contain: " + expectedUrlPart);
-        log.info("✓ Page loaded successfully");
-    }`;
+        verificationMethods += `\n\n    /** Verify page loaded via URL check */\n`;
+        verificationMethods += `    public static void verifyPageLoaded(String expectedUrlPart) {\n`;
+        verificationMethods += `        log.info("🔍 Verifying page loaded");\n`;
+        verificationMethods += `        Assert.assertTrue(isUrlContains(expectedUrlPart), "Page URL verification failed");\n`;
+        verificationMethods += `        log.info("✓ Page verified");\n`;
+        verificationMethods += `    }`;
     }
-    if (enablePerformance) {
-        verificationMethods += `\n\n    /**
-     * Measure and verify page load time
-     * @param expectedTimeMs Expected time in milliseconds
-     * @return Actual load time
-     */
-    protected static long measurePageLoadTime(long expectedTimeMs) {
-        long startTime = System.currentTimeMillis();
-        waitForPageLoad();
-        long duration = System.currentTimeMillis() - startTime;
-        log.info("⏱️ Page load time: " + duration + "ms");
-        Assert.assertTrue(duration < expectedTimeMs, 
-            "Page load too slow: " + duration + "ms (expected < " + expectedTimeMs + "ms)");
-        return duration;
-    }`;
-    }
-    const imports = enableLogging || enableAssertions ?
-        `\nimport org.testng.Assert;\nimport java.util.logging.Logger;` : '';
-    const loggerDeclaration = enableLogging ?
-        `\n    private static final Logger log = Logger.getLogger(${className}.class.getName());` : '';
+    // Include Logger only when it is actually referenced (logging, performance timing, assertions)
+    const useLogger = enableLogging || enablePerformance || enableAssertions;
+    let imports = '';
+    if (enableAssertions)
+        imports += `\nimport org.testng.Assert;`;
+    if (useLogger)
+        imports += `\nimport java.util.logging.Logger;`;
+    const loggerDeclaration = useLogger
+        ? `\n    private static final Logger log = Logger.getLogger(${className}.class.getName());`
+        : '';
     const pageContent = `package pages;
 
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.AriaRole;
 import configs.TimeoutConfig;${imports}
 
 /**
  * ${description || `${className} Page Object`}
- * 
- * This page object handles interactions with the ${className} page.
- * Extends BasePage to inherit common utilities and methods.
- * ${verification?.functional ? '\n * Includes functional verification and assertions.' : ''}
- * ${verification?.performance ? '\n * Includes performance monitoring.' : ''}
- * 
- * @author Automation Team (AI Generated)
- * @version 1.0
+ * Auto-generated by MCP Server - uses Playwright Locator pattern.
+ * Extends BasePage to inherit common utilities.
  */
 public class ${className} extends BasePage {${loggerDeclaration}
-    
-    /**
-     * Constructor
-     */
-    public ${className}() {
-        super();
-    }
-    
-    // ============================================================
-    // PAGE INTERACTIONS
-    // ============================================================
-    
+    private static final String PAGE_PATH = "";
+
+    /* --------------------
+       Locators for ${className}
+       -----------------------*/
+
 ${elementMethods}${verificationMethods}
-    
+
 }
- * 
- * This page object handles interactions with the ${className} page.
- * All methods follow the Page Object Model pattern and extend BasePage.
- * 
- * @author Automation Team (AI Generated)
- * @version 1.0
- */
-public class ${className} extends BasePage {
-    
-    /**
-     * Constructor
-     */
-    public ${className}() {
-        super();
-    }
-    
-    // ============================================================
-    // PAGE INTERACTIONS
-    // ============================================================
-    
-${elementMethods}
-    
-}`;
+`;
     await writeFileContent(filePath, pageContent);
     return `✅ Page Object generated: ${fileName}\n📁 Location: ${filePath}\n\nNext steps:\n1. Review the generated code\n2. Create corresponding feature file using 'generate-feature' tool\n3. Generate step definitions using 'generate-step-definitions' tool`;
 }

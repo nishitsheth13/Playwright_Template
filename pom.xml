@@ -162,7 +162,7 @@
                 <version>3.5.2</version>
                 <configuration>
                     <testFailureIgnore>false</testFailureIgnore>
-                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
+                    <rerunFailingTestsCount>0</rerunFailingTestsCount>
                     <argLine>${argLine}</argLine>
                     <suiteXmlFiles>
                         <suiteXmlFile>${suiteXmlFile}</suiteXmlFile>
@@ -174,7 +174,7 @@
                         </property>
                         <property>
                             <name>listener</name>
-                            <value>listener.listener,configs.RetryListener</value>
+                            <value>listener.listener</value>
                         </property>
                     </properties>
                     <systemPropertyVariables>

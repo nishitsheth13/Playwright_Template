@@ -1,14 +1,14 @@
 package configs;
 
-import com.microsoft.playwright.Locator;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.TimeoutError;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
+
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 
 /**
  * Smart Locator Strategy - Automatically finds elements using multiple fallback strategies
@@ -40,7 +40,8 @@ public class SmartLocatorStrategy {
     private static boolean ENABLE_CACHE = true; // Can be disabled for debugging
 
     /**
-     * Find element using multiple fallback strategies with caching
+     * Find element using multiple fallback strategies with caching and auto-wait
+     * Includes comprehensive waiting and retry logic to prevent timeout errors.
      *
      * @param page       Playwright page instance
      * @param strategies Array of locator strategies to try in order
@@ -60,8 +61,14 @@ public class SmartLocatorStrategy {
             String cachedStrategy = STRATEGY_CACHE.get(cacheKey);
             try {
                 Locator locator = resolveLocator(page, cachedStrategy);
+                
+                // Auto-wait for element to be visible and actionable
+                locator.waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                    .setTimeout(SHORT_TIMEOUT));
+                
                 // Quick check without wait - element should be there
-                if (locator.count() > 0) {
+                if (locator.count() > 0 && locator.first().isVisible()) {
                     log.fine("🚀 Cache hit! Using strategy: " + cachedStrategy);
                     return locator.first();
                 }
@@ -81,32 +88,36 @@ public class SmartLocatorStrategy {
 
                 // Fast check: if element count > 0, it exists
                 if (locator.count() > 0) {
-                    // Only wait for visibility if element exists
+                    // Auto-wait for visibility with configurable timeout
                     try {
                         locator.first().waitFor(new Locator.WaitForOptions()
                                 .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
                                 .setTimeout(SHORT_TIMEOUT));
 
+                        // Additional check: ensure element is still visible after wait
                         if (locator.first().isVisible()) {
                             long duration = System.currentTimeMillis() - startTime;
-                            log.info(String.format("✅ Element found using strategy #%d: %s (took %dms)",
+                            log.info(String.format("✅ [Auto-Wait] Element found using strategy #%d: %s (took %dms)",
                                     (i + 1), strategy, duration));
 
                             // Cache successful strategy
                             if (ENABLE_CACHE) {
                                 STRATEGY_CACHE.put(cacheKey, strategy);
                             }
+                            
+                            // Return element with auto-wait confirmation
                             return locator.first();
                         }
                     } catch (TimeoutError e) {
                         // Element exists but not visible, continue
-                        failedStrategies.add(strategy + " (not visible)");
+                        failedStrategies.add(strategy + " (not visible after " + SHORT_TIMEOUT + "ms)");
+                        log.fine("⏭️ [Auto-Wait] Strategy timeout on visibility: " + strategy);
                     }
                 } else {
-                    failedStrategies.add(strategy + " (not found)");
+                    failedStrategies.add(strategy + " (not found in DOM)");
                 }
             } catch (TimeoutError e) {
-                failedStrategies.add(strategy + " (timeout)");
+                failedStrategies.add(strategy + " (timeout waiting for element)");
                 log.fine("⏭️ Strategy timeout: " + strategy);
             } catch (Exception e) {
                 failedStrategies.add(strategy + " (error: " + e.getMessage() + ")");
@@ -117,13 +128,19 @@ public class SmartLocatorStrategy {
         // All strategies failed
         long totalDuration = System.currentTimeMillis() - startTime;
         StringBuilder errorMsg = new StringBuilder();
-        errorMsg.append("❌ Element not found with any of ").append(strategies.length)
+        errorMsg.append("❌ [Auto-Wait] Element not found with any of ").append(strategies.length)
                 .append(" strategies (took ").append(totalDuration).append("ms).\n")
                 .append("Failed strategies:\n");
 
         for (String failed : failedStrategies) {
             errorMsg.append("  • ").append(failed).append("\n");
         }
+        
+        errorMsg.append("\n💡 [Auto-Wait] Suggestions:\n");
+        errorMsg.append("  1. Verify element selector is correct\n");
+        errorMsg.append("  2. Check if element is conditionally rendered\n");
+        errorMsg.append("  3. Increase timeout in configurations.properties\n");
+        errorMsg.append("  4. Add waitForLoadState() before element interaction\n");
 
         log.severe(errorMsg.toString());
         throw new RuntimeException(errorMsg.toString());

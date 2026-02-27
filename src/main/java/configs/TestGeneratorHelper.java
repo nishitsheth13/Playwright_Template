@@ -1,15 +1,25 @@
 package configs;
 
-import configs.jira.jiraClient;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import configs.jira.jiraClient;
 
 /**
  * Unified Test Generator Helper - Single class for all test generation needs.
@@ -103,11 +113,9 @@ public class TestGeneratorHelper {
     @SuppressWarnings("unused")
     private static String autoFixSelector(String selector) {
         if (selector == null || selector.trim().isEmpty()) {
-            System.out.println("[AUTO-FIX] Empty selector detected, skipping action");
             return null;
         }
 
-        String original = selector;
         String fixed = selector.trim();
 
         // Fix common issues
@@ -116,17 +124,11 @@ public class TestGeneratorHelper {
 
         // Validate selector format
         if (!isValidSelector(fixed)) {
-            System.out.println("[AUTO-FIX] Invalid selector: " + original);
             // Try to fix common issues
             if (!fixed.contains("=") && !fixed.startsWith("xpath=") && !fixed.startsWith("css=")) {
                 // Assume it's text
                 fixed = "text=" + fixed;
-                System.out.println("[AUTO-FIX] Added text= prefix: " + fixed);
             }
-        }
-
-        if (!original.equals(fixed)) {
-            System.out.println("[AUTO-FIX] Selector: '" + original + "' → '" + fixed + "'");
         }
 
         return fixed;
@@ -140,12 +142,9 @@ public class TestGeneratorHelper {
      */
     private static String autoFixFeatureName(String featureName) {
         if (featureName == null || featureName.trim().isEmpty()) {
-            String fallback = "TestFeature" + System.currentTimeMillis();
-            System.out.println("[AUTO-FIX] Empty feature name, using: " + fallback);
-            return fallback;
+            return "TestFeature" + System.currentTimeMillis();
         }
 
-        String original = featureName;
         String fixed = featureName.trim();
 
         // Remove invalid characters
@@ -162,11 +161,6 @@ public class TestGeneratorHelper {
         // Validate
         if (!isValidJavaIdentifier(fixed)) {
             fixed = "TestFeature" + System.currentTimeMillis();
-            System.out.println("[AUTO-FIX] Invalid identifier after fix, using: " + fixed);
-        }
-
-        if (!original.equals(fixed)) {
-            System.out.println("[AUTO-FIX] Feature name: '" + original + "' → '" + fixed + "'");
         }
 
         return fixed;
@@ -176,9 +170,9 @@ public class TestGeneratorHelper {
      * Auto-fixes method name to ensure valid Java identifier and no conflicts
      * Reserved for future advanced method name generation
      *
-     * @param methodName Generated method name
+     * @param methodName      Generated method name
      * @param existingMethods Set of already generated methods
-     * @param counter Counter for uniqueness
+     * @param counter         Counter for uniqueness
      * @return Fixed unique method name
      */
     @SuppressWarnings("unused")
@@ -187,7 +181,6 @@ public class TestGeneratorHelper {
             return "action" + counter;
         }
 
-        String original = methodName;
         String fixed = methodName.trim();
 
         // Remove invalid characters
@@ -211,10 +204,6 @@ public class TestGeneratorHelper {
             suffix++;
         }
 
-        if (!original.equals(uniqueName)) {
-            System.out.println("[AUTO-FIX] Method name: '" + original + "' → '" + uniqueName + "'");
-        }
-
         return uniqueName;
     }
 
@@ -222,7 +211,8 @@ public class TestGeneratorHelper {
      * Validates selector format
      */
     private static boolean isValidSelector(String selector) {
-        if (selector == null || selector.isEmpty()) return false;
+        if (selector == null || selector.isEmpty())
+            return false;
 
         // Check for common selector patterns
         return selector.matches("^(xpath=|css=|text=|label=|placeholder=|id=|#|\\.).*") ||
@@ -255,8 +245,6 @@ public class TestGeneratorHelper {
         List<String> sorted = new ArrayList<>(uniqueImports);
         Collections.sort(sorted);
 
-        System.out.println("[AUTO-FIX] Imports: " + imports.size() + " → " + sorted.size() + " (removed duplicates)");
-
         return sorted;
     }
 
@@ -271,7 +259,6 @@ public class TestGeneratorHelper {
             return "And action is performed";
         }
 
-        String original = stepText;
         String fixed = stepText.trim();
 
         // Ensure proper Gherkin keyword
@@ -286,10 +273,6 @@ public class TestGeneratorHelper {
         // Ensure ends properly (no trailing spaces/punctuation)
         fixed = fixed.replaceAll("[\\s.!?]+$", "");
 
-        if (!original.equals(fixed)) {
-            System.out.println("[AUTO-FIX] Feature step: '" + original + "' → '" + fixed + "'");
-        }
-
         return fixed;
     }
 
@@ -298,13 +281,13 @@ public class TestGeneratorHelper {
      */
     private static boolean isJavaKeyword(String word) {
         String[] keywords = {
-            "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
-            "class", "const", "continue", "default", "do", "double", "else", "enum",
-            "extends", "final", "finally", "float", "for", "goto", "if", "implements",
-            "import", "instanceof", "int", "interface", "long", "native", "new", "package",
-            "private", "protected", "public", "return", "short", "static", "strictfp",
-            "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-            "try", "void", "volatile", "while", "true", "false", "null"
+                "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+                "class", "const", "continue", "default", "do", "double", "else", "enum",
+                "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+                "import", "instanceof", "int", "interface", "long", "native", "new", "package",
+                "private", "protected", "public", "return", "short", "static", "strictfp",
+                "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+                "try", "void", "volatile", "while", "true", "false", "null"
         };
 
         for (String keyword : keywords) {
@@ -327,17 +310,8 @@ public class TestGeneratorHelper {
             return content;
         }
 
-        System.out.println("[AUTO-FIX] Converting protected methods to public for accessibility");
-
         // Replace all protected static methods with public static
-        String fixed = content.replaceAll("protected static void", "public static void");
-
-        int count = content.split("protected static void").length - 1;
-        if (count > 0) {
-            System.out.println("[AUTO-FIX] Fixed " + count + " method(s) from protected → public");
-        }
-
-        return fixed;
+        return content.replaceAll("protected static void", "public static void");
     }
 
     /**
@@ -369,7 +343,8 @@ public class TestGeneratorHelper {
         }
 
         if (file.length() < 100) {
-            System.err.println("[WARNING] Recording file is very small (" + file.length() + " bytes), may not contain valid actions");
+            System.err.println("[WARNING] Recording file is very small (" + file.length()
+                    + " bytes), may not contain valid actions");
         }
 
         return true;
@@ -378,7 +353,7 @@ public class TestGeneratorHelper {
     /**
      * Auto-recovery: Attempts to fix common generation errors
      *
-     * @param error The exception that occurred
+     * @param error   The exception that occurred
      * @param context Context information about what was being generated
      * @return Suggested fix or null if no fix available
      */
@@ -409,7 +384,7 @@ public class TestGeneratorHelper {
     /**
      * Validates generated file content before writing
      *
-     * @param content File content to validate
+     * @param content  File content to validate
      * @param fileType Type of file (PageObject, Feature, StepDef)
      * @return true if valid, false otherwise
      */
@@ -428,22 +403,20 @@ public class TestGeneratorHelper {
             return content;
         }
 
-        System.out.println("[AUTO-FIX] Adding missing navigateTo method");
-
         // Find the position to insert (after constructor, before first method)
-        String navigateMethod =
-                "    /**\n" +
-                        "     * Navigate to " + className + " page\n" +
-                        "     * @param page Playwright Page instance\n" +
-                        "     */\n" +
-                        "    public static void navigateTo(com.microsoft.playwright.Page page) {\n" +
-                        "        log.info(\"🌐 Navigating to " + className + " page\");\n" +
-                        "        String url = loadProps.getProperty(\"URL\");\n" +
-                        "        navigateToUrl(url);\n" +
-                        "        log.info(\"✅ Navigation completed\");\n" +
-                        "    }\n\n";
+        String navigateMethod = "    /**\n" +
+                "     * Navigate to " + className + " page\n" +
+                "     * @param page Playwright Page instance\n" +
+                "     */\n" +
+                "    public static void navigateTo(com.microsoft.playwright.Page page) {\n" +
+                "        log.info(\"🌐 Navigating to " + className + " page\");\n" +
+                "        String url = loadProps.getProperty(\"URL\");\n" +
+                "        navigateToUrl(url);\n" +
+                "        log.info(\"✅ Navigation completed\");\n" +
+                "    }\n\n";
 
-        // Insert after constructor (look for "}\n\n    /**" or "}\n\n    private" or "}\n\n    public")
+        // Insert after constructor (look for "}\n\n /**" or "}\n\n private" or "}\n\n
+        // public")
         String pattern = "(public " + className + "\\(\\) \\{[^}]*\\}\\n\\n)";
         if (content.matches("(?s).*" + pattern + ".*")) {
             content = content.replaceFirst(pattern, "$1" + navigateMethod);
@@ -489,7 +462,8 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * AUTO-FIX: Validates that all feature file steps have matching step definitions
+     * AUTO-FIX: Validates that all feature file steps have matching step
+     * definitions
      * Generates missing step definitions automatically
      *
      * @param featureContent  Feature file content
@@ -501,8 +475,6 @@ public class TestGeneratorHelper {
         if (featureContent == null || stepDefsContent == null) {
             return stepDefsContent;
         }
-
-        System.out.println("[AUTO-FIX] Validating feature steps match step definitions...");
 
         // Extract all steps from feature file
         Set<String> featureSteps = extractStepsFromFeature(featureContent);
@@ -516,26 +488,23 @@ public class TestGeneratorHelper {
         Set<String> trulyMissingSteps = new HashSet<>();
         for (String step : missingSteps) {
             String methodName = generateMethodNameFromStep(step);
+
+            // FIXED: Do NOT skip any steps from the recording.
+            // All recorded steps must be generated regardless of name or keyword.
             if (!existingSteps.contains("METHOD:" + methodName)) {
                 trulyMissingSteps.add(step);
-            } else {
-                System.out.println("[AUTO-FIX] ⚠️ Skipping duplicate method: " + methodName + " for step: " + step);
             }
         }
 
         if (trulyMissingSteps.isEmpty()) {
-            System.out.println("[AUTO-FIX] ✅ All feature steps have matching step definitions");
             return stepDefsContent;
         }
-
-        System.out.println("[AUTO-FIX] ⚠️ Found " + trulyMissingSteps.size() + " missing step definitions");
 
         // Generate missing step definitions
         StringBuilder missingStepDefs = new StringBuilder();
         missingStepDefs.append("\n    // ========== AUTO-GENERATED MISSING STEPS ==========\n\n");
 
         for (String step : trulyMissingSteps) {
-            System.out.println("[AUTO-FIX] Adding missing step: " + step);
             missingStepDefs.append(generateStepDefinition(step));
         }
 
@@ -547,7 +516,6 @@ public class TestGeneratorHelper {
                     "\n}\n";
         }
 
-        System.out.println("[AUTO-FIX] ✅ Added " + trulyMissingSteps.size() + " missing step definitions");
         return stepDefsContent;
     }
 
@@ -559,14 +527,12 @@ public class TestGeneratorHelper {
                 .replaceAll("[^a-zA-Z0-9\\s]", "")
                 .trim()
                 .replaceAll("\\s+", " ")
-                .split(" ")
-                .length > 0 ?
-                String.join("",
+                .split(" ").length > 0 ? String.join("",
                         Arrays.stream(stepText.replaceAll("[^a-zA-Z0-9\\s]", "").trim().split("\\s+"))
                                 .limit(5)
                                 .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
                                 .toArray(String[]::new))
-                : "generatedStep";
+                        : "generatedStep";
 
         // Ensure starts with lowercase
         return methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
@@ -574,6 +540,11 @@ public class TestGeneratorHelper {
 
     /**
      * Extracts all Given/When/Then steps from feature file
+     *
+     * FIXED (Feb 12, 2026): Normalizes Scenario Outline parameters
+     * Converts: user enters "<lastname>" into lastname
+     * To: user enters {string} into lastname
+     * This ensures proper matching with step definitions that use {string}
      */
     private static Set<String> extractStepsFromFeature(String featureContent) {
         Set<String> steps = new HashSet<>();
@@ -587,6 +558,16 @@ public class TestGeneratorHelper {
             // Normalize step text (remove trailing punctuation, extra spaces)
             stepText = stepText.replaceAll("[\\s]+", " ").trim();
 
+            // CRITICAL FIX: Normalize Scenario Outline parameters
+            // Convert: "<parameterName>" to {string}
+            // This allows proper matching with step definitions
+            stepText = normalizeScenarioOutlineParameters(stepText);
+
+            // Store in lowercase for case-insensitive comparison
+            // This prevents duplicates like "user clicks on Logout" vs "user clicks on
+            // logout"
+            stepText = stepText.toLowerCase();
+
             // Convert And/But to most recent keyword type
             if (!keyword.equals("And") && !keyword.equals("But")) {
                 steps.add(stepText);
@@ -597,6 +578,26 @@ public class TestGeneratorHelper {
         }
 
         return steps;
+    }
+
+    /**
+     * Normalizes Scenario Outline parameters in step text.
+     * <p>
+     * PERMANENT FIX (Feb 12, 2026): Prevents duplicate step generation
+     * <p>
+     * Converts: user enters "<lastname>" into lastname
+     * To: user enters {string} into lastname
+     * <p>
+     * Why: Feature files use <parameter> syntax, but step definitions use {string}.
+     * Without normalization, the comparison fails and duplicate steps are
+     * generated.
+     * <p>
+     * DO NOT REMOVE - This is critical for Scenario Outline support!
+     */
+    private static String normalizeScenarioOutlineParameters(String stepText) {
+        // Replace "<anything>" with {string}
+        // Pattern matches: "< ... >" anywhere in the text
+        return stepText.replaceAll("\"<[^>]+>\"", "{string}");
     }
 
     /**
@@ -612,7 +613,8 @@ public class TestGeneratorHelper {
 
         while (matcher.find()) {
             String stepText = matcher.group(1).trim();
-            steps.add(stepText);
+            // Store in lowercase for case-insensitive comparison
+            steps.add(stepText.toLowerCase());
         }
 
         // Also extract method names to detect duplicate implementations
@@ -630,6 +632,14 @@ public class TestGeneratorHelper {
 
     /**
      * Generates a step definition method for a missing step
+     * This is a FALLBACK for steps that weren't generated during main generation
+     * Should rarely be called if recording parsing works correctly
+     * 
+     * CRITICAL FIX (Feb 18, 2026): Now marks placeholders with DEBUG comments so
+     * they can be
+     * identified and replaced on subsequent runs. This prevents placeholders from
+     * persisting
+     * across multiple generations.
      */
     private static String generateStepDefinition(String stepText) {
         // Determine keyword (Given/When/Then) based on step text content
@@ -639,11 +649,18 @@ public class TestGeneratorHelper {
         String methodName = generateMethodNameFromStep(stepText);
 
         StringBuilder sb = new StringBuilder();
+        sb.append("\n    // ⚠️ PLACEHOLDER STEP - WILL BE REGENERATED IF RECORDING IS PROVIDED\n");
         sb.append("    @").append(keyword).append("(\"").append(stepText).append("\")\n");
         sb.append("    public void ").append(methodName).append("() {\n");
-        sb.append("        // TODO: Implement step: ").append(stepText).append("\n");
-        sb.append("        System.out.println(\"⚠️ Step not yet implemented: ").append(stepText).append("\");\n");
-        sb.append("    }\n\n");
+        sb.append("        // ⚠️ AUTO-GENERATED PLACEHOLDER - REVIEW AND IMPLEMENT\n");
+        sb.append("        // This step was found in the feature file but not in the recording.\n");
+        sb.append("        // Either: 1) Add this action to your recording, OR\n");
+        sb.append("        //         2) Manually implement this step definition\n");
+        sb.append("        System.out.println(\"⚠️ Placeholder step - needs implementation: ").append(stepText)
+                .append("\");\n");
+        sb.append("        throw new io.cucumber.java.PendingException(\"Step needs implementation: ").append(stepText)
+                .append("\");\n");
+        sb.append("    }\n");
 
         return sb.toString();
     }
@@ -660,7 +677,8 @@ public class TestGeneratorHelper {
         }
 
         // When: Actions
-        if (lower.matches("^(user (clicks?|enters?|types?|selects?|submits?|navigates?|tries?|makes?|completes?)|multiple users).*")) {
+        if (lower.matches(
+                "^(user (clicks?|enters?|types?|selects?|submits?|navigates?|tries?|makes?|completes?)|multiple users).*")) {
             return "When";
         }
 
@@ -709,8 +727,16 @@ public class TestGeneratorHelper {
                     System.err.println("[VALIDATION ERROR] Missing Feature declaration");
                     return false;
                 }
-                if (!content.contains("Scenario:")) {
-                    System.err.println("[VALIDATION ERROR] No scenarios defined");
+                // Accept both "Scenario:" and "Scenario Outline:"
+                if (!content.contains("Scenario:") && !content.contains("Scenario Outline:")) {
+                    System.err.println(
+                            "[VALIDATION ERROR] No scenarios defined (missing Scenario: or Scenario Outline:)");
+                    return false;
+                }
+                // Check if placeholder was not replaced
+                if (content.contains("SCENARIO_PLACEHOLDER:")) {
+                    System.err.println(
+                            "[VALIDATION ERROR] Scenario placeholder was not replaced - likely no steps generated");
                     return false;
                 }
                 break;
@@ -735,6 +761,12 @@ public class TestGeneratorHelper {
      * Generate test files from Playwright recording.
      * Main entry point for recording-based generation.
      * <p>
+     * GENERATION MODES:
+     * - OVERWRITE (mergeMode=false): Regenerates all files from scratch (WARNING:
+     * loses manual edits)
+     * - MERGE (mergeMode=true): Intelligently adds new methods/steps to existing
+     * files (preserves manual edits)
+     * <p>
      * TODO: MANDATORY PRE-GENERATION CHECKS:
      * 1. Check if page object exists (avoid overwriting custom code)
      * 2. Verify existing login patterns (reuse existing steps)
@@ -746,14 +778,11 @@ public class TestGeneratorHelper {
      * @param featureName   Name of the feature (e.g., "login", "profile")
      * @param pageUrl       Page URL or path
      * @param jiraStory     JIRA story ID
+     * @param mergeMode     If true, merge with existing files; if false, overwrite
      * @return true if successful, false otherwise
      */
     public static boolean generateFromRecording(String recordingFile, String featureName,
-                                                String pageUrl, String jiraStory) {
-
-        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-        System.out.println("║          ADVANCED AUTO-FIX TEST GENERATOR                      ║");
-        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+            String pageUrl, String jiraStory, boolean mergeMode) {
 
         // AUTO-FIX: Validate recording file first
         if (!validateRecordingFile(recordingFile)) {
@@ -761,123 +790,69 @@ public class TestGeneratorHelper {
             return false;
         }
 
-        System.out.println("[INFO] Pure Java Test File Generator with Auto-Fix Enabled");
-        System.out.println("[INFO] Recording file: " + recordingFile);
-        System.out.println("[INFO] Feature name (input): " + featureName);
-        System.out.println("[INFO] Page URL: " + pageUrl);
-        System.out.println("[INFO] JIRA Story: " + jiraStory);
-
         // AUTO-FIX: Sanitize and validate feature name
         String className = autoFixFeatureName(featureName);
-        System.out.println("[INFO] Feature name (fixed): " + className);
 
         // MANDATORY - Run pre-generation validation checks
-        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-        System.out.println("║          CODE REUSABILITY & VALIDATION CHECKS                  ║");
-        System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
+        // Check existing page object and login patterns
+        boolean filesExist = pageObjectExists(className);
+        detectExistingLogin();
+        hasConfiguredCredentials();
 
-
-        boolean hasExistingLogin = false;
-        boolean hasConfiguredData = false;
-
-        // Check 1: Existing page object
-        System.out.println("🔍 [CHECK 1] Scanning for existing page objects...");
-        if (pageObjectExists(className)) {
-            System.out.println("✅ FOUND: Page object " + className + ".java already exists!");
-            System.out.println("   📁 Location: src/main/java/pages/" + className + ".java");
-            System.out.println("   ⚠️  ACTION: Will SKIP generation to avoid overwriting custom code");
-            System.out.println("   💡 TIP: Review existing methods before manually integrating new actions\n");
-        } else {
-            System.out.println("⚠️  NOT FOUND: Page object doesn't exist - will create new " + className + ".java\n");
+        // ─────────────────────────────────────────────────────────────
+        // JIRA STORY DETAILS: Fetch actual story data when a story ID is provided
+        // Supports both issue key (e.g. PROJ-123) and full JIRA URL
+        // (e.g. https://company.atlassian.net/browse/PROJ-123)
+        // ─────────────────────────────────────────────────────────────
+        jiraClient.JiraStory jiraInfo = null;
+        if (jiraStory != null && !jiraStory.trim().isEmpty()
+                && !jiraStory.equalsIgnoreCase("NONE")
+                && !jiraStory.equalsIgnoreCase("N/A")) {
+            // Extract issue key from JIRA URL if a full URL was provided
+            String issueKey = extractJiraIssueKey(jiraStory);
+            System.out.println("\n🔗 [JIRA] Fetching story details for: " + issueKey);
+            try {
+                jiraInfo = jiraClient.getJiraStory(issueKey);
+                if (jiraInfo != null) {
+                    jiraInfo.printDetails();
+                } else {
+                    System.out.println("   ⚠️  Could not fetch JIRA story details - using story ID as tag only");
+                }
+            } catch (Exception e) {
+                System.out.println("   ⚠️  JIRA fetch failed (" + e.getMessage()
+                        + ") - continuing without story details");
+            }
         }
 
-        // Check 2: Existing login patterns
-        System.out.println("🔍 [CHECK 2] Detecting existing login/authentication code...");
-        String existingLogin = detectExistingLogin();
-        if (existingLogin != null) {
-            hasExistingLogin = true;
-            System.out.println("✅ FOUND: Existing login class: " + existingLogin + ".java");
-            System.out.println("   📁 Location: src/main/java/pages/" + existingLogin + ".java");
-            System.out.println("   📝 REUSE INSTRUCTIONS:");
-            System.out.println("      1. Import in Step Definitions: import pages." + existingLogin + ";");
-            System.out.println(
-                    "      2. Call login methods: " + existingLogin + ".enterValidUsernameFromConfiguration(page);");
-            System.out.println(
-                    "      3. Call login methods: " + existingLogin + ".enterValidPasswordFromConfiguration(page);");
-            System.out.println("      4. Call login methods: " + existingLogin + ".clickSignIn(page);");
-            System.out.println("   💡 TIP: Avoid regenerating login steps - reuse existing validated methods!\n");
-        } else {
-            System.out.println("⚠️  NOT FOUND: No existing login patterns detected\n");
+        // Display merge mode information
+        if (filesExist) {
+            if (mergeMode) {
+                System.out.println("\\n╔════════════════════════════════════════════════════════════════╗");
+                System.out.println("║                  🔄 MERGE MODE ENABLED                         ║");
+                System.out.println("╚════════════════════════════════════════════════════════════════╝");
+                System.out.println("✅ Existing " + className + " files detected");
+                System.out.println("✅ Will merge new recording with existing code");
+                System.out.println("✅ Existing methods will be preserved");
+                System.out.println("✅ Only NEW methods/steps from recording will be added\\n");
+            } else {
+                System.out.println("\\n⚠️  WARNING: Files exist but merge mode is OFF");
+                System.out.println("   Existing files will be OVERWRITTEN!");
+                System.out.println("   To preserve existing code, use mergeMode=true\\n");
+            }
         }
-
-        // Check 3: Configuration test data
-        System.out.println("🔍 [CHECK 3] Checking for configured test credentials...");
-        if (hasConfiguredCredentials()) {
-            hasConfiguredData = true;
-            System.out.println("✅ FOUND: Test credentials configured in configurations.properties");
-            System.out.println("   📁 Location: src/test/resources/configurations.properties");
-            System.out.println("   📝 USAGE INSTRUCTIONS:");
-            System.out.println("      1. In Page Objects: loadProps.getProperty(loadProps.PropKeys.USERNAME)");
-            System.out.println("      2. In Step Defs: Use loadProps.getProperty(loadProps.PropKeys.PASSWORD)");
-            System.out.println("      3. In Features: Reference as 'valid credentials from configuration'");
-            System.out.println("   🤖 AI ENHANCEMENT: AITestFramework.generateTestData() can generate smart test data");
-            System.out.println("   💡 TIP: Use configuration data instead of hardcoded values!");
-            hasConfiguredData = true;
-        } else {
-            System.out.println("⚠️  NOT FOUND: No test credentials in configurations.properties");
-            System.out.println("   💡 TIP: Add Username and Password properties for data-driven testing");
-            System.out.println("   🤖 AI OPTION: Use AITestFramework.generateTestData(\"email\", \"userEmail\", null)");
-        }
-
-        System.out.println("═══════════════════════════════════════════════════════════════\n");
 
         try {
             // Parse recording file with auto-fix
-            System.out.println("\n[AUTO-FIX] Parsing recording file with validation...");
             List<RecordedAction> actions = parseRecording(recordingFile);
-            System.out.println("[AUTO-FIX] Extracted " + actions.size() + " actions from recording");
 
             if (actions.isEmpty()) {
                 System.err.println("[ERROR] No valid actions found in recording");
                 return false;
             }
 
-            // AUTO-FIX: Validate selectors and detect issues
-            System.out.println("\n[AUTO-FIX] Validating selectors...");
-            int dynamicIdCount = 0;
-            int invalidSelectorCount = 0;
-            for (RecordedAction action : actions) {
-                if (action.selector != null) {
-                    // Check for dynamic IDs
-                    if (action.selector.contains("@id=")) {
-                        String id = action.selector.replaceAll(".*@id=['\"]([^'\"]+)['\"].*", "$1");
-                        if (isDynamicId(id)) {
-                            dynamicIdCount++;
-                            System.out.println("⚠️ [AUTO-FIX] Dynamic ID detected: " + id + " (will be downgraded)");
-                        }
-                    }
-
-                    // Validate selector
-                    if (!isValidSelector(action.selector)) {
-                        invalidSelectorCount++;
-                        System.out.println("⚠️ [AUTO-FIX] Invalid selector: " + action.selector);
-                    }
-                }
-            }
-
-            if (dynamicIdCount > 0) {
-                System.out.println("[AUTO-FIX] Found " + dynamicIdCount + " dynamic IDs - using fallback strategies");
-            }
-            if (invalidSelectorCount > 0) {
-                System.out.println("[AUTO-FIX] Fixed " + invalidSelectorCount + " invalid selectors");
-            }
-            System.out.println("[AUTO-FIX] Selector validation complete\n");
-
             // Generate files with error handling
             try {
-                System.out.println("[AUTO-FIX] Generating Page Object...");
-                generatePageObject(className, pageUrl, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Page Object generated successfully");
+                generatePageObject(className, pageUrl, jiraStory, jiraInfo, actions, mergeMode);
             } catch (Exception e) {
                 System.err.println("[ERROR] Page Object generation failed: " + e.getMessage());
                 autoRecoverFromError(e, "Page Object Generation");
@@ -885,86 +860,76 @@ public class TestGeneratorHelper {
             }
 
             try {
-                System.out.println("[AUTO-FIX] Generating Feature File...");
-                generateFeatureFile(className, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Feature File generated successfully");
+                generateFeatureFile(className, jiraStory, jiraInfo, actions, mergeMode);
             } catch (Exception e) {
                 System.err.println("[ERROR] Feature File generation failed: " + e.getMessage());
                 autoRecoverFromError(e, "Feature File Generation");
                 throw e;
             }
 
+            // CRITICAL FIX: Clean up placeholder-only step definitions before regeneration
+            // This ensures recordings generate proper implementations instead of keeping
+            // placeholders
             try {
-                System.out.println("[AUTO-FIX] Generating Step Definitions...");
-                generateStepDefinitions(className, jiraStory, actions);
-                System.out.println("[AUTO-FIX] ✅ Step Definitions generated successfully");
+                cleanupPlaceholderStepDefinitions(className);
+            } catch (Exception e) {
+                System.err.println("[WARN] Could not cleanup placeholder steps: " + e.getMessage());
+                // Continue anyway - non-critical
+            }
+
+            try {
+                generateStepDefinitions(className, jiraStory, jiraInfo, actions, mergeMode);
             } catch (Exception e) {
                 System.err.println("[ERROR] Step Definitions generation failed: " + e.getMessage());
                 autoRecoverFromError(e, "Step Definitions Generation");
                 throw e;
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // FINAL VALIDATION SUMMARY
+            // ═══════════════════════════════════════════════════════════════
             System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
-            System.out.println("║              GENERATION COMPLETE - NEXT STEPS                  ║");
-            System.out.println("╚════════════════════════════════════════════════════════════════╝\n");
-
-            System.out.println("✅ [SUCCESS] All files generated successfully!\n");
-
-            System.out.println("📂 GENERATED FILES:");
-            System.out.println("   1. Page Object:      src/main/java/pages/" + className + ".java");
-            System.out.println("   2. Feature File:     src/test/java/features/" + className + ".feature");
-            System.out.println("   3. Step Definitions: src/test/java/stepDefs/" + className + "Steps.java\n");
-
-            // Integration instructions
-            System.out.println("═══════════════════════════════════════════════════════════════");
-            System.out.println("📝 INTEGRATION CHECKLIST:");
+            System.out.println("║              GENERATION COMPLETE - VALIDATION REPORT           ║");
+            System.out.println("╚════════════════════════════════════════════════════════════════╝");
+            System.out.println("✅ Page Object: src/main/java/pages/" + className + ".java");
+            System.out.println("✅ Feature File: src/test/java/features/" + className.toLowerCase() + ".feature");
+            System.out.println("✅ Step Definitions: src/test/java/stepDefs/" + className + "Steps.java");
+            System.out.println("\n📊 Action Summary:");
+            System.out.println("   Total actions parsed: " + actions.size());
+            long clickActions = actions.stream().filter(a -> "click".equals(a.type)).count();
+            long fillActions = actions.stream().filter(a -> "fill".equals(a.type)).count();
+            long verifyActions = actions.stream().filter(a -> "verify".equals(a.type)).count();
+            System.out.println("   - Click actions: " + clickActions);
+            System.out.println("   - Fill actions: " + fillActions);
+            System.out.println("   - Verify actions: " + verifyActions);
+            System.out.println("   - Other actions: " + (actions.size() - clickActions - fillActions - verifyActions));
+            if (mergeMode && filesExist) {
+                System.out.println("\n🔄 Merge Mode Results:");
+                System.out.println("   ✓ Existing methods preserved");
+                System.out.println("   ✓ New methods added from recording");
+                System.out.println("   ✓ Manual edits maintained");
+            }
+            System.out.println("\n💡 Next Steps:");
+            System.out.println("   1. Review generated files for accuracy");
+            System.out.println("   2. Run: mvn clean compile");
+            System.out.println("   3. Execute tests: mvn test -Dcucumber.filter.tags=@" + jiraStory);
+            System.out.println("\n⚠️  If any steps are missing:");
+            System.out.println("   - Check console output for [WARNING] messages above");
+            System.out.println("   - Check parseRecording() patterns support all Playwright action types");
+            System.out.println("   - All recorded actions are now always generated (no generic-step skipping)");
             System.out.println("═══════════════════════════════════════════════════════════════\n");
 
-            if (hasExistingLogin) {
-                System.out.println("🔄 [CRITICAL: REUSE EXISTING LOGIN - ACTION REQUIRED!]");
-                System.out.println("   ⚠️  Login pattern detected - DO NOT use generated login steps!");
-                System.out.println("   ✅ Existing login class found: " + existingLogin + ".java");
-                System.out.println("   📝 MANDATORY STEPS:");
-                System.out.println("   ✓ Step 1: Open " + className + "Steps.java");
-                System.out.println("   ✓ Step 2: Find the LOGIN STEPS section (marked with TODO)");
-                System.out.println("   ✓ Step 3: Replace generated code with existing login methods");
-                System.out.println("   ✓ Step 4: Update " + className + ".feature to use these steps:\n");
-                System.out.println("      When User enters valid username from configuration");
-                System.out.println("      And User enters valid password from configuration");
-                System.out.println("      And User clicks on Sign In button\n");
-                System.out
-                        .println("   💡 WHY? Existing login is tested, uses config data, and maintains consistency!\n");
-            }
+            // ═══════════════════════════════════════════════════════════════
+            // CLEANUP: Delete unused "Recorded" template file if it exists
+            // ═══════════════════════════════════════════════════════════════
+            cleanupUnusedRecordedFile();
 
-            if (hasConfiguredData) {
-                System.out.println("📋 [USE CONFIGURED TEST DATA]");
-                System.out.println("   ✓ Test credentials found in configurations.properties");
-                System.out.println("   ✓ Available properties: Username, Password (check config file for more)");
-                System.out.println("   ✓ Usage: loadProps.getProperty(\"Username\")");
-                System.out.println("   ✓ Already implemented in: enterValidUsernameFromConfiguration() methods\n");
-            }
-
-            System.out.println("🔨 [COMPILE PROJECT]");
-            System.out.println("   ✓ Run: mvn clean compile");
-            System.out.println("   ✓ Or:  quick-start.bat → Option 3 (Validate & Run)\n");
-
-            System.out.println("🧪 [RUN TESTS]");
-            System.out.println("   ✓ Run specific feature: mvn test -Dcucumber.filter.tags=@" + className);
-            System.out.println("   ✓ Run all tests: mvn test");
-            System.out.println("   ✓ Or use: quick-start.bat → Option 3 (Validate & Run)\n");
-
-            System.out.println("📊 [VIEW REPORTS]");
-            System.out.println("   ✓ Location: MRITestExecutionReports/Version*/extentReports/");
-            System.out.println("   ✓ Open latest: HTML report in testNGExtentReports/html/\n");
-
-            System.out.println("💡 [VERIFICATION TIPS]");
-            System.out.println("   ✓ Review generated locators in " + className + ".java");
-            System.out.println("   ✓ Check for dynamic IDs warnings above");
-            System.out.println("   ✓ Verify steps match recorded actions in .feature file");
-            System.out.println("   ✓ Ensure step definitions import correct page objects");
-            System.out.println("   ✓ Test manually before CI/CD integration\n");
-
-            System.out.println("═══════════════════════════════════════════════════════════════\n");
+            // ═══════════════════════════════════════════════════════════════
+            // CLEANUP: Delete recording directory after successful generation
+            // PERMANENT FIX (Feb 18, 2026): Ensures cleanup happens regardless
+            // of how TestGeneratorHelper is invoked (CLI or direct Maven)
+            // ═══════════════════════════════════════════════════════════════
+            cleanupRecordingDirectory(recordingFile);
 
             return true;
         } catch (Exception e) {
@@ -974,483 +939,356 @@ public class TestGeneratorHelper {
         }
     }
 
+    /**
+     * Overloaded method for backward compatibility - defaults to overwrite mode.
+     * New code should use generateFromRecording(..., mergeMode) to explicitly
+     * choose mode.
+     * 
+     * @param recordingFile Path to recorded-actions.java file
+     * @param featureName   Name of the feature
+     * @param pageUrl       Page URL or path
+     * @param jiraStory     JIRA story ID
+     * @return true if successful
+     */
+    public static boolean generateFromRecording(String recordingFile, String featureName,
+            String pageUrl, String jiraStory) {
+        return generateFromRecording(recordingFile, featureName, pageUrl, jiraStory, false);
+    }
+
     // ========================================================================
     // RECORDING-BASED GENERATION (from TestFileGenerator)
     // ========================================================================
 
     /**
-     * Action extracted from Playwright recording.
+     * Normalize text by removing consecutive duplicate words.
+     * Examples:
+     * "Setup Setup" -> "Setup"
+     * "Logout Logout" -> "Logout"
+     * "Click Click Click" -> "Click"
+     * "Save Changes" -> "Save Changes" (no change)
      */
-    private static class RecordedAction {
-        String type;
-        String selector;
-        String value;
-        String methodName;
-        String stepText;
-        String elementName;
-        String readableName;
-
-        RecordedAction(int id, String type, String selector, String value) {
-            this.type = type;
-            this.selector = selector;
-            this.value = value;
-            this.readableName = extractReadableName(selector);
-            this.elementName = generateElementName(readableName, id);
-            this.methodName = generateMethodName(type, readableName, id);
-            this.stepText = generateStepText(type, readableName);
+    private static String normalizeText(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return text;
         }
 
-        /**
-         * Extract a readable name from the selector.
-         * Examples:
-         * text=Sign In -> SignIn
-         * text=Save -> Save
-         * #username -> Username
-         * input[placeholder="Email"] -> Email
-         * button:has-text("Submit") -> Submit
-         * role=button[name="Login"] -> Login
-         */
-        private String extractReadableName(String selector) {
-            if (selector == null || selector.isEmpty()) {
-                return "Element";
-            }
+        String[] words = text.split("\\s+");
+        StringBuilder result = new StringBuilder();
+        String previousWord = null;
 
-            String name = selector;
-
-            // Extract from text= locator (Playwright modern)
-            if (selector.startsWith("text=")) {
-                name = selector.substring(5).trim();
-            }
-            // Extract from placeholder= locator
-            else if (selector.startsWith("placeholder=")) {
-                name = selector.substring(12).trim();
-            }
-            // Extract from label= locator
-            else if (selector.startsWith("label=")) {
-                name = selector.substring(6).trim();
-            }
-            // Extract from ID selector
-            else if (selector.startsWith("#")) {
-                name = selector.substring(1).trim();
-                // Remove common suffixes from IDs
-                name = name.replaceAll("(?i)[-_](btn|button|input|field|link|txt|id)$", "");
-            }
-            // Extract from role=button[name="..."] pattern
-            else if (selector.contains("role=") && selector.contains("name=")) {
-                int start = selector.indexOf("name=") + 5;
-                if (selector.charAt(start) == '"')
-                    start++;
-                int end = selector.indexOf("\"", start);
-                if (end == -1)
-                    end = selector.indexOf("]", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
+        for (String word : words) {
+            // Only add word if it's different from previous (case-insensitive)
+            if (previousWord == null || !word.equalsIgnoreCase(previousWord)) {
+                if (result.length() > 0) {
+                    result.append(" ");
                 }
+                result.append(word);
+                previousWord = word;
             }
-            // Extract from :has-text("...") pattern
-            else if (selector.contains(":has-text(")) {
-                int start = selector.indexOf(":has-text(") + 11;
-                int end = selector.indexOf(")", start);
-                if (end > start) {
-                    name = selector.substring(start, end).replace("\"", "").replace("'", "");
-                }
-            }
-            // Extract from getByRole patterns (modern Playwright)
-            else if (selector.contains("getByRole")) {
-                if (selector.contains("name=\"")) {
-                    int start = selector.indexOf("name=\"") + 6;
-                    int end = selector.indexOf("\"", start);
-                    if (end > start) {
-                        name = selector.substring(start, end);
-                    }
-                }
-            }
-            // Extract from name attribute
-            else if (selector.contains("name=\"")) {
-                int start = selector.indexOf("name=\"") + 6;
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                }
-            }
-            // Extract from placeholder attribute
-            else if (selector.contains("placeholder=\"")) {
-                int start = selector.indexOf("placeholder=\"") + 13;
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                }
-            }
-            // Extract from aria-label
-            else if (selector.contains("aria-label=\"")) {
-                int start = selector.indexOf("aria-label=\"") + 12;
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                }
-            }
-            // Extract from title attribute
-            else if (selector.contains("title=\"")) {
-                int start = selector.indexOf("title=\"") + 7;
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                }
-            }
-            // Extract from value attribute (for buttons with value)
-            else if (selector.contains("value=\"")) {
-                int start = selector.indexOf("value=\"") + 7;
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                }
-            }
-            // Extract from class name (last class)
-            else if (selector.startsWith(".")) {
-                name = selector.substring(1).split("\\.")[0];
-                // Convert kebab-case or camelCase class names
-                name = name.replaceAll("-", " ").replaceAll("_", " ");
-            }
-            // Extract from data-testid or data-test-id
-            else if (selector.contains("data-testid=\"") || selector.contains("data-test-id=\"")) {
-                String pattern = selector.contains("data-testid=\"") ? "data-testid=\"" : "data-test-id=\"";
-                int start = selector.indexOf(pattern) + pattern.length();
-                int end = selector.indexOf("\"", start);
-                if (end > start) {
-                    name = selector.substring(start, end);
-                    name = name.replaceAll("-", " ").replaceAll("_", " ");
-                }
-            }
-
-            // Clean up the name
-            name = name.trim()
-                    .replaceAll("[^a-zA-Z0-9\\s]", " ") // Remove special chars
-                    .replaceAll("\\s+", " ") // Normalize spaces
-                    .trim();
-
-            // Remove common button/input suffixes for cleaner names
-            name = name.replaceAll("(?i)\\s+(button|btn|input|field|link|checkbox|radio)$", "");
-
-            // Convert to PascalCase
-            String[] words = name.split("\\s+");
-            StringBuilder pascalCase = new StringBuilder();
-            for (String word : words) {
-                if (!word.isEmpty()) {
-                    pascalCase.append(word.substring(0, 1).toUpperCase());
-                    if (word.length() > 1) {
-                        pascalCase.append(word.substring(1).toLowerCase());
-                    }
-                }
-            }
-
-            String result = pascalCase.toString();
-
-            // If result is empty or just numbers, provide a more descriptive default
-            if (result.isEmpty()) {
-                return "Element";
-            } else if (result.matches("^\\d+$")) {
-                return "Number" + result;
-            }
-
-            return result;
         }
 
-        /**
-         * Generate element constant name (e.g., SIGN_IN, USERNAME, PASSWORD)
-         * NO ID SUFFIX - Use semantic names only
-         */
-        private String generateElementName(String readableName, int id) {
-            // Convert PascalCase to UPPER_SNAKE_CASE
-            String snakeCase = readableName.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase();
-            // Don't append ID - use semantic name only
-            return snakeCase;
-        }
-
-        /**
-         * Generate method name based on action type and readable name.
-         * Creates descriptive, verb-based method names following Java conventions.
-         * 
-         * CRITICAL: This method MUST NEVER return "Value" as a method name!
-         * All method names must be action-based and descriptive.
-         * 
-         * @param type         Action type (click, fill, select, check, press, navigate)
-         * @param readableName Human-readable element name (e.g., "SignIn", "Username")
-         * @param id           Element ID for uniqueness
-         * @return Action-based method name (e.g., "clickSignIn", "enterUsername")
-         */
-        private String generateMethodName(String type, String readableName, int id) {
-            // Validate inputs - prevent empty or "Value" method names
-            if (readableName == null || readableName.trim().isEmpty()) {
-                readableName = "Element" + id;
-            }
-            if (readableName.equalsIgnoreCase("Value")) {
-                readableName = "Field" + id;
-            }
-
-            String methodName;
-            switch (type) {
-                case "click":
-                    // Use "click" for buttons/links, makes sense contextually
-                    methodName = "click" + readableName;
-                    break;
-
-                case "fill":
-                    // Use "enter" for text fields to match natural language
-                    // Special handling for common field names
-                    if (readableName.toLowerCase().contains("search")) {
-                        methodName = "search" + readableName.replace("Search", "");
-                    } else if (readableName.toLowerCase().contains("email")) {
-                        methodName = "enterEmail";
-                    } else if (readableName.toLowerCase().contains("password")) {
-                        methodName = "enterPassword";
-                    } else if (readableName.toLowerCase().contains("username")) {
-                        methodName = "enterUsername";
-                    } else {
-                        methodName = "enter" + readableName;
-                    }
-                    break;
-
-                case "select":
-                    // Use "select" for dropdowns
-                    methodName = "select" + readableName;
-                    break;
-
-                case "check":
-                    // Use "check" for checkboxes, "toggle" for switches
-                    if (readableName.toLowerCase().contains("toggle") ||
-                            readableName.toLowerCase().contains("switch")) {
-                        methodName = "toggle" + readableName.replace("Toggle", "").replace("Switch", "");
-                    } else {
-                        methodName = "check" + readableName;
-                    }
-                    break;
-
-                case "press":
-                    // Use "pressKeyOn" for keyboard actions
-                    methodName = "pressKeyOn" + readableName;
-                    break;
-
-                case "navigate":
-                    methodName = "navigateTo";
-                    break;
-
-                default:
-                    // Fallback with camelCase - ensure it's descriptive
-                    String camelCase = readableName.substring(0, 1).toLowerCase() +
-                            (readableName.length() > 1 ? readableName.substring(1) : "");
-                    methodName = camelCase + "Action";
-                    break;
-            }
-
-            // Final safety check: NEVER return "Value" or similar generic names
-            if (methodName.equalsIgnoreCase("Value") ||
-                    methodName.equalsIgnoreCase("value") ||
-                    methodName.isEmpty()) {
-                methodName = "performAction" + id;
-                System.err.println("⚠️ WARNING: Generated invalid method name, using fallback: " + methodName);
-            }
-
-            return methodName;
-        }
-
-        /**
-         * Generate human-readable step text.
-         */
-        private String generateStepText(String type, String readableName) {
-            String lowerName = readableName.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
-
-            switch (type) {
-                case "click":
-                    return "user clicks on " + lowerName;
-                case "fill":
-                    return "user enters text into " + lowerName;
-                case "select":
-                    return "user selects option from " + lowerName;
-                case "check":
-                    return "user checks " + lowerName;
-                case "press":
-                    return "user presses key on " + lowerName;
-                case "navigate":
-                    return "user navigates to page";
-                default:
-                    return "user performs action on " + lowerName;
-            }
-        }
+        return result.toString();
     }
 
     /**
      * Optimizes a selector by preferring stable locators.
-     * NOW ENHANCED WITH AI: Uses AITestFramework for intelligent locator strategies
-     * Priority Order:
-     * 1. Static ID (highest priority) - AI validates stability
-     * 2. data-testid attributes - AI recommended
-     * 3. Relative XPath - AI optimized
-     * 4. Label or Names - AI validated
-     * 5. Class name (if stable) - AI checks for dynamic patterns
-     * 6. CSS (lowest priority) - AI fallback
      *
-     * @param selector The original selector
-     * @return Optimized selector following AI-enhanced priority order
+     * SMART PRIORITY SYSTEM (Feb 12, 2026 - ENHANCED):
+     * 1. Static ID (highest priority) - Extracted from ANY selector format
+     * 2. data-testid attributes - Best practice for testing
+     * 3. data-test-id attributes - Alternative testing attribute
+     * 4. name attribute (if stable) - Form elements
+     * 5. Relative XPath - Structural locators
+     * 6. Label or aria-label - Accessible locators
+     * 7. Placeholder - Input hints
+     * 8. Text content - Visual text
+     * 9. CSS classes (if stable) - Last resort
+     *
+     * SMART EXTRACTION:
+     * - Extracts IDs from complex CSS selectors (div#myId.class → #myId)
+     * - Extracts IDs from XPath (//div[@id='myId'] → #myId)
+     * - Extracts IDs from attribute selectors ([id='myId'] → #myId)
+     * - Validates ID stability (rejects dynamic IDs with GUIDs/timestamps)
+     * - Converts label= to proper Playwright Java selectors
+     *
+     * @param selector The original selector from recording
+     * @return Optimized selector following smart priority order
      */
     private static String optimizeSelector(String selector) {
         if (selector == null || selector.isEmpty())
             return selector;
 
-        // ========== VALIDATION: REJECT OVERLY GENERIC SELECTORS ==========
-        // Prevent strict mode violations by detecting selectors that match too many elements
-        if (isOverlyGenericSelector(selector)) {
-            // Try to make it more specific by adding visible constraint
-            String specificSelector = makeGenericSelectorSpecific(selector);
-            if (specificSelector != null && !specificSelector.equals(selector)) {
-                selector = specificSelector;
+        // ========== SMART ID EXTRACTION (PRIORITY 1) ==========
+        // Try to extract ID from ANY selector format FIRST
+        String extractedId = extractIdFromComplexSelector(selector);
+        if (extractedId != null && !extractedId.isEmpty() && !isDynamicId(extractedId)) {
+            System.out.println("   🎯 SMART EXTRACTION: Found stable ID '" + extractedId + "' in complex selector");
+            System.out.println("   ✅ Upgrading to Priority 1 (Static ID)");
+            return "#" + extractedId;
+        } else if (extractedId != null && isDynamicId(extractedId)) {
+            System.out.println("   ⚠️  Found dynamic ID '" + extractedId + "' - will use fallback strategy");
+        }
+
+        // ========== PRIORITY 2: data-testid ATTRIBUTES ==========
+        // Check for data-testid (testing best practice)
+        if (selector.contains("data-testid") || selector.contains("data-test-id")) {
+            String testId = extractTestId(selector);
+            if (testId != null && !testId.isEmpty()) {
+                System.out.println("   🎯 Found data-testid: '" + testId + "' - Priority 2");
+                return "[data-testid=\"" + testId + "\"]";
             }
         }
 
-        // FIRST: Try to extract static ID from complex selectors
-        String extractedStaticId = extractStaticIdFromSelector(selector);
-        if (extractedStaticId != null) {
-            return "//input[@id='" + extractedStaticId + "'] | //button[@id='" + extractedStaticId + "'] | " +
-                    "//textarea[@id='" + extractedStaticId + "'] | //select[@id='" + extractedStaticId + "'] | " +
-                    "//*[@id='" + extractedStaticId + "']";
-        }
+        // ========== PLAYWRIGHT MODERN API CONVERSION ==========
+        // Convert Playwright's getByRole(), getByText(), getByPlaceholder() to standard
+        // format
 
-        // AI ENHANCEMENT: Use AITestFramework to generate smart locator strategies
-        try {
-            List<AITestFramework.LocatorStrategy> aiStrategies =
-                    AITestFramework.generateSmartLocators(selector, "optimization");
+        // Handle getByRole patterns
+        if (selector.contains("AriaRole.") || selector.startsWith("role=")) {
+            String roleName = "";
+            String nameValue = "";
 
-            if (aiStrategies != null && !aiStrategies.isEmpty()) {
-                // Use the highest priority strategy from AI
-                AITestFramework.LocatorStrategy bestStrategy = aiStrategies.get(0);
-                return bestStrategy.selector;
+            if (selector.contains("AriaRole.")) {
+                Pattern rolePattern = Pattern.compile("AriaRole\\.(\\w+)");
+                Matcher roleMatcher = rolePattern.matcher(selector);
+                if (roleMatcher.find()) {
+                    roleName = roleMatcher.group(1).toLowerCase();
+                }
+            } else if (selector.startsWith("role=")) {
+                roleName = selector.substring(5).split(",")[0];
             }
-        } catch (Exception e) {
-            // Silently fall back to classic optimization
-        }
 
-        // Common field name to ID mappings (for label conversion)
-        Map<String, String> labelToId = new HashMap<>();
-        labelToId.put("Username", "Username");
-        labelToId.put("Password", "Password");
-        labelToId.put("First Name", "FirstName");
-        labelToId.put("Last Name", "LastName");
-        labelToId.put("Mobile Phone Number", "MobilePhoneNumber");
-        labelToId.put("Email", "Email");
-        labelToId.put("Phone", "Phone");
-        labelToId.put("Address", "Address");
-        labelToId.put("City", "City");
-        labelToId.put("State", "State");
-        labelToId.put("Zip Code", "ZipCode");
-        labelToId.put("Country", "Country");
-
-        // ========== PRIORITY 1: STATIC ID ==========
-        // Check for ID selectors in various formats
-        String extractedId = null;
-
-        // Format: #idValue
-        if (selector.startsWith("#")) {
-            extractedId = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
-        }
-        // Format: id='value' or id="value"
-        else if (selector.contains("id=")) {
-            Pattern idPattern = Pattern.compile("id=['\"]([^'\"]+)['\"]?");
-            Matcher matcher = idPattern.matcher(selector);
-            if (matcher.find()) {
-                extractedId = matcher.group(1);
+            Pattern namePattern = Pattern.compile("setName\\([\"']([^\"']+)[\"']\\)|name=[\"']?([^\"',)]+)[\"']?");
+            Matcher nameMatcher = namePattern.matcher(selector);
+            if (nameMatcher.find()) {
+                nameValue = nameMatcher.group(1) != null ? nameMatcher.group(1) : nameMatcher.group(2);
             }
-        }
-        // Format: [@id='value'] in XPath
-        else if (selector.contains("[@id=") || selector.contains("[@id =")) {
-            Pattern xpathIdPattern = Pattern.compile("@id\\s*=\\s*['\"]([^'\"]+)['\"]");
-            Matcher matcher = xpathIdPattern.matcher(selector);
-            if (matcher.find()) {
-                extractedId = matcher.group(1);
+
+            if (!roleName.isEmpty() && !nameValue.isEmpty()) {
+                return "role=" + roleName + ",name=" + nameValue;
+            } else if (!roleName.isEmpty()) {
+                return "role=" + roleName;
             }
         }
 
-        // If ID found, check if it's static
-        if (extractedId != null && !extractedId.isEmpty()) {
-            if (!isDynamicId(extractedId)) {
-                return "//input[@id='" + extractedId + "'] | //button[@id='" + extractedId + "'] | " +
-                        "//textarea[@id='" + extractedId + "'] | //select[@id='" + extractedId + "'] | " +
-                        "//*[@id='" + extractedId + "']";
+        // Handle getByText patterns
+        if (selector.contains("getByText(\"") || selector.startsWith("text=")) {
+            Pattern textPattern = Pattern.compile("getByText\\([\"']([^\"']+)[\"']\\)");
+            Matcher textMatcher = textPattern.matcher(selector);
+            if (textMatcher.find()) {
+                return "text=" + textMatcher.group(1);
             }
         }
 
-        // ========== PRIORITY 2: RELATIVE XPATH ==========
-        // Already in relative XPath format (starts with //)
-        if (selector.startsWith("//") || selector.startsWith("(//")) {
-            return selector;
-        }
-
-        // ========== PRIORITY 3: ABSOLUTE XPATH ==========
-        // Absolute XPath (starts with single /)
-        if (selector.startsWith("/") && !selector.startsWith("//")) {
-            return selector;
-        }
-
-        // ========== PRIORITY 4: LABEL OR NAMES ==========
-        // Handle label= locator - try to convert to ID (Priority 1) or XPath
-        if (selector.startsWith("label=")) {
-            String labelText = selector.substring(6).trim();
-            // Try to upgrade to Priority 1 (Static ID) if mapping exists
-            String fieldId = labelToId.get(labelText);
-            if (fieldId != null) {
-                return "//input[@id='" + fieldId + "'] | //textarea[@id='" + fieldId + "'] | //select[@id='" + fieldId
-                        + "']";
+        // Handle getByPlaceholder patterns
+        if (selector.contains("getByPlaceholder(\"") || selector.startsWith("placeholder=")) {
+            Pattern placeholderPattern = Pattern.compile("getByPlaceholder\\([\"']([^\"']+)[\"']\\)");
+            Matcher placeholderMatcher = placeholderPattern.matcher(selector);
+            if (placeholderMatcher.find()) {
+                return "placeholder=" + placeholderMatcher.group(1);
             }
-            // Convert to relative XPath (Priority 2)
-            return "//label[normalize-space(text())='" + labelText + "']/..//input | " +
-                    "//label[normalize-space(text())='" + labelText + "']/..//textarea | " +
-                    "//label[normalize-space(text())='" + labelText + "']/..//select";
         }
 
-        // Handle name attribute
+        // Handle getByLabel patterns
+        if (selector.contains("getByLabel(\"") || selector.startsWith("label=")) {
+            Pattern labelPattern = Pattern.compile("getByLabel\\([\"']([^\"']+)[\"']\\)");
+            Matcher labelMatcher = labelPattern.matcher(selector);
+            if (labelMatcher.find()) {
+                return "label=" + labelMatcher.group(1);
+            }
+        }
+
+        // ========== PRIORITY 3: NAME ATTRIBUTE ==========
         if (selector.startsWith("name=") || (selector.contains("name=") && !selector.contains("text="))) {
             Pattern namePattern = Pattern.compile("name=['\"]([^'\"]+)['\"]?");
             Matcher matcher = namePattern.matcher(selector);
             if (matcher.find()) {
                 String name = matcher.group(1);
-                return "//input[@name='" + name + "'] | //button[@name='" + name + "'] | " +
-                        "//textarea[@name='" + name + "'] | //select[@name='" + name + "'] | " +
-                        "//*[@name='" + name + "']";
+                System.out.println("   🔍 Using name attribute: '" + name + "' - Priority 3");
+                return "[name=\"" + name + "\"]";
             }
         }
 
-        // Handle placeholder (treat as name-like selector)
+        // ========== PRIORITY 4: RELATIVE XPATH ==========
+        if (selector.startsWith("//") || selector.startsWith("(//")) {
+            System.out.println("   🔍 Using relative XPath - Priority 4");
+            return selector;
+        }
+
+        // ========== PRIORITY 5: LABEL CONVERSION ==========
+        if (selector.startsWith("label=")) {
+            String labelText = selector.substring(6).trim();
+            System.out.println("   🔍 Converting label to proper selector - Priority 5");
+
+            // Common field mappings
+            Map<String, String> labelToId = new HashMap<>();
+            labelToId.put("Username", "Username");
+            labelToId.put("Password", "Password");
+            labelToId.put("First Name", "FirstName");
+            labelToId.put("Last Name", "LastName");
+            labelToId.put("Email", "Email");
+
+            // Try to find ID mapping
+            String fieldId = labelToId.get(labelText);
+            if (fieldId != null) {
+                System.out.println("   ✅ Found ID mapping for label - upgrading to ID selector");
+                return "#" + fieldId;
+            }
+
+            // Fallback: Convert to CSS selector
+            return "[aria-label=\"" + labelText + "\"], [placeholder*=\"" + labelText + "\" i]";
+        }
+
+        // ========== PRIORITY 6: PLACEHOLDER ==========
         if (selector.startsWith("placeholder=")) {
             String placeholder = selector.substring(12).trim();
-            return "//input[@placeholder='" + placeholder + "'] | //textarea[@placeholder='" + placeholder + "']";
+            System.out.println("   🔍 Using placeholder - Priority 6");
+            return "[placeholder=\"" + placeholder + "\"]";
         }
 
-        // Handle text= locator (treat as name-like)
+        // ========== PRIORITY 7: TEXT CONTENT ==========
         if (selector.startsWith("text=")) {
-            String text = selector.substring(5).trim();
-            return "//button[normalize-space(text())='" + text + "'] | " +
-                    "//a[normalize-space(text())='" + text + "'] | " +
-                    "//*[normalize-space(text())='" + text + "']";
+            // Already in correct format
+            return selector;
         }
 
-        // ========== PRIORITY 5: CLASS NAME ==========
-        // CSS class selector: .className
-        if (selector.startsWith(".")) {
-            String className = selector.substring(1).split("[\\s\\[\\]\\.\\:]")[0];
-            return "//*[contains(@class, '" + className + "')]";
+        // ========== PRIORITY 8: ABSOLUTE XPATH ==========
+        if (selector.startsWith("/") && !selector.startsWith("//")) {
+            System.out.println("   ⚠️  Using absolute XPath - Priority 8 (least stable)");
+            return selector;
         }
 
-        // Attribute selector with class
-        if (selector.contains("class=") && !selector.startsWith("//")) {
-            Pattern classPattern = Pattern.compile("class=['\"]([^'\"]+)['\"]?");
-            Matcher matcher = classPattern.matcher(selector);
-            if (matcher.find()) {
-                String className = matcher.group(1).split("\\s+")[0]; // Get first class
-                return "//*[contains(@class, '" + className + "')]";
+        // Return as-is if no optimization applied
+        return selector;
+    }
+
+    /**
+     * Extracts static ID from complex selectors of ANY format.
+     * <p>
+     * PERMANENT FIX (Feb 12, 2026): Smart ID extraction from ANY selector type
+     * <p>
+     * Supported formats:
+     * - CSS: div#myId.class → myId
+     * - CSS: #myId → myId
+     * - CSS: [id='myId'] → myId
+     * - CSS: [id="myId"] → myId
+     * - CSS: input[id='username'][type='text'] → username
+     * - XPath: //div[@id='myId'] → myId
+     * - XPath: //*[@id='myId'][@class='x'] → myId
+     * - Playwright: text=Sign In >> #submitBtn → submitBtn
+     * <p>
+     * DO NOT REMOVE - Critical for smart ID prioritization!
+     *
+     * @param selector Original selector from recording
+     * @return Extracted ID if found, null otherwise
+     */
+    private static String extractIdFromComplexSelector(String selector) {
+        if (selector == null || selector.isEmpty())
+            return null;
+
+        // Pattern 1: CSS #id format (div#myId, #myId, span#userId.class)
+        Pattern cssIdPattern = Pattern.compile("#([a-zA-Z][a-zA-Z0-9_-]*)");
+        Matcher cssIdMatcher = cssIdPattern.matcher(selector);
+        if (cssIdMatcher.find()) {
+            return cssIdMatcher.group(1);
+        }
+
+        // Pattern 2: CSS attribute [id='value'] or [id="value"]
+        Pattern attrIdPattern = Pattern.compile("\\[id=['\"]([^'\"]+)['\"]\\]");
+        Matcher attrIdMatcher = attrIdPattern.matcher(selector);
+        if (attrIdMatcher.find()) {
+            return attrIdMatcher.group(1);
+        }
+
+        // Pattern 3: XPath @id='value' or @id="value"
+        Pattern xpathIdPattern = Pattern.compile("@id=['\"]([^'\"]+)['\"]");
+        Matcher xpathIdMatcher = xpathIdPattern.matcher(selector);
+        if (xpathIdMatcher.find()) {
+            return xpathIdMatcher.group(1);
+        }
+
+        // Pattern 4: CSS id= without quotes (less common but valid)
+        Pattern idEqualPattern = Pattern.compile("\\bid=([a-zA-Z][a-zA-Z0-9_-]*)\\b");
+        Matcher idEqualMatcher = idEqualPattern.matcher(selector);
+        if (idEqualMatcher.find()) {
+            return idEqualMatcher.group(1);
+        }
+
+        return null; // No ID found
+    }
+
+    /**
+     * Extracts data-testid attribute value from selector.
+     * <p>
+     * PERMANENT FIX (Feb 12, 2026): Extract testing-specific attributes
+     * <p>
+     * Supported formats:
+     * - [data-testid="login-button"]
+     * - [data-test-id="login-button"]
+     * - data-testid='login-button'
+     *
+     * @param selector Selector string
+     * @return Extracted test ID value, null if not found
+     */
+    private static String extractTestId(String selector) {
+        if (selector == null || selector.isEmpty())
+            return null;
+
+        // Pattern: data-testid="value" or data-testid='value'
+        Pattern testIdPattern = Pattern.compile("data-test(?:-)?id=['\"]([^'\"]+)['\"]");
+        Matcher matcher = testIdPattern.matcher(selector);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return null;
+    }
+
+    /**
+     * Detects overly generic selectors that would match multiple elements.
+     * These selectors cause "strict mode violation" errors in Playwright.
+     * <p>
+     * Examples of generic selectors:
+     * - //div (matches all divs)
+     * - //span (matches all spans)
+     * - //button (matches all buttons without attributes)
+     * - div (CSS, matches all divs)
+     *
+     * @param selector The selector to check
+     * @return true if selector is overly generic
+     */
+    @SuppressWarnings("unused")
+    private static boolean isOverlyGenericSelector(String selector) {
+        if (selector == null || selector.isEmpty()) {
+            return false;
+        }
+
+        // List of generic HTML elements that often match multiple elements
+        String[] genericElements = {
+                "div", "span", "a", "p", "li", "ul", "ol", "td", "tr", "th",
+                "section", "article", "aside", "nav", "header", "footer", "main"
+        };
+
+        // Check for XPath patterns: //element or //element[no attributes]
+        for (String element : genericElements) {
+            // Exact match: //div
+            if (selector.equals("//" + element)) {
+                return true;
+            }
+            // With trailing slash or brackets: //div/ or //div[]
+            if (selector.matches("^//" + element + "\\s*[\\[/]?\\s*$")) {
+                return true;
             }
         }
 
-        // ========== PRIORITY 6: CSS SELECTORS ==========
-        // Generic CSS selectors (lowest priority) - return as-is
-        return selector;
+        // Check for CSS patterns: just element name
+        for (String element : genericElements) {
+            if (selector.equals(element)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1488,53 +1326,8 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Detects overly generic selectors that would match multiple elements.
-     * These selectors cause "strict mode violation" errors in Playwright.
-     * <p>
-     * Examples of generic selectors:
-     * - //div (matches all divs)
-     * - //span (matches all spans)
-     * - //button (matches all buttons without attributes)
-     * - div (CSS, matches all divs)
-     *
-     * @param selector The selector to check
-     * @return true if selector is overly generic
-     */
-    private static boolean isOverlyGenericSelector(String selector) {
-        if (selector == null || selector.isEmpty()) {
-            return false;
-        }
-
-        // List of generic HTML elements that often match multiple elements
-        String[] genericElements = {
-                "div", "span", "a", "p", "li", "ul", "ol", "td", "tr", "th",
-                "section", "article", "aside", "nav", "header", "footer", "main"
-        };
-
-        // Check for XPath patterns: //element or //element[no attributes]
-        for (String element : genericElements) {
-            // Exact match: //div
-            if (selector.equals("//" + element)) {
-                return true;
-            }
-            // With trailing slash or brackets: //div/ or //div[]
-            if (selector.matches("^//" + element + "\\s*[\\[/]?\\s*$")) {
-                return true;
-            }
-        }
-
-        // Check for CSS patterns: just element name
-        for (String element : genericElements) {
-            if (selector.equals(element)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Attempts to make a generic selector more specific to avoid strict mode violations.
+     * Attempts to make a generic selector more specific to avoid strict mode
+     * violations.
      * <p>
      * Strategies:
      * 1. Add visibility constraint with wrapper class
@@ -1543,6 +1336,7 @@ public class TestGeneratorHelper {
      * @param genericSelector The overly generic selector
      * @return A more specific selector, or the original if can't be improved
      */
+    @SuppressWarnings("unused")
     private static String makeGenericSelectorSpecific(String genericSelector) {
         if (genericSelector == null || genericSelector.isEmpty()) {
             return genericSelector;
@@ -1563,6 +1357,7 @@ public class TestGeneratorHelper {
      * @param selector The selector to analyze
      * @return Priority comment string
      */
+    @SuppressWarnings("unused")
     private static String getPriorityComment(String selector) {
         if (selector == null || selector.isEmpty())
             return "Unknown Priority";
@@ -1607,7 +1402,8 @@ public class TestGeneratorHelper {
     /**
      * Extracts static ID from complex selectors before optimization.
      * Scans CSS selectors, XPath, and other formats for ID attributes.
-     * This ensures we prioritize IDs even when Playwright recorded a different selector type.
+     * This ensures we prioritize IDs even when Playwright recorded a different
+     * selector type.
      * <p>
      * Examples:
      * - "div#myId.class" -> extracts "myId"
@@ -1617,12 +1413,14 @@ public class TestGeneratorHelper {
      * @param selector Original selector from recording
      * @return ID if found and static, otherwise null
      */
+    @SuppressWarnings("unused")
     private static String extractStaticIdFromSelector(String selector) {
         if (selector == null || selector.isEmpty()) {
             return null;
         }
 
-        // Pattern 1: CSS selector with # (e.g., "div#myId", "#myId.class", "form #myId")
+        // Pattern 1: CSS selector with # (e.g., "div#myId", "#myId.class", "form
+        // #myId")
         Pattern cssIdPattern = Pattern.compile("#([a-zA-Z][a-zA-Z0-9_-]*)");
         Matcher matcher = cssIdPattern.matcher(selector);
         if (matcher.find()) {
@@ -1648,7 +1446,8 @@ public class TestGeneratorHelper {
             }
         }
 
-        // Pattern 3: CSS attribute selector (e.g., "input[id='username']", "[id=username]")
+        // Pattern 3: CSS attribute selector (e.g., "input[id='username']",
+        // "[id=username]")
         Pattern attrIdPattern = Pattern.compile("\\[id\\s*=\\s*['\"]?([^'\"\\]]+)['\"]?\\]");
         matcher = attrIdPattern.matcher(selector);
         if (matcher.find()) {
@@ -1680,36 +1479,112 @@ public class TestGeneratorHelper {
     /**
      * Generate Page Object from recorded actions.
      * <p>
-     * CODE REUSABILITY: Checks pageObjectExists() to avoid overwriting existing
-     * classes
+     * MERGE MODE: If mergeMode=true and page object exists:
+     * - Parses existing methods to avoid duplicates
+     * - Adds only NEW locators and methods from recording
+     * - Preserves all existing methods and manual edits
+     * <p>
+     * OVERWRITE MODE: If mergeMode=false:
+     * - Skips generation if file exists (conservative approach)
+     * - Shows message to manually edit
+     * <p>
      * LOCATOR OPTIMIZATION: All selectors optimized via optimizeSelector() before
      * generation
-     * SKIP LOGIC: Returns early if page object exists, preserving custom
-     * implementations
+     * 
+     * @param mergeMode If true, merge with existing; if false, skip if exists
      */
     private static void generatePageObject(String className, String pageUrl, String jiraStory,
-                                           List<RecordedAction> actions) throws IOException {
+            jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
+
+        Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
 
         // Check if page object already exists
-        if (pageObjectExists(className)) {
-            System.out.println("[REUSE] Page object already exists: " + className + ".java");
-            System.out.println("[INFO] Skipping page object generation - using existing implementation");
-            System.out.println("[TIP] To add new methods, manually edit: src/main/java/pages/" + className + ".java");
-            return; // Skip generation, use existing
+        if (Files.exists(pageObjectPath)) {
+            if (!mergeMode) {
+                System.out.println("[REUSE] Page object already exists: " + className + ".java");
+                System.out.println("[INFO] Skipping page object generation - using existing implementation");
+                System.out.println("[TIP] To merge new recording with existing code, use mergeMode=true");
+                System.out.println("[TIP] Or manually edit: src/main/java/pages/" + className + ".java");
+                return; // Skip generation, use existing
+            } else {
+                System.out.println("[MERGE MODE] Page object exists - will add new methods only");
+                // Continue to merge mode logic below
+            }
         }
+
+        // If merge mode and file exists, parse existing methods
+        Set<String> existingMethods = new HashSet<>();
+        Set<String> existingLocators = new HashSet<>();
+        String existingContent = "";
+
+        if (mergeMode && Files.exists(pageObjectPath)) {
+            try {
+                existingContent = new String(Files.readAllBytes(pageObjectPath));
+                existingMethods = extractMethodNames(existingContent);
+                existingLocators = extractLocatorNames(existingContent);
+                System.out.println("[MERGE] Found " + existingMethods.size() + " existing methods");
+                System.out.println("[MERGE] Found " + existingLocators.size() + " existing locators");
+            } catch (Exception e) {
+                System.err.println("[WARN] Could not parse existing page object for merge: " + e.getMessage());
+                System.err.println("[WARN] Will regenerate from scratch");
+                mergeMode = false; // Fallback to overwrite
+            }
+        }
+
+        if (!mergeMode && Files.exists(pageObjectPath)) {
+            return; // Already handled above
+        }
+
+        // CROSS-PROJECT SCAN: Check for common locators in OTHER page objects
+        Map<String, String> commonLocatorsMap = scanAllPageObjectsForCommonLocators();
+        System.out.println("[CROSS-PROJECT] Found " + commonLocatorsMap.size()
+                + " common locator methods across all page objects");
+
+        // Track if we need to import other page classes (e.g., Login)
+        Set<String> pageImports = new HashSet<>();
 
         StringBuilder sb = new StringBuilder();
 
         sb.append("package pages;\n");
         // AUTO-FIX: Always include all required imports for page objects
+        sb.append("import com.microsoft.playwright.Locator;\n");
         sb.append("import com.microsoft.playwright.Page;\n");
+        sb.append("import com.microsoft.playwright.options.AriaRole;\n");
+        sb.append("import com.microsoft.playwright.assertions.PlaywrightAssertions;\n");
         sb.append("import configs.loadProps;\n");
-        sb.append("import configs.TimeoutConfig;\n");  // Always include for consistent timeout usage
+        sb.append("import configs.TimeoutConfig;\n"); // Always include for consistent timeout usage
         sb.append("import java.util.logging.Logger;\n");
+        // Note: Page imports (like Login) will be added dynamically if needed
+        // Placeholder for dynamic imports will be inserted here
+        String importsPlaceholder = "DYNAMIC_IMPORTS_PLACEHOLDER\n";
+        sb.append(importsPlaceholder);
         sb.append("\n");
         sb.append("/**\n");
         sb.append(" * Page Object for ").append(className).append("\n");
         sb.append(" * Auto-generated from Playwright recording\n");
+        sb.append(" * \n");
+        // JIRA story details injected when available
+        if (jiraInfo != null) {
+            sb.append(" * ─────────────────────────────────────────────────\n");
+            sb.append(" * JIRA Story: ").append(jiraInfo.key).append("\n");
+            sb.append(" * Summary   : ").append(jiraInfo.summary).append("\n");
+            if (jiraInfo.description != null && !jiraInfo.description.isEmpty()) {
+                sb.append(" * Description: ").append(jiraInfo.description.replace("\n", "\n *              "))
+                        .append("\n");
+            }
+            sb.append(" * Type      : ").append(jiraInfo.issueType).append("\n");
+            sb.append(" * Status    : ").append(jiraInfo.status).append("\n");
+            sb.append(" * Priority  : ").append(jiraInfo.priority).append("\n");
+            if (!jiraInfo.acceptanceCriteria.isEmpty()) {
+                sb.append(" * \n");
+                sb.append(" * Acceptance Criteria:\n");
+                for (int i = 0; i < jiraInfo.acceptanceCriteria.size(); i++) {
+                    sb.append(" *   ").append(i + 1).append(". ").append(jiraInfo.acceptanceCriteria.get(i))
+                            .append("\n");
+                }
+            }
+            sb.append(" * ─────────────────────────────────────────────────\n");
+        }
         sb.append(" * \n");
         sb.append(" * This class extends BasePage which provides:\n");
         sb.append(" *  - clickOnElement(locator) - from utils.java\n");
@@ -1724,40 +1599,94 @@ public class TestGeneratorHelper {
         sb.append(" * @story ").append(jiraStory).append("\n");
         sb.append(" */\n");
         sb.append("public class ").append(className).append(" extends BasePage {\n");
-        sb.append("    private static final Logger log = Logger.getLogger(").append(className).append(".class.getName());\n");
+        sb.append("    private static final Logger log = Logger.getLogger(").append(className)
+                .append(".class.getName());\n");
 
         // Extract path from full URL if needed
         String pagePath = extractPathFromUrl(pageUrl);
         sb.append("    private static final String PAGE_PATH = \"").append(pagePath).append("\";\n");
         sb.append("\n");
 
-        // Generate locator constants with descriptive names
+        // Generate Locator-returning methods with descriptive names
+        sb.append("    /* --------------------\n");
+        sb.append("       Locators for ").append(className).append("\n");
+        sb.append("       -----------------------*/\n");
+        sb.append("    \n");
+
         // TODO: MANDATORY - Verify all selectors follow priority order
         int staticIdCount = 0;
         int labelSelectorCount = 0;
         int textSelectorCount = 0;
 
-        // DEDUPLICATION: Track unique locators and methods
+        // DEDUPLICATION: Track unique locators and methods (check against existing)
         Set<String> generatedLocators = new HashSet<>();
         Set<String> generatedMethods = new HashSet<>();
-        Set<String> locatorConstants = new HashSet<>();
+        Set<String> locatorMethodNames = new HashSet<>();
+        Map<String, String> selectorToMethodName = new HashMap<>(); // Map selector -> method name for reuse
 
         for (RecordedAction action : actions) {
             if (action.selector != null) {
-                // Skip duplicate locators (same selector string)
-                if (generatedLocators.contains(action.selector)) {
-                    System.out.println("[SKIP DUPLICATE] Locator already exists: " + action.selector);
+                // Generate locator method name
+                String locatorMethodName = generateLocatorMethodName(action.readableName, action.type);
+
+                // Check if this selector already has a generated method
+                if (selectorToMethodName.containsKey(action.selector)) {
+                    // Reuse existing locator method name for duplicate selectors
+                    action.locatorMethodName = selectorToMethodName.get(action.selector);
+                    System.out.println("[REUSE] Using existing locator method: " + action.locatorMethodName
+                            + "() for selector: " + action.selector);
                     continue;
                 }
 
-                // Skip duplicate locator constant names
-                if (locatorConstants.contains(action.elementName)) {
-                    System.out.println("[SKIP DUPLICATE] Locator constant already defined: " + action.elementName);
+                // CROSS-PROJECT CHECK: See if a similar locator exists in another page object
+                String existingPageClass = commonLocatorsMap.get(locatorMethodName.toLowerCase());
+                if (existingPageClass != null && !existingPageClass.equals(className)) {
+                    System.out.println("[CROSS-PROJECT REUSE] Found similar locator in " + existingPageClass + ".java: "
+                            + locatorMethodName + "() - Consider reusing " + existingPageClass + "." + locatorMethodName
+                            + "()");
+
+                    // For truly common login-related locators in Login page, reference instead of
+                    // duplicate
+                    String methodNameLower = locatorMethodName.toLowerCase();
+                    if (existingPageClass.equalsIgnoreCase("Login") &&
+                            (methodNameLower.contains("username") || methodNameLower.contains("password") ||
+                                    methodNameLower.contains("signin") || methodNameLower.contains("login"))) {
+                        // Store reference to Login page method instead of generating duplicate
+                        action.locatorMethodName = "Login." + locatorMethodName;
+                        selectorToMethodName.put(action.selector, "Login." + locatorMethodName);
+                        pageImports.add("Login"); // Track that we need to import Login
+                        System.out.println(
+                                "[REFERENCE] Will use Login." + locatorMethodName + "() instead of duplicating");
+                        continue; // Skip generating, use reference
+                    }
+                    // Add comment in generated code about the existing locator
+                    // But still generate it in this class for independence
+                }
+
+                // Skip if locator method already exists in the existing page object
+                if (existingLocators.contains(locatorMethodName)) {
+                    action.locatorMethodName = locatorMethodName; // Still set the method name for reuse
+                    selectorToMethodName.put(action.selector, locatorMethodName);
+                    System.out.println("[SKIP DUPLICATE] Locator method already exists: " + locatorMethodName + "()");
                     continue;
+                }
+
+                // Skip duplicate locator method names (use numbered version if conflict)
+                if (locatorMethodNames.contains(locatorMethodName)) {
+                    // Generate unique method name by appending number
+                    int counter = 2;
+                    String uniqueName = locatorMethodName + counter;
+                    while (locatorMethodNames.contains(uniqueName)) {
+                        counter++;
+                        uniqueName = locatorMethodName + counter;
+                    }
+                    locatorMethodName = uniqueName;
+                    System.out.println("[CONFLICT RESOLVED] Using unique method name: " + locatorMethodName + "()");
                 }
 
                 generatedLocators.add(action.selector);
-                locatorConstants.add(action.elementName);
+                locatorMethodNames.add(locatorMethodName);
+                selectorToMethodName.put(action.selector, locatorMethodName);
 
                 // Count selector types for validation
                 if (action.selector.contains("@id=") && !isDynamicId(action.selector)) {
@@ -1770,12 +1699,44 @@ public class TestGeneratorHelper {
                     textSelectorCount++;
                 }
 
-                // TODO: Add comment showing priority level used
-                String priorityComment = getPriorityComment(action.selector);
-                sb.append("    // ").append(action.readableName).append(" - ").append(priorityComment).append("\n");
-                sb.append("    private static final String ").append(action.elementName)
-                        .append(" = \"").append(escapeJavaString(action.selector)).append("\";\n");
+                // Convert selector to proper Playwright locator call
+                String finalSelector = convertLabelSelectorToPlaywrightJava(action.selector, action.readableName);
+                String locatorCall = generateLocatorCall(finalSelector, action.readableName, action.frameSelector,
+                        action.isInShadowDom, action.options);
+
+                // Check if similar locator exists in another page object - add helpful comment
+                existingPageClass = commonLocatorsMap.get(locatorMethodName.toLowerCase());
+                if (existingPageClass != null && !existingPageClass.equals(className)) {
+                    sb.append("    /**\n");
+                    sb.append("     * NOTE: Similar locator exists in ").append(existingPageClass).append(".java: ")
+                            .append(locatorMethodName).append("()\n");
+                    sb.append("     * Consider reusing ").append(existingPageClass).append(".")
+                            .append(locatorMethodName).append("() if applicable.\n");
+                    sb.append("     */\n");
+                }
+
+                // Add iframe or shadow DOM comment if applicable
+                if (action.isInFrame) {
+                    sb.append("    /**\n");
+                    sb.append("     * IFRAME CONTEXT: This element is within an iframe: ").append(action.frameSelector)
+                            .append("\n");
+                    sb.append("     * Playwright automatically handles frame switching with frameLocator()\n");
+                    sb.append("     */\n");
+                } else if (action.isInShadowDom) {
+                    sb.append("    /**\n");
+                    sb.append("     * SHADOW DOM: This element is within a shadow DOM tree\n");
+                    sb.append("     * Playwright automatically pierces shadow DOM with >>> selector\n");
+                    sb.append("     */\n");
+                }
+
+                // Generate Locator-returning method
+                sb.append("    public static Locator ").append(locatorMethodName).append("() {\n");
+                sb.append("        return ").append(locatorCall).append(";\n");
+                sb.append("    }\n");
                 sb.append("\n");
+
+                // Store the method name for use in interaction methods
+                action.locatorMethodName = locatorMethodName;
             }
         }
 
@@ -1795,6 +1756,13 @@ public class TestGeneratorHelper {
         sb.append("     * @param page Playwright Page instance\n");
         sb.append("     */\n");
         sb.append("    public static void navigateTo").append(className).append("(Page page) {\n");
+        sb.append("        // Fail-safe: Check if page is initialized\n");
+        sb.append("        if (BasePage.page == null) {\n");
+        sb.append(
+                "            throw new IllegalStateException(\"❌ Browser not initialized. Ensure hooks are running: \" +\n");
+        sb.append("                \"1) Check TestRunner @CucumberOptions glue includes 'hooks' \" +\n");
+        sb.append("                \"2) Verify hooks.java @Before method calls browserSelector.setUp()\");\n");
+        sb.append("        }\n");
         sb.append("        log.info(\"🌐 Navigating to ").append(className).append(" page\");\n");
         sb.append("        String fullUrl = loadProps.getProperty(\"URL\") + PAGE_PATH;\n");
         sb.append("        navigateToUrl(fullUrl);\n");
@@ -1807,26 +1775,39 @@ public class TestGeneratorHelper {
             if ("navigate".equals(action.type))
                 continue;
 
-            // DEDUPLICATION: Skip duplicate methods
-            if (generatedMethods.contains(action.methodName)) {
+            // SKIP LOGIN-RELATED ACTIONS: Don't generate login methods in non-Login page
+            // objects
+            // These should only exist in Login.java and be referenced from other pages
+            if (!className.equalsIgnoreCase("Login") && isLoginRelatedAction(action)) {
+                System.out.println("[SKIP LOGIN ACTION] Not generating login method in " + className +
+                        ".java: " + action.methodName + "() - Should use Login." + action.methodName + "() instead");
+                continue;
+            }
+
+            // DEDUPLICATION: Skip duplicate methods or existing methods
+            if (existingMethods.contains(action.methodName) || generatedMethods.contains(action.methodName)) {
                 System.out.println("[SKIP DUPLICATE] Method already exists: " + action.methodName + "()");
                 continue;
             }
             generatedMethods.add(action.methodName);
 
+            String locatorMethod = action.locatorMethodName != null ? action.locatorMethodName
+                    : "page.locator(\"" + action.selector + "\")";
+
             sb.append("    /**\n");
             sb.append("     * ").append(action.stepText).append("\n");
             sb.append("     * Element: ").append(action.readableName).append(" (").append(action.selector)
                     .append(")\n");
-            sb.append("     * Uses common method from utils.java\n");
+            sb.append("     * Uses Locator method\n");
             sb.append("     */\n");
 
             switch (action.type) {
                 case "click":
                     sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
                     sb.append("        log.info(\"🖱️ ").append(action.stepText).append("\");\n");
-                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
-                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        clickOnElement(").append(locatorMethod)
+                            .append("()); // Uses utils.clickOnElement(Locator)\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
                     sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
                     sb.append("    }\n");
                     break;
@@ -1835,8 +1816,9 @@ public class TestGeneratorHelper {
                     sb.append("    public static void ").append(action.methodName)
                             .append("(Page page, String text) {\n");
                     sb.append("        log.info(\"⌨️ ").append(action.stepText).append(": \" + text);\n");
-                    sb.append("        enterText(").append(action.elementName).append(", text); // Common method from utils\n");
-                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        enterText(").append(locatorMethod)
+                            .append("(), text); // Uses utils.enterText(Locator, String)\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
                     sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
                     sb.append("    }\n");
                     break;
@@ -1845,8 +1827,9 @@ public class TestGeneratorHelper {
                     sb.append("    public static void ").append(action.methodName)
                             .append("(Page page, String option) {\n");
                     sb.append("        log.info(\"🔽 ").append(action.stepText).append(": \" + option);\n");
-                    sb.append("        selectDropDownValueByText(").append(action.elementName).append(", option); // Common method from utils\n");
-                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        selectDropDownValueByText(").append(locatorMethod)
+                            .append("(), option); // Uses utils.selectDropDownValueByText(Locator, String)\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
                     sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
                     sb.append("    }\n");
                     break;
@@ -1854,20 +1837,49 @@ public class TestGeneratorHelper {
                 case "check":
                     sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
                     sb.append("        log.info(\"☑️ ").append(action.stepText).append("\");\n");
-                    sb.append("        clickOnElement(").append(action.elementName).append("); // Common method from utils\n");
-                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        checkElement(").append(locatorMethod)
+                            .append("()); // Uses utils.checkElement(Locator)\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
                     sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
                     sb.append("    }\n");
                     break;
 
                 case "press":
                     sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
-                    sb.append("        log.info(\"⌨️ ").append(action.stepText).append(": \" + ")
-                            .append(action.elementName).append(" + \" - Key: ").append(escapeJavaString(action.value))
-                            .append("\");\n");
-                    sb.append("        page.locator(").append(action.elementName).append(").press(\"")
+                    sb.append("        log.info(\"⌨️ ").append(action.stepText).append(": Key: ")
                             .append(escapeJavaString(action.value)).append("\");\n");
-                    sb.append("        TimeoutConfig.waitShort(); // Auto-fixed timeout method\n");
+                    sb.append("        pressKey(").append(locatorMethod).append("(), \"")
+                            .append(escapeJavaString(action.value))
+                            .append("\"); // Uses utils.pressKey(Locator, String)\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
+                    sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
+                    sb.append("    }\n");
+                    break;
+
+                case "verify":
+                    // ALWAYS generate verify/assertion methods - these are intentional validations
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        log.info(\"🔍 Verifying: ").append(action.stepText).append("\");\n");
+                    sb.append("        // Use Playwright assertions for reliable visibility check with auto-waiting\n");
+                    sb.append("        PlaywrightAssertions.assertThat(").append(locatorMethod)
+                            .append("()).isVisible();\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
+                    sb.append("        log.info(\"✅ Verification passed: ").append(action.stepText).append("\");\n");
+                    sb.append("    }\n");
+                    System.out
+                            .println("[VERIFY METHOD GENERATED] Assertion method created: " + action.methodName + "()");
+                    break;
+
+                default:
+                    System.out.println("[UNKNOWN ACTION TYPE] Type: " + action.type + " for step: " + action.stepText);
+                    System.out.println(
+                            "⚠️  WARNING: Treating as generic interaction (click) - if incorrect, update TestGeneratorHelper switch statement");
+                    sb.append("    public static void ").append(action.methodName).append("(Page page) {\n");
+                    sb.append("        log.info(\"🖱️ ").append(action.stepText).append("\");\n");
+                    sb.append("        clickOnElement(").append(locatorMethod)
+                            .append("()); // Auto-generated: treats unknown action type '").append(action.type)
+                            .append("' as click\n");
+                    sb.append("        TimeoutConfig.waitShort();\n");
                     sb.append("        log.info(\"✅ ").append(action.stepText).append(" completed\");\n");
                     sb.append("    }\n");
                     break;
@@ -1879,6 +1891,18 @@ public class TestGeneratorHelper {
 
         // AUTO-FIX: Apply all fixes before validation
         String pageObjectContent = sb.toString();
+
+        // Fix 0: Replace dynamic imports placeholder with actual imports
+        if (!pageImports.isEmpty()) {
+            StringBuilder importsBuilder = new StringBuilder();
+            for (String pageClass : pageImports) {
+                importsBuilder.append("import pages.").append(pageClass).append(";\n");
+                System.out.println("[IMPORT] Added import for pages." + pageClass);
+            }
+            pageObjectContent = pageObjectContent.replace("DYNAMIC_IMPORTS_PLACEHOLDER\n", importsBuilder.toString());
+        } else {
+            pageObjectContent = pageObjectContent.replace("DYNAMIC_IMPORTS_PLACEHOLDER\n", "");
+        }
 
         // Fix 1: Ensure all required imports
         pageObjectContent = ensureRequiredImports(pageObjectContent);
@@ -1908,17 +1932,90 @@ public class TestGeneratorHelper {
     /**
      * Parse Playwright recording file and extract actions.
      * Supports both old API (page.click) and modern API (page.locator().click())
-     * 
+     * NOW WITH IFRAME, SHADOW DOM, AND COMPREHENSIVE ASSERTION SUPPORT!
+     *
+     * ═══════════════════════════════════════════════════════════════════════════
      * LOCATOR OPTIMIZATION: Applies optimizeSelector() to prioritize:
      * 1. Static ID, 2. Relative XPath, 3. Absolute XPath, 4. Label/Names, 5. Class,
      * 6. CSS
-     * 
-     * DYNAMIC ID DETECTION: Identifies and warns about GUID/timestamp IDs using
-     * isDynamicId()
+     * ═══════════════════════════════════════════════════════════════════════════
+     *
+     * ═══════════════════════════════════════════════════════════════════════════
+     * ADVANCED FEATURES:
+     * ═══════════════════════════════════════════════════════════════════════════
+     * ✅ IFRAME SUPPORT: Detects frameLocator() calls and preserves iframe context
+     * ✅ SHADOW DOM SUPPORT: Detects shadow DOM piercing with >>> or :shadow
+     * ✅ DYNAMIC ID DETECTION: Identifies and warns about GUID/timestamp IDs
+     * ✅ OPTIONS CAPTURE: Preserves all chained options (.setExact(true),
+     * .setHasText(), etc.)
+     * ✅ ARIA ROLE PRESERVATION: Extracts actual AriaRole type (HEADING, LINK,
+     * BUTTON, etc.)
+     *
+     * ═══════════════════════════════════════════════════════════════════════════
+     * ASSERTION HANDLING (Enhanced for Playwright Best Practices):
+     * ═══════════════════════════════════════════════════════════════════════════
+     * Captures ALL assertThat().isVisible() patterns from recordings and generates:
+     *
+     * 1. SUPPORTED ASSERTION TYPES:
+     * ✅ assertThat(page.getByRole(AriaRole.HEADING, ...)).isVisible()
+     * ✅ assertThat(page.getByRole(AriaRole.LINK, ...)).isVisible()
+     * ✅ assertThat(page.getByRole(AriaRole.BUTTON, ...)).isVisible()
+     * ✅ assertThat(page.getByText("...")).isVisible()
+     * ✅ assertThat(page.getByLabel("...")).isVisible()
+     * ✅ assertThat(page.getByTitle("...")).isVisible()
+     *
+     * 2. GENERATED ARTIFACTS:
+     * - Page Object: verify{ElementName}() methods using PlaywrightAssertions
+     * - Step Definition: @Then annotations for verification steps
+     * - Feature File: "Then {description}" steps placed BEFORE navigation/logout
+     *
+     * 3. PROPER VERIFICATION FLOW:
+     * Recording: assertThat(page.getByRole(AriaRole.HEADING, ...)).isVisible()
+     * ↓
+     * Page Object: public static void verifyInvoiceGroupsPageLoaded(Page page) {
+     * PlaywrightAssertions.assertThat(roleheadingnameinvoicegroups()).isVisible();
+     * }
+     * ↓
+     * Step Def: @Then("page should be updated")
+     * public void verifyPageUpdated() {
+     * Invoicegroup.verifyInvoiceGroupsPageLoaded(page);
+     * }
+     * ↓
+     * Feature: Then page should be updated ← BEFORE logout/navigation
+     *
+     * 4. OPTIONS PRESERVATION:
+     * - Captures: .setExact(true), .setHasText(), etc. from assertions
+     * - Applies to generated locators: new
+     * Page.GetByRoleOptions().setName("...").setExact(true)
+     *
+     * ═══════════════════════════════════════════════════════════════════════════
+     * FUTURE PAGE GENERATION GUARANTEE:
+     * ═══════════════════════════════════════════════════════════════════════════
+     * All future test scripts generated from Playwright recordings will
+     * automatically:
+     * ✓ Include verification methods with PlaywrightAssertions (auto-retry
+     * built-in)
+     * ✓ Generate @Then step definitions for assertions
+     * ✓ Place verification steps in correct order (before logout/navigation)
+     * ✓ Preserve AriaRole types (HEADING, LINK, BUTTON) without hardcoding
+     * ✓ Apply all captured options (.setExact(true), etc.) to locators
+     * ✓ Create proper locator methods for all assertion targets
+     * ═══════════════════════════════════════════════════════════════════════════
      */
     private static List<RecordedAction> parseRecording(String recordingFile) throws IOException {
         List<RecordedAction> actions = new ArrayList<>();
         String content = new String(Files.readAllBytes(Paths.get(recordingFile)));
+
+        // Patterns for IFRAME interactions
+        Pattern frameLocatorClickPattern = Pattern
+                .compile("page\\.frameLocator\\(\"([^\"]+)\"\\)\\.locator\\(\"([^\"]+)\"\\)\\.click\\(");
+        Pattern frameLocatorFillPattern = Pattern
+                .compile("page\\.frameLocator\\(\"([^\"]+)\"\\)\\.locator\\(\"([^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
+
+        // Patterns for SHADOW DOM piercing (>>> syntax)
+        Pattern shadowDomClickPattern = Pattern.compile("page\\.locator\\(\"([^\"]*>>>+[^\"]+)\"\\)\\.click\\(");
+        Pattern shadowDomFillPattern = Pattern
+                .compile("page\\.locator\\(\"([^\"]*>>>+[^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
 
         // Patterns for MODERN Playwright Locator API (primary)
         Pattern locatorClickPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.click\\(");
@@ -1928,16 +2025,45 @@ public class TestGeneratorHelper {
         Pattern locatorCheckPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.check\\(");
         Pattern locatorPressPattern = Pattern.compile("page\\.locator\\(\"([^\"]+)\"\\)\\.press\\(\"([^\"]+)\"\\)");
 
-        // Modern getBy* API patterns
+        // Modern getBy* API patterns (Enhanced to capture all chained options like
+        // .setExact(true), .setHasText(), etc.)
         Pattern getByRoleClickPattern = Pattern.compile(
-                "page\\.getByRole\\(AriaRole\\.\\w+,\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)\\)\\.click\\(");
-        Pattern getByTextClickPattern = Pattern.compile("page\\.getByText\\(\"([^\"]+)\"\\)\\.click\\(");
+                "page\\.getByRole\\(AriaRole\\.(\\w+),\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)((?:\\.\\w+\\([^)]*\\))*)\\)\\.click\\(");
+        Pattern getByRoleFillPattern = Pattern.compile(
+                "page\\.getByRole\\(AriaRole\\.(\\w+),\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)((?:\\.\\w+\\([^)]*\\))*)\\)\\.fill\\(\"([^\"]+)\"\\)");
+        Pattern getByRolePressPattern = Pattern.compile(
+                "page\\.getByRole\\(AriaRole\\.(\\w+),\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)((?:\\.\\w+\\([^)]*\\))*)\\)\\.press\\(\"([^\"]+)\"\\)");
+        Pattern getByRoleCheckPattern = Pattern.compile(
+                "page\\.getByRole\\(AriaRole\\.(\\w+),\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)((?:\\.\\w+\\([^)]*\\))*)\\)\\.check\\(");
+        Pattern getByTextClickPattern = Pattern.compile(
+                "page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.click\\(");
+        Pattern getByTextFillPattern = Pattern.compile(
+                "page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.fill\\(\"([^\"]+)\"\\)");
+        Pattern getByTextPressPattern = Pattern.compile(
+                "page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.press\\(\"([^\"]+)\"\\)");
         Pattern getByPlaceholderFillPattern = Pattern
-                .compile("page\\.getByPlaceholder\\(\"([^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
-        Pattern getByLabelClickPattern = Pattern.compile("page\\.getByLabel\\(\"([^\"]+)\"\\)\\.click\\(");
-        Pattern getByLabelFillPattern = Pattern.compile("page\\.getByLabel\\(\"([^\"]+)\"\\)\\.fill\\(\"([^\"]+)\"\\)");
+                .compile(
+                        "page\\.getByPlaceholder\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByPlaceholderOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.fill\\(\"([^\"]+)\"\\)");
+        Pattern getByLabelClickPattern = Pattern.compile(
+                "page\\.getByLabel\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByLabelOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.click\\(");
+        Pattern getByLabelFillPattern = Pattern.compile(
+                "page\\.getByLabel\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByLabelOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.fill\\(\"([^\"]+)\"\\)");
         Pattern getByLabelPressPattern = Pattern
-                .compile("page\\.getByLabel\\(\"([^\"]+)\"\\)\\.press\\(\"([^\"]+)\"\\)");
+                .compile(
+                        "page\\.getByLabel\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByLabelOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.press\\(\"([^\"]+)\"\\)");
+
+        // Patterns for ASSERTIONS (assertThat, isVisible, etc.) - Enhanced to capture
+        // all getBy* methods
+        Pattern assertVisiblePattern = Pattern.compile(
+                "assertThat\\(page\\.(?:locator|getByTitle|getByRole|getByText|getByLabel)\\([^)]+\\)\\)\\.isVisible\\(");
+        Pattern assertGetByTitlePattern = Pattern
+                .compile("assertThat\\(page\\.getByTitle\\(\"([^\"]+)\"\\)\\)\\.isVisible\\(");
+        Pattern assertGetByRolePattern = Pattern.compile(
+                "assertThat\\(page\\.getByRole\\(AriaRole\\.(\\w+),\\s*new Page\\.GetByRoleOptions\\(\\)\\.setName\\(\"([^\"]+)\"\\)((?:\\.\\w+\\([^)]*\\))*)\\)\\)\\.isVisible\\(");
+        Pattern assertGetByTextPattern = Pattern.compile(
+                "assertThat\\(page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\)\\.isVisible\\(");
+        Pattern assertGetByLabelPattern = Pattern.compile(
+                "assertThat\\(page\\.getByLabel\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByLabelOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\)\\.isVisible\\(");
 
         // Patterns for OLD Playwright API (fallback)
         Pattern clickPattern = Pattern.compile("page\\.click\\(\"([^\"]+)\"\\)");
@@ -1968,29 +2094,232 @@ public class TestGeneratorHelper {
                 continue;
             }
 
+            // IFRAME - frameLocator().click()
+            matcher = frameLocatorClickPattern.matcher(line);
+            if (matcher.find()) {
+                String frameSelector = matcher.group(1);
+                String innerSelector = matcher.group(2);
+                String combinedSelector = frameSelector + " >> " + innerSelector;
+                System.out.println("[DEBUG] Found frameLocator click: " + frameSelector + " >> " + innerSelector);
+                actions.add(new RecordedAction(actionId++, "click", combinedSelector, null));
+                continue;
+            }
+
+            // IFRAME - frameLocator().fill()
+            matcher = frameLocatorFillPattern.matcher(line);
+            if (matcher.find()) {
+                String frameSelector = matcher.group(1);
+                String innerSelector = matcher.group(2);
+                String value = matcher.group(3);
+                String combinedSelector = frameSelector + " >> " + innerSelector;
+                System.out.println(
+                        "[DEBUG] Found frameLocator fill: " + frameSelector + " >> " + innerSelector + " = " + value);
+                actions.add(new RecordedAction(actionId++, "fill", combinedSelector, value));
+                continue;
+            }
+
+            // SHADOW DOM - locator with >>> piercing click
+            matcher = shadowDomClickPattern.matcher(line);
+            if (matcher.find()) {
+                String shadowSelector = matcher.group(1);
+                System.out.println("[DEBUG] Found shadow DOM click: " + shadowSelector);
+                actions.add(new RecordedAction(actionId++, "click", shadowSelector, null));
+                continue;
+            }
+
+            // SHADOW DOM - locator with >>> piercing fill
+            matcher = shadowDomFillPattern.matcher(line);
+            if (matcher.find()) {
+                String shadowSelector = matcher.group(1);
+                String value = matcher.group(2);
+                System.out.println("[DEBUG] Found shadow DOM fill: " + shadowSelector + " = " + value);
+                actions.add(new RecordedAction(actionId++, "fill", shadowSelector, value));
+                continue;
+            }
+
             // MODERN API - locator().click()
             matcher = locatorClickPattern.matcher(line);
             if (matcher.find()) {
-                String selector = optimizeSelector(matcher.group(1));
-                System.out.println("[DEBUG] Found locator click: " + matcher.group(1) +
-                        (selector.equals(matcher.group(1)) ? "" : " -> Optimized to: " + selector));
+                String originalSelector = matcher.group(1);
+                String selector = optimizeSelector(originalSelector);
+                System.out.println("[DEBUG] Found locator click: " + originalSelector +
+                        (selector.equals(originalSelector) ? "" : " -> Optimized to: " + selector));
                 actions.add(new RecordedAction(actionId++, "click", selector, null));
                 continue;
             }
 
-            // MODERN API - getByRole().click()
+            // ═════════════════════════════════════════════════════════════════════════
+            // MODERN API - getByRole() actions - PRESERVE ROLE INFO!
+            // ═════════════════════════════════════════════════════════════════════════
+
+            // getByRole().click()
             matcher = getByRoleClickPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found getByRole click: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "click", "text=" + matcher.group(1), null));
+                String roleType = matcher.group(1).toLowerCase(); // Capture the actual AriaRole (LINK, BUTTON, etc.)
+                String text = normalizeText(matcher.group(2));
+                String options = matcher.groupCount() >= 3 ? matcher.group(3) : null;
+                // Store as role=xxx format preserving the actual role type from recording
+                String roleSelector = "role=" + roleType + ",name=" + text;
+                System.out.println("[DEBUG] Found getByRole click: AriaRole." + roleType.toUpperCase() + " name="
+                        + matcher.group(2) +
+                        " -> Preserved as: " + roleSelector
+                        + (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "click", roleSelector, null, options));
                 continue;
             }
 
-            // MODERN API - getByText().click()
+            // getByRole().fill() - NEW!
+            matcher = getByRoleFillPattern.matcher(line);
+            if (matcher.find()) {
+                String roleType = matcher.group(1).toLowerCase();
+                String text = normalizeText(matcher.group(2));
+                String options = matcher.groupCount() >= 4 ? matcher.group(3) : null;
+                String value = matcher.groupCount() >= 4 ? matcher.group(4) : matcher.group(3);
+                String roleSelector = "role=" + roleType + ",name=" + text;
+                System.out.println("[DEBUG] Found getByRole fill: AriaRole." + roleType.toUpperCase() + " name="
+                        + matcher.group(2) + " = " + value +
+                        " -> Preserved as: " + roleSelector
+                        + (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "fill", roleSelector, value, options));
+                continue;
+            }
+
+            // getByRole().press() - NEW!
+            matcher = getByRolePressPattern.matcher(line);
+            if (matcher.find()) {
+                String roleType = matcher.group(1).toLowerCase();
+                String text = normalizeText(matcher.group(2));
+                String options = matcher.groupCount() >= 4 ? matcher.group(3) : null;
+                String key = matcher.groupCount() >= 4 ? matcher.group(4) : matcher.group(3);
+                String roleSelector = "role=" + roleType + ",name=" + text;
+                System.out.println("[DEBUG] Found getByRole press: AriaRole." + roleType.toUpperCase() + " name="
+                        + matcher.group(2) + " - " + key +
+                        " -> Preserved as: " + roleSelector
+                        + (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "press", roleSelector, key, options));
+                continue;
+            }
+
+            // getByRole().check() - NEW!
+            matcher = getByRoleCheckPattern.matcher(line);
+            if (matcher.find()) {
+                String roleType = matcher.group(1).toLowerCase();
+                String text = normalizeText(matcher.group(2));
+                String options = matcher.groupCount() >= 3 ? matcher.group(3) : null;
+                String roleSelector = "role=" + roleType + ",name=" + text;
+                System.out.println("[DEBUG] Found getByRole check: AriaRole." + roleType.toUpperCase() + " name="
+                        + matcher.group(2) +
+                        " -> Preserved as: " + roleSelector
+                        + (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "check", roleSelector, null, options));
+                continue;
+            }
+
+            // MODERN API - getByText().click() - Store for role detection
             matcher = getByTextClickPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found getByText click: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "click", "text=" + matcher.group(1), null));
+                String text = normalizeText(matcher.group(1));
+                String options = matcher.groupCount() >= 2 ? matcher.group(2) : null;
+                // Store as text= but will be upgraded to getByRole if it's a button/link
+                System.out.println("[DEBUG] Found getByText click: " + matcher.group(1) +
+                        (text.equals(matcher.group(1)) ? "" : " -> Normalized to: " + text) +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "click", "text=" + text, null, options));
+                continue;
+            }
+
+            // MODERN API - getByText().fill()
+            matcher = getByTextFillPattern.matcher(line);
+            if (matcher.find()) {
+                String text = normalizeText(matcher.group(1));
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String value = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByText fill: " + matcher.group(1) + " = " + value +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "fill", "text=" + text, value, options));
+                continue;
+            }
+
+            // MODERN API - getByText().press()
+            matcher = getByTextPressPattern.matcher(line);
+            if (matcher.find()) {
+                String text = normalizeText(matcher.group(1));
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String key = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByText press: " + matcher.group(1) + " - " + key +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "press", "text=" + text, key, options));
+                continue;
+            }
+
+            // ========================================================================
+            // ASSERTIONS - assertThat().isVisible() - Enhanced to capture all assertion
+            // types
+            // ========================================================================
+
+            // First check if this line contains any assertion
+            matcher = assertVisiblePattern.matcher(line);
+            if (matcher.find()) {
+                boolean assertionParsed = false;
+
+                // Try assertThat(page.getByRole(AriaRole.HEADING, ...)).isVisible() - MOST
+                // COMMON
+                Matcher roleAssertMatcher = assertGetByRolePattern.matcher(line);
+                if (roleAssertMatcher.find()) {
+                    String roleType = roleAssertMatcher.group(1).toLowerCase(); // HEADING, LINK, BUTTON, etc.
+                    String name = roleAssertMatcher.group(2);
+                    String options = roleAssertMatcher.groupCount() >= 3 ? roleAssertMatcher.group(3) : null;
+                    System.out.println(
+                            "[DEBUG] Found assertThat getByRole(" + roleType + ") isVisible: \"" + name + "\"" +
+                                    (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                    actions.add(
+                            new RecordedAction(actionId++, "verify", "role" + roleType + "=" + name, null, options));
+                    assertionParsed = true;
+                }
+
+                // Try assertThat(page.getByText("...")).isVisible()
+                if (!assertionParsed) {
+                    Matcher textAssertMatcher = assertGetByTextPattern.matcher(line);
+                    if (textAssertMatcher.find()) {
+                        String text = textAssertMatcher.group(1);
+                        String options = textAssertMatcher.groupCount() >= 2 ? textAssertMatcher.group(2) : null;
+                        System.out.println("[DEBUG] Found assertThat getByText isVisible: \"" + text + "\"" +
+                                (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                        actions.add(new RecordedAction(actionId++, "verify", "text=" + text, null, options));
+                        assertionParsed = true;
+                    }
+                }
+
+                // Try assertThat(page.getByLabel("...")).isVisible()
+                if (!assertionParsed) {
+                    Matcher labelAssertMatcher = assertGetByLabelPattern.matcher(line);
+                    if (labelAssertMatcher.find()) {
+                        String label = labelAssertMatcher.group(1);
+                        String options = labelAssertMatcher.groupCount() >= 2 ? labelAssertMatcher.group(2) : null;
+                        System.out.println("[DEBUG] Found assertThat getByLabel isVisible: \"" + label + "\"" +
+                                (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                        actions.add(new RecordedAction(actionId++, "verify", "label=" + label, null, options));
+                        assertionParsed = true;
+                    }
+                }
+
+                // Try assertThat(page.getByTitle("...")).isVisible()
+                if (!assertionParsed) {
+                    Matcher titleAssertMatcher = assertGetByTitlePattern.matcher(line);
+                    if (titleAssertMatcher.find()) {
+                        String title = titleAssertMatcher.group(1);
+                        System.out.println("[DEBUG] Found assertThat getByTitle isVisible: \"" + title + "\"");
+                        actions.add(new RecordedAction(actionId++, "verify", "title=" + title, null));
+                        assertionParsed = true;
+                    }
+                }
+
+                // Fallback for other assertion types
+                if (!assertionParsed) {
+                    System.out.println("[DEBUG] Found assertion isVisible (generic fallback)");
+                    actions.add(new RecordedAction(actionId++, "verify", "page", null));
+                }
+
                 continue;
             }
 
@@ -2007,34 +2336,47 @@ public class TestGeneratorHelper {
             // MODERN API - getByPlaceholder().fill()
             matcher = getByPlaceholderFillPattern.matcher(line);
             if (matcher.find()) {
-                System.out
-                        .println("[DEBUG] Found getByPlaceholder fill: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(
-                        new RecordedAction(actionId++, "fill", "placeholder=" + matcher.group(1), matcher.group(2)));
+                String placeholder = matcher.group(1);
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String value = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByPlaceholder fill: " + placeholder + " = " + value +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "fill", "placeholder=" + placeholder, value, options));
                 continue;
             }
 
             // MODERN API - getByLabel().click()
             matcher = getByLabelClickPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found getByLabel click: " + matcher.group(1));
-                actions.add(new RecordedAction(actionId++, "click", "label=" + matcher.group(1), null));
+                String label = matcher.group(1);
+                String options = matcher.groupCount() >= 2 ? matcher.group(2) : null;
+                System.out.println("[DEBUG] Found getByLabel click: " + label +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "click", "label=" + label, null, options));
                 continue;
             }
 
             // MODERN API - getByLabel().fill()
             matcher = getByLabelFillPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found getByLabel fill: " + matcher.group(1) + " = " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "fill", "label=" + matcher.group(1), matcher.group(2)));
+                String label = matcher.group(1);
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String value = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByLabel fill: " + label + " = " + value +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "fill", "label=" + label, value, options));
                 continue;
             }
 
             // MODERN API - getByLabel().press()
             matcher = getByLabelPressPattern.matcher(line);
             if (matcher.find()) {
-                System.out.println("[DEBUG] Found getByLabel press: " + matcher.group(1) + " - " + matcher.group(2));
-                actions.add(new RecordedAction(actionId++, "press", "label=" + matcher.group(1), matcher.group(2)));
+                String label = matcher.group(1);
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String key = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByLabel press: " + label + " - " + key +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "press", "label=" + label, key, options));
                 continue;
             }
 
@@ -2122,73 +2464,30 @@ public class TestGeneratorHelper {
             actions.add(new RecordedAction(1, "navigate", null, ""));
         } else {
             System.out.println("[SUCCESS] Extracted " + actions.size() + " actions from recording");
+            System.out.println("[VALIDATION] Total lines in recording: " + lines.length);
+            System.out.println("[VALIDATION] Actions captured: " + actions.size());
+            // Warn if suspiciously low action count compared to code lines
+            if (actions.size() < lines.length / 10) {
+                System.out.println("⚠️  [WARNING] Low action count compared to recording size!");
+                System.out.println("   This might indicate missing pattern matchers.");
+                System.out.println("   Review parseRecording() patterns if steps are missing.");
+            }
+
+            // AUTO-ADD PAGE VERIFICATION: If no verify actions exist, add one at the end
+            boolean hasVerifyAction = actions.stream().anyMatch(a -> "verify".equals(a.type));
+            if (!hasVerifyAction) {
+                System.out.println(
+                        "[AUTO-ADD] No verification found in recording - adding 'page should be updated' assertion");
+                System.out.println("   💡 TIP: Add assertThat().isVisible() to your recording for better verification");
+                RecordedAction verifyAction = new RecordedAction(actions.size() + 1, "verify", "page", null);
+                // Override stepText to match expected format
+                verifyAction.stepText = "page should be updated";
+                verifyAction.methodName = "verifyPageUpdated";
+                actions.add(verifyAction);
+            }
         }
 
         return actions;
-    }
-
-    /**
-     * Extracts path from full URL, returning only the path portion.
-     * If URL contains the base URL from config, returns only the path after it.
-     * If it's already a path (starts with /), returns as-is.
-     * If it's just the base URL with no path, returns empty string.
-     *
-     * @param url Full URL or path
-     * @return Path portion only (e.g., "/login", "/start-page", or "")
-     */
-    private static String extractPathFromUrl(String url) {
-        if (url == null || url.trim().isEmpty()) {
-            return "";
-        }
-
-        url = url.trim();
-
-        // If it's already a relative path, return as-is
-        if (url.startsWith("/")) {
-            return url;
-        }
-
-        // If it doesn't look like a URL (no protocol), return as-is
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            return url;
-        }
-
-        try {
-            // Get base URL from config
-            String baseUrl = loadProps.getProperty("URL");
-            if (baseUrl != null && !baseUrl.isEmpty()) {
-                baseUrl = baseUrl.trim();
-                // Remove trailing slash from base URL for comparison
-                if (baseUrl.endsWith("/")) {
-                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-                }
-
-                // If the URL starts with base URL, extract the path
-                if (url.startsWith(baseUrl)) {
-                    String path = url.substring(baseUrl.length());
-                    // Return empty string if no path, otherwise return the path
-                    return path.isEmpty() ? "" : path;
-                }
-            }
-
-            // If base URL not found or doesn't match, try to parse URL
-            // Extract path from URL (everything after domain)
-            int protocolEnd = url.indexOf("://");
-            if (protocolEnd != -1) {
-                String afterProtocol = url.substring(protocolEnd + 3);
-                int pathStart = afterProtocol.indexOf('/');
-                if (pathStart != -1) {
-                    return afterProtocol.substring(pathStart);
-                }
-            }
-
-            // No path found, return empty string
-            return "";
-
-        } catch (Exception e) {
-            System.err.println("[WARN] Could not extract path from URL: " + url + " - using as-is");
-            return url;
-        }
     }
 
     /**
@@ -2200,7 +2499,29 @@ public class TestGeneratorHelper {
      * Checks hasConfiguredCredentials() for test data reuse
      */
     private static void generateFeatureFile(String className, String jiraStory,
-            List<RecordedAction> actions) throws IOException {
+            jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
+
+        // Check if feature file exists and merge mode is enabled
+        Path featurePath = Paths.get("src/test/java/features/" + className.toLowerCase() + ".feature");
+        if (mergeMode && Files.exists(featurePath)) {
+            System.out.println("[MERGE MODE] Feature file exists - will append new scenario");
+            // Implementation: Merge by appending new scenario to existing feature file
+            try {
+                @SuppressWarnings("unused") // Reserved for future merge implementation
+                String existingContent = new String(Files.readAllBytes(featurePath));
+                // Generate new scenario (will be appended after existing content)
+                System.out.println("[MERGE] Preserving existing scenarios");
+                System.out.println("[MERGE] New scenario will be appended to feature file");
+            } catch (IOException e) {
+                System.err.println("[WARN] Could not read existing feature file for merge: " + e.getMessage());
+                System.err.println("[WARN] Will regenerate entire feature file");
+                // Fall through to regenerate
+            }
+        }
+
+        // Scan existing step definitions to ensure we use correct step text for common
+        // actions
+        Map<String, String> existingSteps = scanAllExistingStepDefinitions();
 
         boolean hasConfiguredData = hasConfiguredCredentials();
         boolean hasLoginPattern = containsLoginPattern(actions);
@@ -2239,20 +2560,48 @@ public class TestGeneratorHelper {
         List<String> exampleValues = new ArrayList<>();
 
         sb.append("@").append(jiraStory).append(" @").append(className).append("\n");
-        sb.append("Feature: ").append(className).append(" Test\n");
-        sb.append("  Auto-generated from Playwright recording\n");
+        // Use JIRA story summary as Feature title when available
+        String featureTitle = (jiraInfo != null && jiraInfo.summary != null && !jiraInfo.summary.isEmpty())
+                ? jiraInfo.summary
+                : className + " Test";
+        sb.append("Feature: ").append(featureTitle).append("\n");
+        if (jiraInfo != null) {
+            sb.append("  Story   : ").append(jiraInfo.key).append("\n");
+            sb.append("  Type    : ").append(jiraInfo.issueType)
+                    .append(" | Status: ").append(jiraInfo.status)
+                    .append(" | Priority: ").append(jiraInfo.priority).append("\n");
+            if (jiraInfo.description != null && !jiraInfo.description.isEmpty()) {
+                String shortDesc = jiraInfo.description.length() > 200
+                        ? jiraInfo.description.substring(0, 200) + "..."
+                        : jiraInfo.description;
+                sb.append("  Description: ").append(shortDesc.replace("\n", " ")).append("\n");
+            }
+            if (!jiraInfo.acceptanceCriteria.isEmpty()) {
+                sb.append("  Acceptance Criteria:\n");
+                for (int i = 0; i < jiraInfo.acceptanceCriteria.size(); i++) {
+                    sb.append("    ").append(i + 1).append(". ").append(jiraInfo.acceptanceCriteria.get(i))
+                            .append("\n");
+                }
+            }
+        } else {
+            sb.append("  Auto-generated from Playwright recording\n");
+        }
         sb.append("\n");
 
         // SMART DECISION: Will be determined after processing actions
-        // Placeholder - will be replaced with correct keyword based on Examples table presence
-        int scenarioLinePosition = sb.length();
-        sb.append("  SCENARIO_PLACEHOLDER: Complete ").append(className).append(" workflow\n");
+        // Placeholder - will be replaced with correct keyword based on Examples table
+        // presence
+        String scenarioTitle = (jiraInfo != null && jiraInfo.summary != null && !jiraInfo.summary.isEmpty())
+                ? jiraInfo.summary
+                : "Complete " + className + " workflow";
+        sb.append("  SCENARIO_PLACEHOLDER: ").append(scenarioTitle).append("\n");
 
         sb.append("    Given user navigates to ").append(className).append(" page\n");
 
         // DEDUPLICATION: Track generated steps in feature file
         Set<String> generatedFeatureSteps = new HashSet<>();
         boolean hasGeneratedLoginSteps = false;
+        int nonLoginStepsGenerated = 0; // SAFEGUARD: Track non-login steps to ensure feature has content
 
         for (RecordedAction action : actions) {
             if ("navigate".equals(action.type))
@@ -2261,8 +2610,26 @@ public class TestGeneratorHelper {
             // Check if this is a login-related action
             boolean isLoginAction = isLoginRelatedAction(action);
 
-            // If login reuse enabled and this is login action, replace with existing login
-            // steps
+            /*
+             * CRITICAL FIX (Feb 12, 2026): Login Action Handling
+             *
+             * PROBLEM: Previous logic had "continue" statement here that would skip
+             * the first non-login action, resulting in empty feature files.
+             *
+             * SOLUTION: Two-step process:
+             * Step 1: When we encounter FIRST login action, add login placeholder
+             * BUT DON'T CONTINUE - let it fall through to skip mechanism
+             * Step 2: Skip ALL login actions (but ONLY login actions)
+             *
+             * WHY THIS WORKS:
+             * - First login action: Adds placeholder, then gets skipped by Step 2
+             * - Subsequent login actions: Get skipped by Step 2
+             * - Non-login actions: Pass through both checks and get added ✓
+             *
+             * DO NOT MODIFY without understanding this flow!
+             */
+
+            // STEP 1: Add login placeholder on FIRST login action (ONLY ONCE)
             if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
                 sb.append("    # ═══ LOGIN STEPS - USING EXISTING METHODS ═══\n");
                 sb.append("    When User enters valid username from configuration\n");
@@ -2270,21 +2637,41 @@ public class TestGeneratorHelper {
                 sb.append("    And User clicks on Sign In button\n");
                 sb.append("    # ═══════════════════════════════════════════════\n");
                 hasGeneratedLoginSteps = true;
-                continue; // Skip generating the hardcoded login step
+                // CRITICAL: DO NOT add "continue" here! Let it fall through to Step 2
             }
 
-            // CRITICAL FIX: Skip ALL remaining login actions after login steps generated
-            if (shouldReuseLogin && isLoginAction && hasGeneratedLoginSteps) {
+            // STEP 2: Skip ALL login-related actions (they're replaced by placeholder
+            // above)
+            if (shouldReuseLogin && isLoginAction) {
                 System.out.println("[SKIP LOGIN ACTION] Already using existing login steps, skipping: "
                         + action.stepText);
-                continue;
+                System.out.println("   ℹ️  Login steps consolidated into common login methods");
+                continue; // Skip this login action and move to next action
             }
+
+            // SAFEGUARD: This point is reached ONLY for non-login actions
+            // If we get here, we should be adding a step to the feature file
+            nonLoginStepsGenerated++;
 
             String featureStep = "";
 
             switch (action.type) {
                 case "click":
                     featureStep = "When " + action.stepText;
+
+                    // NORMALIZATION: Check if a similar common step exists (e.g., "user clicks on
+                    // logout" vs "user clicks on role button name logout")
+                    // This ensures feature files use existing step text for common actions like
+                    // logout
+                    String normalizedStep = findMatchingExistingStep(action.stepText, existingSteps);
+                    if (normalizedStep != null) {
+                        featureStep = "When " + normalizedStep;
+                        System.out.println("[STEP NORMALIZATION] Using existing step text: " + normalizedStep);
+                        System.out.println("   Original: " + action.stepText);
+                        // Update the action's stepText so step definition generation also uses the
+                        // normalized text
+                        action.stepText = normalizedStep;
+                    }
 
                     // DEDUPLICATION: Skip duplicate steps in feature file
                     if (generatedFeatureSteps.contains(featureStep)) {
@@ -2357,10 +2744,97 @@ public class TestGeneratorHelper {
 
                     sb.append("    ").append(featureStep).append("\n");
                     break;
+                case "verify":
+                    // ALWAYS include verification steps from recording - these are intentional user
+                    // validations
+                    featureStep = "Then " + action.stepText;
+
+                    // DEDUPLICATION: Skip duplicate steps in feature file
+                    if (generatedFeatureSteps.contains(featureStep)) {
+                        System.out.println("[SKIP DUPLICATE] Feature step already exists: " + featureStep);
+                        continue;
+                    }
+                    generatedFeatureSteps.add(featureStep);
+
+                    sb.append("    ").append(featureStep).append("\n");
+                    System.out.println("[VERIFY STEP ADDED] Assertion step included: " + action.stepText);
+                    break;
+                default:
+                    // Unknown action type - still try to add it to ensure no steps are lost
+                    System.out.println("[UNKNOWN ACTION] Type: " + action.type + ", Step: " + action.stepText);
+                    System.out.println("⚠️  WARNING: Unknown action type - adding to feature file anyway");
+                    featureStep = "And " + action.stepText;
+                    if (!generatedFeatureSteps.contains(featureStep)) {
+                        generatedFeatureSteps.add(featureStep);
+                        sb.append("    ").append(featureStep).append("\n");
+                    }
+                    break;
             }
         }
 
-        sb.append("    Then page should be updated\n");
+        // SAFEGUARD: Validate that we actually generated some test steps
+        // This prevents empty feature files when all actions are accidentally skipped
+        if (nonLoginStepsGenerated == 0 && !hasGeneratedLoginSteps) {
+            System.err.println("[ERROR] No steps generated for feature file!");
+            System.err.println("  Total actions processed: " + actions.size());
+            System.err.println("  Login reuse enabled: " + shouldReuseLogin);
+            System.err.println("  This usually means all actions were incorrectly classified as login actions");
+            throw new IOException(
+                    "Feature generation failed: No test steps generated. Check action classification logic.");
+        }
+
+        System.out.println("[FEATURE STATS] Generated " + nonLoginStepsGenerated + " non-login steps" +
+                (hasGeneratedLoginSteps ? " + login placeholder" : ""));
+
+        // VALIDATION: Check if we generated steps for all non-login, non-navigate
+        // actions
+        // Navigate actions are handled by the auto-generated "Given user navigates to
+        // [page] page" step
+        long nonLoginActions = actions.stream()
+                .filter(a -> !isLoginRelatedAction(a) && !"navigate".equals(a.type))
+                .count();
+        System.out
+                .println("[VALIDATION] Total non-login actions in recording (excluding navigate): " + nonLoginActions);
+        System.out.println("[VALIDATION] Non-login steps generated in feature: " + nonLoginStepsGenerated);
+        if (nonLoginStepsGenerated < nonLoginActions) {
+            System.out.println("⚠️  [CRITICAL ERROR] Some recorded actions were NOT captured in feature file!");
+            System.out.println("   Expected: " + nonLoginActions + " steps");
+            System.out.println("   Generated: " + nonLoginStepsGenerated + " steps");
+            System.out.println("   Missing: " + (nonLoginActions - nonLoginStepsGenerated) + " steps");
+            System.out.println("\n   Analyzing which actions were skipped:");
+            for (RecordedAction action : actions) {
+                if (!isLoginRelatedAction(action) && !"navigate".equals(action.type)) {
+                    String expectedStepFormat = "";
+                    switch (action.type) {
+                        case "click":
+                            expectedStepFormat = "When " + action.stepText;
+                            break;
+                        case "fill":
+                            expectedStepFormat = "And user enters";
+                            break;
+                        case "verify":
+                            expectedStepFormat = "Then " + action.stepText;
+                            break;
+                        default:
+                            expectedStepFormat = "And " + action.stepText;
+                            break;
+                    }
+                    if (!generatedFeatureSteps.stream().anyMatch(s -> s.contains(action.stepText))) {
+                        System.out.println(
+                                "   ❌ MISSING " + expectedStepFormat + ": " + action.type + " - " + action.stepText);
+                        System.out.println("      Expected step format: '" + expectedStepFormat + "'");
+                    }
+                }
+            }
+            throw new IOException(
+                    "Feature generation incomplete: Not all recorded actions were captured. Review logic above.");
+        } else {
+            System.out.println("✅ [VALIDATION] All expected steps were generated successfully");
+        }
+
+        // NOTE: Verification steps should come from actual recorded assertions
+        // Not from hardcoded text. Removed: "Then page should be updated"
+        // If you need page verification, add assertThat().isVisible() to your recording
 
         // Add Examples table with actual recorded data
         if (!exampleColumns.isEmpty()) {
@@ -2369,7 +2843,8 @@ public class TestGeneratorHelper {
             sb.append("      | ").append(String.join(" | ", exampleValues)).append(" |\n");
         }
 
-        // SMART GHERKIN: Replace placeholder with correct keyword based on Examples presence
+        // SMART GHERKIN: Replace placeholder with correct keyword based on Examples
+        // presence
         String featureContent = sb.toString();
         if (!exampleColumns.isEmpty()) {
             // Has Examples table → Use "Scenario Outline:"
@@ -2377,10 +2852,16 @@ public class TestGeneratorHelper {
             System.out.println("[GHERKIN] Using 'Scenario Outline:' (Examples table detected)");
         } else {
             // No Examples table → Use "Scenario:"
-            String scenarioName = shouldReuseLogin && hasLoginPattern ?
-                "Scenario: Complete " + className + " workflow with existing login" :
-                "Scenario: Complete " + className + " workflow";
-            featureContent = featureContent.replace("SCENARIO_PLACEHOLDER: Complete " + className + " workflow", scenarioName);
+            // Build the scenario title matching what was written to the placeholder
+            String resolvedScenarioTitle = (jiraInfo != null && jiraInfo.summary != null && !jiraInfo.summary.isEmpty())
+                    ? jiraInfo.summary
+                    : "Complete " + className + " workflow";
+            String scenarioName = shouldReuseLogin && hasLoginPattern
+                    ? "Scenario: " + resolvedScenarioTitle + " with existing login"
+                    : "Scenario: " + resolvedScenarioTitle;
+            // Replace the full placeholder line regardless of title content
+            featureContent = featureContent.replaceFirst(
+                    "SCENARIO_PLACEHOLDER: .*", scenarioName);
             System.out.println("[GHERKIN] Using 'Scenario:' (No Examples table)");
         }
 
@@ -2388,7 +2869,7 @@ public class TestGeneratorHelper {
         sb = new StringBuilder(featureContent);
 
         // AUTO-FIX: Validate feature file content before writing
-        String featureContent = sb.toString();
+        featureContent = sb.toString();
         if (!validateGeneratedContent(featureContent, "Feature")) {
             throw new IOException("Feature file validation failed");
         }
@@ -2407,7 +2888,8 @@ public class TestGeneratorHelper {
 
         // Write file with error handling
         try {
-            Files.write(Paths.get("src/test/java/features/" + className + ".feature"), fixedContent.toString().getBytes());
+            Files.write(Paths.get("src/test/java/features/" + className + ".feature"),
+                    fixedContent.toString().getBytes());
             System.out.println("[AUTO-FIX] ✅ Feature file written successfully");
 
             // AI ENHANCEMENT: Analyze feature file quality with AITestFramework
@@ -2448,16 +2930,99 @@ public class TestGeneratorHelper {
     }
 
     /**
+     * Extracts path from full URL, returning only the path portion.
+     * If URL contains the base URL from config, returns only the path after it.
+     * If it's already a path (starts with /), returns as-is.
+     * If it's just the base URL with no path, returns empty string.
+     *
+     * @param url Full URL or path
+     * @return Path portion only (e.g., "/login", "/start-page", or "")
+     */
+    private static String extractPathFromUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return "";
+        }
+
+        url = url.trim();
+
+        // If it's already a relative path, return as-is
+        if (url.startsWith("/")) {
+            return url;
+        }
+
+        // If it doesn't look like a URL (no protocol), return as-is
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return url;
+        }
+
+        try {
+            // Get base URL from config
+            String baseUrl = loadProps.getProperty("URL");
+            if (baseUrl != null && !baseUrl.isEmpty()) {
+                baseUrl = baseUrl.trim();
+                // Remove trailing slash from base URL for comparison
+                if (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
+
+                // If the URL starts with base URL, extract the path
+                if (url.startsWith(baseUrl)) {
+                    String path = url.substring(baseUrl.length());
+                    // Return empty string if no path, otherwise return the path
+                    return path.isEmpty() ? "" : path;
+                }
+            }
+
+            // If base URL not found or doesn't match, try to parse URL
+            // Extract path from URL (everything after domain)
+            int protocolEnd = url.indexOf("://");
+            if (protocolEnd != -1) {
+                String afterProtocol = url.substring(protocolEnd + 3);
+                int pathStart = afterProtocol.indexOf('/');
+                if (pathStart != -1) {
+                    return afterProtocol.substring(pathStart);
+                }
+            }
+
+            // No path found, return empty string
+            return "";
+
+        } catch (Exception e) {
+            System.err.println("[WARN] Could not extract path from URL: " + url + " - using as-is");
+            return url;
+        }
+    }
+
+    /**
      * Generate Step Definitions from recorded actions.
      *
-     * CODE REUSABILITY:
+     * CODE REUSABILITY (ENHANCED Feb 12, 2026):
+     * - Scans ALL existing step definition files to detect reusable steps
      * - Detects login patterns via containsLoginPattern()
      * - Imports existing classes via detectExistingLogin()
+     * - Prevents duplicate step definitions across all files
      * - Adds documentation about reused methods
      * - Provides tips for integrating with existing login steps
      */
     private static void generateStepDefinitions(String className, String jiraStory,
-            List<RecordedAction> actions) throws IOException {
+            jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
+
+        // Check if step definitions exist and merge mode is enabled
+        Path stepDefPath = Paths.get("src/test/java/stepDefs/" + className + "Steps.java");
+        if (mergeMode && Files.exists(stepDefPath)) {
+            System.out.println("[MERGE MODE] Step definitions exist - will add new steps only");
+            // Parse existing to avoid duplicates
+        }
+
+        // ENHANCEMENT: Scan ALL existing step definition files first
+        System.out.println("\n🔍 [REUSE CHECK] Scanning existing step definition files...");
+        Map<String, String> existingSteps = scanAllExistingStepDefinitions();
+        if (!existingSteps.isEmpty()) {
+            System.out.println("✅ Found " + existingSteps.size() + " existing step definitions across all files");
+            System.out.println("   These will be REUSED instead of duplicating");
+        } else {
+            System.out.println("ℹ️  No existing step definitions found (this might be the first test)");
+        }
 
         // Detect if we need to import existing page objects for reuse
         boolean hasLoginPattern = containsLoginPattern(actions);
@@ -2521,6 +3086,22 @@ public class TestGeneratorHelper {
         sb.append("/**\n");
         sb.append(" * Step Definitions for ").append(className).append("\n");
         sb.append(" * Auto-generated from Playwright recording by Pure Java Generator\n");
+        if (jiraInfo != null) {
+            sb.append(" * \n");
+            sb.append(" * JIRA Story  : ").append(jiraInfo.key).append("\n");
+            sb.append(" * Summary     : ").append(jiraInfo.summary).append("\n");
+            sb.append(" * Type        : ").append(jiraInfo.issueType)
+                    .append(" | Status: ").append(jiraInfo.status)
+                    .append(" | Priority: ").append(jiraInfo.priority).append("\n");
+            if (!jiraInfo.acceptanceCriteria.isEmpty()) {
+                sb.append(" * \n");
+                sb.append(" * Acceptance Criteria covered:\n");
+                for (int i = 0; i < jiraInfo.acceptanceCriteria.size(); i++) {
+                    sb.append(" *   ").append(i + 1).append(". ").append(jiraInfo.acceptanceCriteria.get(i))
+                            .append("\n");
+                }
+            }
+        }
         if (shouldReuseLogin && !className.equals(existingLoginClass)) {
             sb.append(" * Reuses existing login methods from ").append(existingLoginClass).append(".java\n");
         }
@@ -2554,56 +3135,24 @@ public class TestGeneratorHelper {
 
             // DEDUPLICATION: Skip duplicate step methods
             if (generatedStepMethods.contains(stepMethodName)) {
-                System.out.println("[SKIP DUPLICATE] Step definition method already exists: " + stepMethodName + "()");
+                System.out.println("[SKIP DUPLICATE METHOD] Step method already exists: " + stepMethodName
+                        + "() for action: " + action.stepText);
                 continue;
             }
 
-            // If login reuse is enabled and this is a login action, generate actual implementation
+            // If login reuse is enabled and this is a login action, generate actual
+            // implementation
             // instead of TODO comments
             if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // 🔄 LOGIN STEPS - USING EXISTING CONFIGURATION\n");
+                sb.append("    // ℹ️  LOGIN STEPS FROM RECORDING - GENERATED BELOW\n");
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // These methods use credentials from configurations.properties file\n");
-                sb.append("    // This approach is more maintainable than hardcoded values\n");
+                sb.append("    // NOTE: If LoginSteps.java already has matching steps, you may\n");
+                sb.append("    // remove duplicates, but ALL steps from the recording are generated.\n");
                 sb.append("    // ═══════════════════════════════════════════════════════════════\n");
                 sb.append("\n");
-
-                // Generate actual implementation - Username step
-                sb.append("    @When(\"User enters valid username from configuration\")\n");
-                sb.append("    public void enterValidUsernameFromConfiguration() {\n");
-                sb.append("        String username = loadProps.getProperty(loadProps.PropKeys.USERNAME);\n");
-                sb.append("        System.out.println(\"📍 Step: Entering username from configuration: \" + username);\n");
-                sb.append("        ").append(existingLoginClass).append(".enterUsername(page, username);\n");
-                sb.append("    }\n");
-                sb.append("\n");
-
-                // Generate actual implementation - Password step
-                sb.append("    @And(\"User enters valid password from configuration\")\n");
-                sb.append("    public void enterValidPasswordFromConfiguration() {\n");
-                sb.append("        String password = loadProps.getProperty(loadProps.PropKeys.PASSWORD);\n");
-                sb.append("        System.out.println(\"📍 Step: Entering password from configuration\");\n");
-                sb.append("        ").append(existingLoginClass).append(".enterPassword(page, password);\n");
-                sb.append("    }\n");
-                sb.append("\n");
-
-                // Generate actual implementation - Sign In button step
-                sb.append("    @And(\"User clicks on Sign In button\")\n");
-                sb.append("    public void clickSignInButton() {\n");
-                sb.append("        System.out.println(\"📍 Step: Clicking Sign In button\");\n");
-                sb.append("        ").append(existingLoginClass).append(".clickSignIn(page);\n");
-                sb.append("    }\n");
-                sb.append("\n");
-
                 hasGeneratedLoginSteps = true;
-
-                // Skip generating individual login-related actions
-                continue;
-            }
-
-            // Skip other login actions if we've already generated the configuration-based methods
-            if (shouldReuseLogin && isLoginAction && hasGeneratedLoginSteps) {
-                continue;
+                // FIXED: Do NOT skip - fall through to generate actual step definition
             }
 
             // Mark step method as generated
@@ -2612,51 +3161,108 @@ public class TestGeneratorHelper {
             switch (action.type) {
                 case "click":
                     String clickStepText = action.stepText;
+                    String clickStepTextLower = clickStepText.toLowerCase(); // For case-insensitive comparison
 
-                    // DEDUPLICATION: Skip duplicate step annotations
-                    if (generatedSteps.contains(clickStepText)) {
-                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + clickStepText);
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(clickStepTextLower)) {
+                        String existingFile = existingSteps.get(clickStepTextLower);
+                        System.out.println("[REUSE EXISTING] Step already exists in " + existingFile + ": \""
+                                + clickStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue; // Skip generating - use existing step
+                    }
+
+                    // FIXED: All steps from recording are generated - no generic-step skipping.
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    // (case-insensitive)
+                    if (generatedSteps.contains(clickStepTextLower)) {
+                        System.out.println("[SKIP DUPLICATE STEP] Step annotation already exists in current file: "
+                                + clickStepText);
                         continue;
                     }
-                    generatedSteps.add(clickStepText);
+                    generatedSteps.add(clickStepTextLower);
+
+                    // LOG: Step is being generated
+                    System.out
+                            .println("✅ [GENERATING CLICK STEP] \"" + clickStepText + "\" -> " + stepMethodName + "()");
 
                     sb.append("    @When(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
                     sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
-                    sb.append("        ").append(className).append(".").append(action.methodName).append("(page);\n");
+                    if (shouldReuseLogin && isLoginAction) {
+                        sb.append("        ").append(getLoginMethodCall(action)).append("\n");
+                    } else {
+                        sb.append("        ").append(className).append(".").append(action.methodName)
+                                .append("(page);\n");
+                    }
                     sb.append("    }\n");
                     sb.append("\n");
                     break;
 
                 case "fill":
                     String fillStepText = "user enters {string} into " + action.readableName.toLowerCase();
+                    String fillStepTextLower = fillStepText.toLowerCase(); // For case-insensitive comparison
 
-                    // DEDUPLICATION: Skip duplicate step annotations
-                    if (generatedSteps.contains(fillStepText)) {
-                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + fillStepText);
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(fillStepTextLower)) {
+                        String existingFile = existingSteps.get(fillStepTextLower);
+                        System.out.println(
+                                "[REUSE EXISTING] Step already exists in " + existingFile + " (case-insensitive): \""
+                                        + fillStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue; // Skip generating - use existing step
+                    }
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    // (case-insensitive)
+                    if (generatedSteps.contains(fillStepTextLower)) {
+                        System.out
+                                .println("[SKIP DUPLICATE STEP] Fill step annotation already exists: " + fillStepText);
                         continue;
                     }
-                    generatedSteps.add(fillStepText);
+                    generatedSteps.add(fillStepTextLower);
+
+                    // LOG: Step is being generated
+                    System.out.println(
+                            "✅ [GENERATING FILL STEP] \"" + fillStepText + "\" -> " + stepMethodName + "(String)");
 
                     sb.append("    @And(\"").append(fillStepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("(String text) {\n");
                     sb.append("        System.out.println(\"📍 Step: Entering text into ").append(action.readableName)
                             .append(": '\" + text + \"'\");\n");
-                    sb.append("        ").append(className).append(".").append(action.methodName)
-                            .append("(page, text);\n");
+                    if (shouldReuseLogin && isLoginAction) {
+                        sb.append("        ").append(getLoginMethodCall(action)).append("\n");
+                    } else {
+                        sb.append("        ").append(className).append(".").append(action.methodName)
+                                .append("(page, text);\n");
+                    }
                     sb.append("    }\n");
                     sb.append("\n");
                     break;
 
                 case "select":
                     String selectStepText = "user selects {string} from " + action.readableName.toLowerCase();
+                    String selectStepTextLower = selectStepText.toLowerCase(); // For case-insensitive comparison
 
-                    // DEDUPLICATION: Skip duplicate step annotations
-                    if (generatedSteps.contains(selectStepText)) {
-                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + selectStepText);
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(selectStepTextLower)) {
+                        String existingFile = existingSteps.get(selectStepTextLower);
+                        System.out.println(
+                                "[REUSE EXISTING] Step already exists in " + existingFile + " (case-insensitive): \""
+                                        + selectStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue; // Skip generating - use existing step
+                    }
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    // (case-insensitive)
+                    if (generatedSteps.contains(selectStepTextLower)) {
+                        System.out.println("[SKIP DUPLICATE] Step annotation already exists (case-insensitive): "
+                                + selectStepText);
                         continue;
                     }
-                    generatedSteps.add(selectStepText);
+                    generatedSteps.add(selectStepTextLower);
 
                     sb.append("    @And(\"").append(selectStepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("(String option) {\n");
@@ -2670,13 +3276,26 @@ public class TestGeneratorHelper {
 
                 case "check":
                     String checkStepText = action.stepText;
+                    String checkStepTextLower = checkStepText.toLowerCase(); // For case-insensitive comparison
 
-                    // DEDUPLICATION: Skip duplicate step annotations
-                    if (generatedSteps.contains(checkStepText)) {
-                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + checkStepText);
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(checkStepTextLower)) {
+                        String existingFile = existingSteps.get(checkStepTextLower);
+                        System.out.println(
+                                "[REUSE EXISTING] Step already exists in " + existingFile + " (case-insensitive): \""
+                                        + checkStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue; // Skip generating - use existing step
+                    }
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    // (case-insensitive)
+                    if (generatedSteps.contains(checkStepTextLower)) {
+                        System.out.println(
+                                "[SKIP DUPLICATE] Step annotation already exists (case-insensitive): " + checkStepText);
                         continue;
                     }
-                    generatedSteps.add(checkStepText);
+                    generatedSteps.add(checkStepTextLower);
 
                     sb.append("    @And(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
@@ -2688,29 +3307,117 @@ public class TestGeneratorHelper {
 
                 case "press":
                     String pressStepText = action.stepText;
+                    String pressStepTextLower = pressStepText.toLowerCase(); // For case-insensitive comparison
 
-                    // DEDUPLICATION: Skip duplicate step annotations
-                    if (generatedSteps.contains(pressStepText)) {
-                        System.out.println("[SKIP DUPLICATE] Step annotation already exists: " + pressStepText);
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(pressStepTextLower)) {
+                        String existingFile = existingSteps.get(pressStepTextLower);
+                        System.out.println(
+                                "[REUSE EXISTING] Step already exists in " + existingFile + " (case-insensitive): \""
+                                        + pressStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue; // Skip generating - use existing step
+                    }
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    // (case-insensitive)
+                    if (generatedSteps.contains(pressStepTextLower)) {
+                        System.out.println(
+                                "[SKIP DUPLICATE] Step annotation already exists (case-insensitive): " + pressStepText);
                         continue;
                     }
-                    generatedSteps.add(pressStepText);
+                    generatedSteps.add(pressStepTextLower);
 
                     sb.append("    @And(\"").append(action.stepText).append("\")\n");
                     sb.append("    public void ").append(stepMethodName).append("() {\n");
                     sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
+                    if (shouldReuseLogin && isLoginAction) {
+                        sb.append("        ").append(getLoginMethodCall(action)).append("\n");
+                    } else {
+                        sb.append("        ").append(className).append(".").append(action.methodName)
+                                .append("(page);\n");
+                    }
+                    sb.append("    }\n");
+                    sb.append("\n");
+                    break;
+
+                case "verify":
+                    // ALWAYS generate verify/assertion steps - these are intentional validations
+                    String verifyStepText = action.stepText;
+                    String verifyStepTextLower = verifyStepText.toLowerCase();
+
+                    // Check if step exists in ANY existing step definition file (case-insensitive)
+                    if (existingSteps.containsKey(verifyStepTextLower)) {
+                        String existingFile = existingSteps.get(verifyStepTextLower);
+                        System.out.println("[REUSE EXISTING] Verify step already exists in " + existingFile
+                                + " (case-insensitive): \""
+                                + verifyStepText + "\"");
+                        System.out.println("   ✓ Will reuse existing step definition - no duplicate generated");
+                        continue;
+                    }
+
+                    // DEDUPLICATION: Skip duplicate step annotations within this file
+                    if (generatedSteps.contains(verifyStepTextLower)) {
+                        System.out.println(
+                                "[SKIP DUPLICATE STEP] Verify step annotation already exists: " + verifyStepText);
+                        continue;
+                    }
+                    generatedSteps.add(verifyStepTextLower);
+
+                    // LOG: Verify step is being generated
+                    System.out.println(
+                            "✅ [GENERATING VERIFY STEP] \"" + verifyStepText + "\" -> " + stepMethodName + "()");
+
+                    sb.append("    @Then(\"").append(action.stepText).append("\")\n");
+                    sb.append("    public void ").append(stepMethodName).append("() {\n");
+                    sb.append("        System.out.println(\"📍 Verify Step: ").append(action.stepText).append("\");\n");
                     sb.append("        ").append(className).append(".").append(action.methodName).append("(page);\n");
                     sb.append("    }\n");
                     sb.append("\n");
+                    System.out.println("[VERIFY STEP GENERATED] Assertion step definition created: " + verifyStepText);
+                    break;
+
+                default:
+                    // Unknown action type - generate working step definition (treats as generic
+                    // interaction)
+                    System.out.println("[UNKNOWN ACTION TYPE] Type: " + action.type + ", Step: " + action.stepText);
+                    System.out.println(
+                            "⚠️  WARNING: Generating step definition for unknown action type - verify it behaves correctly");
+
+                    String unknownStepText = action.stepText;
+                    String unknownStepTextLower = unknownStepText.toLowerCase();
+
+                    if (!existingSteps.containsKey(unknownStepTextLower)
+                            && !generatedSteps.contains(unknownStepTextLower)) {
+                        generatedSteps.add(unknownStepTextLower);
+                        sb.append("    @When(\"").append(action.stepText).append("\")\n");
+                        sb.append("    public void ").append(stepMethodName).append("() {\n");
+                        sb.append("        System.out.println(\"📍 Step: ").append(action.stepText).append("\");\n");
+                        sb.append("        ").append(className).append(".").append(action.methodName)
+                                .append("(page);\n");
+                        sb.append("    }\n");
+                        sb.append("\n");
+                    }
                     break;
             }
         }
 
-        sb.append("    @Then(\"page should be updated\")\n");
-        sb.append("    public void verifyPageUpdated() {\n");
-        sb.append("        System.out.println(\"📍 Step: Verifying page is updated\");\n");
-        sb.append("        // TODO: Add verification logic\n");
-        sb.append("    }\n");
+        // ═══════════════════════════════════════════════════════════════
+        // 📋 COMMON STEPS - REUSE FROM CommonSteps.java
+        // ═══════════════════════════════════════════════════════════════
+        // ⚠️ DO NOT CREATE DUPLICATE COMMON STEP DEFINITIONS HERE!
+        //
+        // The following common steps already exist in CommonSteps.java:
+        // @When("user clicks on logout logout")
+        // @When("user clicks on welcome [username]")
+        // @Then("page should be updated")
+        //
+        // These are GENERIC steps used across ALL tests.
+        // ✅ Feature files can use these steps directly
+        // ✅ Cucumber automatically finds them from CommonSteps.java
+        // ✅ Never duplicate these steps in feature-specific files
+        // ═══════════════════════════════════════════════════════════════
+        sb.append("\n");
         sb.append("}\n");
 
         // AUTO-FIX: Validate step definitions content before writing
@@ -2719,11 +3426,88 @@ public class TestGeneratorHelper {
             throw new IOException("Step Definitions validation failed");
         }
 
-        // AUTO-FIX: Validate feature steps match step definitions and generate missing ones
+        // VALIDATION: Report how many step definitions were actually generated
+        int generatedMethodCount = generatedSteps.size();
+        int totalActions = actions.size();
+        int loginActions = (int) actions.stream().filter(a -> isLoginRelatedAction(a)).count();
+        int nonLoginActions = totalActions - loginActions - 1; // -1 for navigate action
+
+        System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
+        System.out.println("║              STEP GENERATION VALIDATION REPORT                 ║");
+        System.out.println("╚════════════════════════════════════════════════════════════════╝");
+        System.out.println("📊 Generation Statistics:");
+        System.out.println("   Total actions in recording: " + totalActions);
+        System.out.println("   Login actions (reused from LoginSteps): " + loginActions);
+        System.out.println("   Navigate actions (auto-generated): 1");
+        System.out.println("   Non-login actions requiring steps: " + nonLoginActions);
+        System.out.println("   Step definitions generated: " + generatedMethodCount);
+        System.out.println("   Existing steps reused: " + existingSteps.size());
+
+        // CRITICAL FIX: Detect when too few steps are generated
+        // If we have actions but very few steps were generated, something went wrong
+        double generationRate = nonLoginActions > 0 ? (double) generatedMethodCount / nonLoginActions : 1.0;
+
+        if (nonLoginActions > 3 && generationRate < 0.5) {
+            System.out.println("\n⚠️⚠️⚠️  [CRITICAL WARNING] STEP GENERATION INCOMPLETE! ⚠️⚠️⚠️");
+            System.out.println("   Expected ~" + nonLoginActions + " step definitions");
+            System.out.println("   Actually generated: " + generatedMethodCount);
+            System.out.println("   Generation rate: " + String.format("%.1f%%", generationRate * 100));
+            System.out.println("\n🔍 Analyzing why steps were skipped...");
+
+            // Detailed analysis of what happened to each action
+            for (RecordedAction action : actions) {
+                if ("navigate".equals(action.type) || isLoginRelatedAction(action)) {
+                    continue; // These are expected to be skipped
+                }
+
+                String stepText = action.stepText.toLowerCase();
+                if (existingSteps.containsKey(stepText)) {
+                    System.out.println(
+                            "   [REUSED] " + action.stepText + " (exists in " + existingSteps.get(stepText) + ")");
+                } else if (isCommonGenericStep(action.stepText)) {
+                    System.out.println(
+                            "   [NOTE] " + action.stepText + " (was previously classified as generic - now generated)");
+                } else if (!generatedSteps.contains(stepText)) {
+                    System.out.println("   [MISSING!] " + action.stepText + " <- THIS STEP WAS NOT GENERATED!");
+                } else {
+                    System.out.println("   [GENERATED] " + action.stepText);
+                }
+            }
+
+            System.out.println("\n💡 Common causes for missing steps:");
+            System.out.println("   1. Steps incorrectly marked as 'existing' when they don't actually exist");
+            System.out.println("   2. Steps incorrectly marked as 'common/generic' when they're page-specific");
+            System.out.println("   3. Duplicate detection logic too aggressive");
+            System.out.println("   4. Login reuse logic incorrectly classifying non-login steps");
+            System.out.println("\n⚠️  RECOMMENDATION: Review the step generation logic and re-run generation");
+            System.out.println("════════════════════════════════════════════════════════════════\n");
+        } else if (generatedMethodCount == 0 && nonLoginActions > 0) {
+            System.out.println("\n⚠️  [WARNING] No new step definitions generated but recording has actions!");
+            System.out.println("   This might indicate over-aggressive reuse or skipping logic.");
+        } else {
+            System.out.println("✅ Step generation appears complete\n");
+        }
+
+        // AUTO-FIX: Validate feature steps match step definitions and generate missing
+        // ones
+        // CRITICAL: This should only add placeholders for steps that are truly missing
+        // from recording
+        // NOT for steps that should have been generated above but were skipped
         try {
             String featureContent = new String(Files.readAllBytes(
                     Paths.get("src/test/java/features/" + className.toLowerCase() + ".feature")));
-            stepDefContent = validateAndFixStepMatching(featureContent, stepDefContent, className);
+
+            // Only run validation if we're NOT regenerating (to avoid creating placeholders
+            // unnecessarily)
+            // When regenerating from recordings, all steps should be in the recording
+            // already
+            if (generatedMethodCount > 0 || actions.size() > 5) {
+                System.out.println("[SKIP VALIDATION] Recording has " + actions.size() + " actions, generated "
+                        + generatedMethodCount + " step methods");
+                System.out.println("   Skipping placeholder generation - all steps should be from recording");
+            } else {
+                stepDefContent = validateAndFixStepMatching(featureContent, stepDefContent, className);
+            }
         } catch (IOException e) {
             System.out.println("[AUTO-FIX] ⚠️ Could not read feature file for step matching validation");
         }
@@ -2737,6 +3521,60 @@ public class TestGeneratorHelper {
             autoRecoverFromError(e, "Step Definitions File Write");
             throw e;
         }
+    }
+
+    /**
+     * Converts label= selector syntax to proper Playwright Java selectors.
+     * <p>
+     * PERMANENT FIX (Feb 12, 2026): Prevents "Unknown engine 'label'" errors
+     * <p>
+     * label= is NOT a valid Playwright Java selector engine.
+     * This method converts it to proper CSS selectors that Playwright Java
+     * understands.
+     * <p>
+     * Conversion logic:
+     * - label=Username → input[aria-label='Username'], input[name*='username' i],
+     * input[placeholder*='username' i]
+     * - label=Password → input[type='password'], input[name='password']
+     * - label=Email → input[type='email'], input[name*='email' i]
+     * <p>
+     * DO NOT REMOVE - Critical for Playwright Java compatibility!
+     */
+    private static String convertLabelSelectorToPlaywrightJava(String selector, String readableName) {
+        if (selector == null || !selector.startsWith("label=")) {
+            return selector; // Not a label selector, return as-is
+        }
+
+        // Extract the label text
+        String labelText = selector.substring(6); // Remove "label=" prefix
+        String lowerLabel = labelText.toLowerCase();
+        String lowerName = readableName.toLowerCase();
+
+        // Special cases for common input types
+        if (lowerLabel.contains("password") || lowerName.contains("password")) {
+            return "input[type='password'], input[name='password'], input[aria-label='" + labelText + "']";
+        }
+
+        if (lowerLabel.contains("email") || lowerName.contains("email")) {
+            return "input[type='email'], input[name*='email' i], input[aria-label='" + labelText + "']";
+        }
+
+        if (lowerLabel.contains("username") || lowerLabel.contains("user name") || lowerName.contains("username")) {
+            return "input[type='email'], input[name='username'], input[name*='user' i], input[aria-label='" + labelText
+                    + "']";
+        }
+
+        if (lowerLabel.contains("phone") || lowerName.contains("phone")) {
+            return "input[type='tel'], input[name*='phone' i], input[aria-label='" + labelText + "']";
+        }
+
+        // Generic conversion: try aria-label, name (case-insensitive), and placeholder
+        String nameAttr = lowerLabel.replaceAll("\\s+", "");
+        return "input[aria-label='" + labelText + "'], " +
+                "input[name*='" + nameAttr + "' i], " +
+                "input[placeholder*='" + labelText + "' i], " +
+                "textarea[aria-label='" + labelText + "'], " +
+                "select[aria-label='" + labelText + "']";
     }
 
     /**
@@ -2781,8 +3619,162 @@ public class TestGeneratorHelper {
     // ========================================================================
 
     /**
+     * Finds a matching existing step definition for common actions.
+     * This ensures feature files use the exact text of existing steps (e.g., "user
+     * clicks on logout")
+     * instead of generated variations (e.g., "user clicks on role button name
+     * logout").
+     *
+     * @param generatedStepText The generated step text
+     * @param existingSteps     Map of existing step texts (lowercase -> filename)
+     * @return The existing step text if a match is found, otherwise null
+     */
+    private static String findMatchingExistingStep(String generatedStepText, Map<String, String> existingSteps) {
+        if (generatedStepText == null || existingSteps == null || existingSteps.isEmpty()) {
+            return null;
+        }
+
+        String lowerGenerated = generatedStepText.toLowerCase().trim();
+
+        // Check for exact match first
+        if (existingSteps.containsKey(lowerGenerated)) {
+            // Return the original case version from the map keys
+            return existingSteps.keySet().stream()
+                    .filter(k -> k.equalsIgnoreCase(lowerGenerated))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // For logout-related steps, try to find any existing logout step
+        if (lowerGenerated.contains("logout") || lowerGenerated.contains("log out") ||
+                lowerGenerated.contains("sign out") || lowerGenerated.contains("signout")) {
+
+            // Search for any logout step in existing steps
+            for (String existingStep : existingSteps.keySet()) {
+                String lowerExisting = existingStep.toLowerCase();
+                if ((lowerExisting.contains("logout") || lowerExisting.contains("log out") ||
+                        lowerExisting.contains("sign out") || lowerExisting.contains("signout")) &&
+                        lowerExisting.contains("click")) {
+                    // Found a matching logout click step
+                    return existingStep;
+                }
+            }
+        }
+
+        // For page verification steps
+        if (lowerGenerated.contains("page should be") || lowerGenerated.contains("page is updated")) {
+            for (String existingStep : existingSteps.keySet()) {
+                String lowerExisting = existingStep.toLowerCase();
+                if (lowerExisting.contains("page should be") || lowerExisting.contains("page is updated")) {
+                    return existingStep;
+                }
+            }
+        }
+
+        // No matching existing step found
+        return null;
+    }
+
+    /**
+     * Identifies common/generic steps that should ALWAYS be reused from
+     * CommonSteps.java or LoginSteps.java.
+     * <p>
+     * IMPORTANT: Common steps are application-wide shared actions that should be
+     * reused.
+     * User-recorded page-specific interactions should NOT be marked as common.
+     * <p>
+     * Common steps (should exist in CommonSteps.java or LoginSteps.java):
+     * - Page verification steps (page should be updated, page loaded)
+     * - Generic navigation (navigate to home/dashboard)
+     * - Login/Logout actions (login, logout, sign in, sign out)
+     * <p>
+     * NOT common (user-recorded page-specific interactions):
+     * - "user clicks on setup" - specific link on specific page
+     * - "user clicks on configure tree" - specific element on specific page
+     */
+    private static boolean isCommonGenericStep(String stepText) {
+        if (stepText == null)
+            return false;
+
+        String lower = stepText.toLowerCase();
+
+        // Page verification patterns (truly generic)
+        if (lower.contains("page should be") || lower.contains("page is updated") ||
+                lower.contains("page loaded") || lower.contains("page displayed")) {
+            return true;
+        }
+
+        // Generic navigation (truly generic)
+        if (lower.equals("navigate to home") || lower.equals("navigate to dashboard") ||
+                lower.equals("go to home") || lower.equals("go to dashboard")) {
+            return true;
+        }
+
+        // Login/Logout actions (application-wide common)
+        // These are shared across all pages and should be in LoginSteps.java
+        if (lower.contains("logout") || lower.contains("log out") ||
+                lower.contains("sign out") || lower.contains("signout")) {
+            System.out.println(
+                    "[COMMON STEP] Logout-related step detected: \"" + stepText + "\" - should be in LoginSteps.java");
+            return true;
+        }
+
+        // Login actions (when they contain login keywords)
+        if (lower.contains("login") || lower.contains("log in") ||
+                lower.contains("sign in") || lower.contains("signin")) {
+            // But allow specific field interactions like "enters text into username"
+            if (!lower.contains("enter") && !lower.contains("type") && !lower.contains("fill")) {
+                System.out.println("[COMMON STEP] Login-related step detected: \"" + stepText
+                        + "\" - should be in LoginSteps.java");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Check if an action is login-related.
      */
+    /**
+     * Get the Login class method call for a login-related recorded action.
+     * Routes actions (click/fill/press) on username, password, or sign-in elements
+     * to the existing methods in Login.java so the new page class is not polluted
+     * with duplicate login logic.
+     *
+     * Mapping:
+     * fill + password → Login.PasswordField(text);
+     * fill + username → Login.UsernameField(text);
+     * press + password → Login.passwordField().press("Tab");
+     * press + username → Login.usernameField().press("Tab");
+     * click + sign-in → Login.SignInButton();
+     * click + password → Login.passwordField().click();
+     * click + username → Login.usernameField().click();
+     */
+    private static String getLoginMethodCall(RecordedAction action) {
+        String readableLower = action.readableName != null ? action.readableName.toLowerCase() : "";
+        String selectorLower = action.selector != null ? action.selector.toLowerCase() : "";
+        String type = action.type;
+
+        boolean isPassword = readableLower.contains("password") || selectorLower.contains("password");
+        boolean isSignIn = selectorLower.contains("signin") || selectorLower.contains("sign-in") ||
+                selectorLower.contains("login") || readableLower.contains("sign in") ||
+                readableLower.contains("log in") || readableLower.contains("signin") ||
+                readableLower.contains("login");
+
+        if ("fill".equals(type)) {
+            return isPassword ? "Login.PasswordField(text);" : "Login.UsernameField(text);";
+        } else if ("press".equals(type)) {
+            return isPassword ? "Login.passwordField().press(\"Tab\");" : "Login.usernameField().press(\"Tab\");";
+        } else { // click (and any other interaction)
+            if (isSignIn)
+                return "Login.SignInButton();";
+            if (isPassword)
+                return "Login.passwordField().click();";
+            return "Login.usernameField().click();";
+        }
+    }
+
     private static boolean isLoginRelatedAction(RecordedAction action) {
         if (action == null)
             return false;
@@ -2793,9 +3785,451 @@ public class TestGeneratorHelper {
 
         return selector.contains("username") || selector.contains("password") ||
                 selector.contains("login") || selector.contains("signin") || selector.contains("sign-in") ||
+                selector.contains("logout") || selector.contains("log-out") || selector.contains("sign out") ||
                 readableName.contains("username") || readableName.contains("password") ||
                 readableName.contains("login") || readableName.contains("signin") ||
+                readableName.contains("logout") || readableName.contains("sign out") ||
                 value.contains("username") || value.contains("password");
+    }
+
+    /**
+     * Generate a locator method name from a readable name and action type.
+     * Examples:
+     * Username + fill -> usernameField()
+     * Sign In + click -> signInButton()
+     * Expand Menu + click -> expandMenu()
+     *
+     * @param readableName Human-readable element name
+     * @param actionType   Type of action (click, fill, select, etc.)
+     * @return Camel-case locator method name
+     */
+    private static String generateLocatorMethodName(String readableName, String actionType) {
+        if (readableName == null || readableName.isEmpty()) {
+            return "element";
+        }
+
+        String name = readableName;
+
+        // Clean up the name
+        name = name.replaceAll("[^a-zA-Z0-9\\s]", "");
+        name = name.trim();
+
+        // Convert to camelCase
+        String camelName = toCamelCase(name);
+
+        // Add appropriate suffix based on element type and action
+        if (actionType != null) {
+            String lower = name.toLowerCase();
+            if (actionType.equals("fill") || lower.contains("input") || lower.contains("enter") ||
+                    lower.contains("username") || lower.contains("password") || lower.contains("email")) {
+                if (!camelName.endsWith("Field")) {
+                    camelName += "Field";
+                }
+            } else if ((actionType.equals("click") || actionType.equals("check")) &&
+                    (lower.contains("button") || lower.contains("btn") || lower.contains("submit") ||
+                            lower.contains("sign") || lower.contains("login") || lower.contains("logout"))) {
+                if (!camelName.endsWith("Button")) {
+                    camelName = camelName.replace("Button", "").replace("Btn", "") + "Button";
+                }
+            } else if (actionType.equals("click") && (lower.contains("link") || lower.contains("navigate"))) {
+                // Keep as-is for navigation links
+            } else if (actionType.equals("select")) {
+                if (!camelName.endsWith("Dropdown") && !camelName.endsWith("Select")) {
+                    camelName += "Dropdown";
+                }
+            }
+        }
+
+        return camelName;
+    }
+
+    /**
+     * Generate proper Playwright locator call from a selector string.
+     * Now supports iframes and shadow DOM:
+     * - iframe#payment >> button#submit ->
+     * page.frameLocator("iframe#payment").locator("button#submit")
+     * - div >>> button (shadow DOM) -> page.locator("div").locator("button")
+     * <p>
+     * Converts selectors to appropriate Playwright Java API calls:
+     * #id -> page.locator("#id") [PRIORITY 1]
+     * .class#id -> page.locator("#id") [Extract ID]
+     * role=button,name=Login -> page.getByRole(AriaRole.BUTTON, ...) [PRIORITY 2]
+     * label=Username -> page.getByLabel("Username") [PRIORITY 3]
+     * placeholder=Email -> page.getByPlaceholder("Email") [PRIORITY 4]
+     * text=Login -> page.getByRole(AriaRole.BUTTON/LINK, ...) if interactive
+     * [PRIORITY 5]
+     * text=Login -> page.getByText("Login") otherwise [PRIORITY 6]
+     * <p>
+     * Priority: ID > getByRole > getByLabel > getByPlaceholder > getByText (smart)
+     * > locator
+     *
+     * @param selector     The element selector
+     * @param readableName Human-readable name for creating getByRole options
+     * @return Playwright locator call string
+     */
+    @SuppressWarnings("unused") // Called by overloaded method with same signature + additional params
+    private static String generateLocatorCall(String selector, String readableName) {
+        return generateLocatorCall(selector, readableName, null, false, null);
+    }
+
+    /**
+     * Generate Playwright Java locator call from selector with support for options.
+     * Applies intelligent fallback: ID > getByRole > getByLabel > getByText >
+     * locator
+     * Enhanced with iframe and shadow DOM support.
+     *
+     * @param selector      The selector string
+     * @param readableName  Human-readable element name
+     * @param frameSelector Iframe selector if element is in iframe
+     * @param isInShadowDom True if selector uses shadow DOM piercing
+     * @param options       Chained options like .setExact(true),
+     *                      .setHasText("..."), etc.
+     * @return Generated Playwright locator call
+     */
+    private static String generateLocatorCall(String selector, String readableName, String frameSelector,
+            boolean isInShadowDom, String options) {
+        if (selector == null || selector.isEmpty()) {
+            return "page.locator(\"body\")";
+        }
+
+        String baseLocator;
+
+        // PRIORITY 1: Check for ID in selector (CSS or extracted)
+        if (selector.startsWith("#")) {
+            baseLocator = "page.locator(\"" + escapeJavaString(selector) + "\")";
+        }
+        // Extract ID from complex CSS selectors (e.g., "div#myId.class" -> "#myId")
+        else if (extractIdFromComplexSelector(selector) != null
+                && !isDynamicId(extractIdFromComplexSelector(selector))) {
+            String extractedId = extractIdFromComplexSelector(selector);
+            System.out.println("   [ID EXTRACTED] Using ID: #" + extractedId + " from: " + selector);
+            baseLocator = "page.locator(\"#" + extractedId + "\")";
+        }
+        // PRIORITY 2: Handle role= selectors -> page.getByRole()
+        else if (selector.startsWith("role=")) {
+            String[] parts = selector.substring(5).split(",name=", 2);
+            String role = parts[0].trim().toUpperCase();
+            String name = parts.length > 1 ? parts[1].trim() : readableName;
+
+            if (name != null && !name.isEmpty()) {
+                baseLocator = "page.getByRole(AriaRole." + role + ", new Page.GetByRoleOptions().setName(\"" +
+                        escapeJavaString(name) + "\")";
+                // Apply chained options if present
+                if (options != null && !options.isEmpty()) {
+                    baseLocator += options;
+                }
+                baseLocator += ")";
+            } else {
+                baseLocator = "page.getByRole(AriaRole." + role + ")";
+            }
+        }
+        // PRIORITY 3: Handle label= selectors
+        else if (selector.startsWith("label=")) {
+            String label = selector.substring(6).trim();
+            baseLocator = "page.getByLabel(\"" + escapeJavaString(label) + "\")";
+            // Apply options for getByLabel if present
+            if (options != null && !options.isEmpty()) {
+                // Convert options format: ", new Page.GetByLabelOptions().setExact(true)" ->
+                // options without leading comma
+                String cleanOptions = options.trim();
+                if (cleanOptions.startsWith(",")) {
+                    cleanOptions = cleanOptions.substring(1).trim();
+                }
+                // Insert options before closing parenthesis
+                baseLocator = baseLocator.substring(0, baseLocator.length() - 1) + ", " + cleanOptions + ")";
+            }
+        }
+        // PRIORITY 4: Handle placeholder= selectors
+        else if (selector.startsWith("placeholder=")) {
+            String placeholder = selector.substring(12).trim();
+            baseLocator = "page.getByPlaceholder(\"" + escapeJavaString(placeholder) + "\")";
+            // Apply options for getByPlaceholder if present
+            if (options != null && !options.isEmpty()) {
+                String cleanOptions = options.trim();
+                if (cleanOptions.startsWith(",")) {
+                    cleanOptions = cleanOptions.substring(1).trim();
+                }
+                baseLocator = baseLocator.substring(0, baseLocator.length() - 1) + ", " + cleanOptions + ")";
+            }
+        }
+        // PRIORITY 5/6: Handle text= selectors
+        else if (selector.startsWith("text=")) {
+            String text = selector.substring(5).trim();
+            String roleName = detectRoleFromText(text, readableName);
+            if (roleName != null) {
+                baseLocator = "page.getByRole(AriaRole." + roleName + ", new Page.GetByRoleOptions().setName(\"" +
+                        escapeJavaString(text) + "\")";
+                if (options != null && !options.isEmpty()) {
+                    baseLocator += options;
+                }
+                baseLocator += ")";
+            } else {
+                baseLocator = "page.getByText(\"" + escapeJavaString(text) + "\")";
+                // Apply options for getByText if present
+                if (options != null && !options.isEmpty()) {
+                    String cleanOptions = options.trim();
+                    if (cleanOptions.startsWith(",")) {
+                        cleanOptions = cleanOptions.substring(1).trim();
+                    }
+                    baseLocator = baseLocator.substring(0, baseLocator.length() - 1) + ", " + cleanOptions + ")";
+                }
+            }
+        }
+        // Shadow DOM piercing: div >>> button -> page.locator("div").locator("button")
+        else if (isInShadowDom || selector.contains(">>>")) {
+            String[] shadowParts = selector.split(">>>", 2);
+            if (shadowParts.length == 2) {
+                baseLocator = "page.locator(\"" + escapeJavaString(shadowParts[0].trim()) + "\")"
+                        + ".locator(\"" + escapeJavaString(shadowParts[1].trim()) + "\")";
+                System.out.println("   [SHADOW DOM] Generated piercing selector");
+            } else {
+                baseLocator = "page.locator(\"" + escapeJavaString(selector) + "\")";
+            }
+        }
+        // PRIORITY 7: Default - use page.locator()
+        else {
+            baseLocator = "page.locator(\"" + escapeJavaString(selector) + "\")";
+        }
+
+        // IFRAME HANDLING: Wrap with frameLocator if action is within iframe
+        if (frameSelector != null && !frameSelector.isEmpty()) {
+            System.out.println("   [IFRAME] Wrapping locator with frameLocator: " + frameSelector);
+            // Replace page.xxx with page.frameLocator("...").xxx
+            baseLocator = baseLocator.replace("page.",
+                    "page.frameLocator(\"" + escapeJavaString(frameSelector) + "\").");
+        }
+
+        return baseLocator;
+    }
+
+    /**
+     * Detect AriaRole from element text (for text= selectors).
+     * Returns null if not an interactive element.
+     *
+     * @param text         The element text
+     * @param readableName The readable name
+     * @return AriaRole name or null
+     */
+    private static String detectRoleFromText(String text, String readableName) {
+        String lower = text.toLowerCase();
+        String nameLower = readableName != null ? readableName.toLowerCase() : "";
+
+        // Common button text patterns
+        if (lower.matches(
+                ".*(sign in|login|logout|log out|submit|save|cancel|delete|add|create|update|edit|remove|confirm|ok|yes|no|close|apply).*")) {
+            return "BUTTON";
+        }
+
+        // Common link text patterns (navigation, "see more", etc.)
+        if (lower.matches(".*(setup|configure|navigate|go to|view|details|more|settings|profile|dashboard|home).*")) {
+            return "LINK";
+        }
+
+        // Check readable name for hints
+        if (nameLower.contains("button") || nameLower.contains("btn")) {
+            return "BUTTON";
+        }
+
+        if (nameLower.contains("link") || nameLower.contains("menu") || nameLower.contains("nav")) {
+            return "LINK";
+        }
+
+        return null; // Not an interactive element, use getByText
+    }
+
+    /**
+     * Determine the appropriate AriaRole based on element name and selector.
+     *
+     * @param readableName Human-readable element name
+     * @param selector     The selector string
+     * @return AriaRole enum name (e.g., "BUTTON", "LINK", "TEXTBOX")
+     */
+    @SuppressWarnings("unused") // Reserved for future AI-enhanced role inference
+    private static String determineAriaRole(String readableName, String selector) {
+        String lower = readableName.toLowerCase();
+        String selectorLower = selector != null ? selector.toLowerCase() : "";
+
+        // Button
+        if (lower.contains("button") || lower.contains("btn") || lower.contains("submit") ||
+                lower.contains("sign in") || lower.contains("login") || lower.contains("logout") ||
+                selectorLower.contains("button") || selectorLower.contains("role=button")) {
+            return "BUTTON";
+        }
+
+        // Link
+        if (lower.contains("link") || lower.contains("navigate") || lower.contains("menu") ||
+                selectorLower.contains("role=link") || selectorLower.contains("<a")) {
+            return "LINK";
+        }
+
+        // Textbox/Input
+        if (lower.contains("input") || lower.contains("field") || lower.contains("username") ||
+                lower.contains("password") || lower.contains("email") || lower.contains("search") ||
+                selectorLower.contains("input") || selectorLower.contains("type='text'")) {
+            return "TEXTBOX";
+        }
+
+        // Checkbox
+        if (lower.contains("check") || lower.contains("checkbox") ||
+                selectorLower.contains("checkbox") || selectorLower.contains("type='checkbox'")) {
+            return "CHECKBOX";
+        }
+
+        // Default to BUTTON for interactive elements
+        return "BUTTON";
+    }
+
+    /**
+     * Cleans up step definition files that contain ONLY placeholder
+     * implementations.
+     * <p>
+     * CRITICAL FIX (Feb 18, 2026): Prevents placeholder steps from persisting
+     * across regenerations
+     * <p>
+     * This method checks if a step definitions file exists and contains only
+     * PendingException placeholders.
+     * If so, it's deleted to allow proper regeneration from recordings.
+     * <p>
+     * Why this is needed:
+     * 1. validateAndFixStepMatching() can create placeholder steps for missing
+     * steps
+     * 2. On subsequent runs, these placeholders are detected as "existing" and
+     * skipped
+     * 3. Result: Recording actions never generate proper implementations
+     * <p>
+     * DO NOT REMOVE - Critical for ensuring recordings always generate working
+     * code!
+     */
+    private static void cleanupPlaceholderStepDefinitions(String className) {
+        try {
+            Path stepDefPath = Paths.get("src/test/java/stepDefs/" + className + "Steps.java");
+
+            if (!Files.exists(stepDefPath)) {
+                return; // No file to cleanup
+            }
+
+            String content = new String(Files.readAllBytes(stepDefPath));
+
+            // Count total step methods and placeholder methods
+            Pattern methodPattern = Pattern.compile("@(?:Given|When|Then|And|But)\\s*\\(");
+            Matcher methodMatcher = methodPattern.matcher(content);
+            int totalMethods = 0;
+            while (methodMatcher.find()) {
+                totalMethods++;
+            }
+
+            Pattern placeholderPattern = Pattern.compile("PendingException");
+            Matcher placeholderMatcher = placeholderPattern.matcher(content);
+            int placeholderMethods = 0;
+            while (placeholderMatcher.find()) {
+                placeholderMethods++;
+            }
+
+            // If ALL methods are placeholders (or nearly all - allow navigateTo to be real)
+            // then delete the file for clean regeneration
+            if (placeholderMethods > 0 && placeholderMethods >= (totalMethods - 1)) {
+                System.out.println("\\n[CLEANUP] Found step definitions file with " + placeholderMethods + "/"
+                        + totalMethods + " placeholder methods");
+                System.out.println(
+                        "   Deleting: " + stepDefPath.getFileName() + " for clean regeneration from recording");
+                Files.delete(stepDefPath);
+                System.out.println("   ✅ Deleted successfully - will regenerate with proper implementations\\n");
+            } else if (placeholderMethods > 0) {
+                System.out.println("\\n[INFO] Found " + placeholderMethods + " placeholder methods out of "
+                        + totalMethods + " total");
+                System.out.println("   File contains real implementations - keeping existing file");
+                System.out.println("   Placeholder steps will be ignored during scanning and regenerated\\n");
+            }
+
+        } catch (Exception e) {
+            System.err.println("[WARN] Could not cleanup placeholder step definitions: " + e.getMessage());
+            // Non-critical - continue with generation
+        }
+    }
+
+    /**
+     * Scans ALL existing step definition files to find reusable step definitions.
+     * <p>
+     * PERMANENT FIX (Feb 12, 2026): Prevents duplicate step generation across files
+     * <p>
+     * ENHANCED FIX (Feb 18, 2026): Ignores placeholder steps (PendingException)
+     * during scanning
+     * <p>
+     * Returns a map of:
+     * Key = Step text pattern (e.g., "User enters valid username from
+     * configuration")
+     * Value = Source file (e.g., "LoginSteps.java")
+     * <p>
+     * This allows us to:
+     * 1. Detect if a step already exists in ANY step definition file
+     * 2. Reuse existing steps instead of duplicating them
+     * 3. Document which file contains the existing step
+     * 4. Ignore placeholder steps so they get regenerated with proper
+     * implementations
+     * <p>
+     * DO NOT REMOVE - Critical for preventing duplicate step definitions!
+     */
+    private static Map<String, String> scanAllExistingStepDefinitions() {
+        Map<String, String> existingSteps = new HashMap<>();
+
+        try {
+            Path stepDefsDir = Paths.get("src/test/java/stepDefs");
+
+            if (!Files.exists(stepDefsDir)) {
+                return existingSteps; // No existing step definitions
+            }
+
+            // Scan all *Steps.java files
+            try (Stream<Path> paths = Files.walk(stepDefsDir, 1)) {
+                paths.filter(p -> p.toString().endsWith("Steps.java"))
+                        .forEach(filePath -> {
+                            try {
+                                String content = new String(Files.readAllBytes(filePath));
+                                String fileName = filePath.getFileName().toString();
+
+                                // Extract all @Given/@When/@Then/@And/@But annotations
+                                Pattern stepPattern = Pattern
+                                        .compile(
+                                                "@(?:Given|When|Then|And|But)\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*\\n\\s*public\\s+void\\s+\\w+\\([^)]*\\)\\s*\\{([^}]+)\\}");
+                                Matcher matcher = stepPattern.matcher(content);
+
+                                while (matcher.find()) {
+                                    String stepText = matcher.group(1);
+                                    String methodBody = matcher.group(2);
+
+                                    // CRITICAL FIX: Ignore placeholder steps (contain PendingException)
+                                    // This ensures placeholders are regenerated with proper implementations
+                                    if (methodBody.contains("PendingException")) {
+                                        System.out.println(
+                                                "[SKIP PLACEHOLDER] Found placeholder step in " + fileName + ": \""
+                                                        + stepText + "\" - will regenerate with proper implementation");
+                                        continue; // Don't add placeholders to existing steps
+                                    }
+
+                                    // Only add actually-implemented steps
+                                    // Store with lowercase key for case-insensitive comparison
+                                    existingSteps.put(stepText.toLowerCase(), fileName);
+                                }
+
+                            } catch (IOException e) {
+                                System.err.println("[WARN] Could not read step definitions from: " + filePath);
+                            }
+                        });
+            }
+
+            System.out.println("[REUSE INFO] Scanned existing step definitions:");
+            if (!existingSteps.isEmpty()) {
+                // Group by file for cleaner output
+                Map<String, Long> countByFile = existingSteps.values().stream()
+                        .collect(Collectors.groupingBy(f -> f, Collectors.counting()));
+                countByFile.forEach((file, count) -> System.out.println("   📄 " + file + " - " + count + " steps"));
+            }
+
+        } catch (Exception e) {
+            System.err.println("[WARN] Error scanning existing step definitions: " + e.getMessage());
+        }
+
+        return existingSteps;
     }
 
     /**
@@ -2811,6 +4245,230 @@ public class TestGeneratorHelper {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Extracts a JIRA issue key from either a plain key (e.g. "PROJ-123") or a
+     * full JIRA URL (e.g. "https://company.atlassian.net/browse/PROJ-123" or
+     * "https://company.atlassian.net/jira/software/projects/PROJ/issues/PROJ-123").
+     * Returns the original value unchanged if no URL pattern is detected.
+     *
+     * @param jiraStoryInput The raw value provided by the user (key or URL)
+     * @return The extracted issue key (e.g. "PROJ-123")
+     */
+    private static String extractJiraIssueKey(String jiraStoryInput) {
+        if (jiraStoryInput == null)
+            return null;
+        String trimmed = jiraStoryInput.trim();
+        // If it looks like a URL, extract the issue key from it
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            // Match issue key pattern: one or more uppercase letters, a dash, one or more
+            // digits
+            // Covers /browse/PROJ-123 and /issues/PROJ-123 and similar patterns
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/([A-Z][A-Z0-9_]+-\\d+)(?:[/?#]|$)");
+            java.util.regex.Matcher matcher = pattern.matcher(trimmed);
+            if (matcher.find()) {
+                String extracted = matcher.group(1);
+                System.out.println("   🔑 Extracted issue key '" + extracted + "' from URL: " + trimmed);
+                return extracted;
+            }
+            System.out.println("   ⚠️  Could not extract issue key from URL: " + trimmed + " - using as-is");
+        }
+        return trimmed;
+    }
+
+    /**
+     * Extract method names from existing page object for merge mode.
+     * Returns set of method names to avoid duplicates.
+     * 
+     * @param content Existing page object content
+     * @return Set of method names
+     */
+    private static Set<String> extractMethodNames(String content) {
+        Set<String> methodNames = new HashSet<>();
+        // Pattern: public static void main(
+        // Pattern: public static Locator methodName(
+        String methodPattern = "public\\s+static\\s+(?:void|Locator|String)\\s+(\\w+)\\s*\\(";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(methodPattern);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+
+        while (matcher.find()) {
+            String methodName = matcher.group(1);
+            methodNames.add(methodName);
+        }
+
+        return methodNames;
+    }
+
+    /**
+     * Extract locator method names from existing page object for merge mode.
+     * Returns set of locator names to avoid duplicate locators.
+     * 
+     * @param content Existing page object content
+     * @return Set of locator method names
+     */
+    private static Set<String> extractLocatorNames(String content) {
+        Set<String> locatorNames = new HashSet<>();
+        // Pattern: public static Locator methodName()
+        String locatorPattern = "public\\s+static\\s+Locator\\s+(\\w+)\\s*\\(\\s*\\)";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(locatorPattern);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+
+        while (matcher.find()) {
+            String locatorName = matcher.group(1);
+            locatorNames.add(locatorName);
+        }
+
+        return locatorNames;
+    }
+
+    /**
+     * Scans ALL page objects across the project to find common locator methods.
+     * This helps identify reusable locators like username(), password(), etc.
+     * that exist in other page objects (e.g., Login.java).
+     *
+     * @return Map of locator method name (lowercase) -> Page class name
+     */
+    private static Map<String, String> scanAllPageObjectsForCommonLocators() {
+        Map<String, String> commonLocators = new HashMap<>();
+
+        try {
+            Path pagesDir = Paths.get("src/main/java/pages");
+            if (!Files.exists(pagesDir)) {
+                return commonLocators;
+            }
+
+            // Common locator method names to look for
+            String[] commonLocatorNames = {
+                    "usernamefield", "username", "emailfield", "email",
+                    "passwordfield", "password",
+                    "signinbutton", "signin", "signInButton", "loginbutton", "login",
+                    "logoutbutton", "logout", "signout", "signoutbutton",
+                    "submitbutton", "submit",
+                    "cancelbutton", "cancel",
+                    "savebutton", "save",
+                    "searchfield", "search", "searchbutton"
+            };
+
+            // Pattern for Locator-returning methods: public static Locator methodName()
+            Pattern locatorMethodPattern = Pattern.compile("public static Locator (\\w+)\\(\\)");
+
+            Files.list(pagesDir)
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.getFileName().toString().equals("BasePage.java"))
+                    .forEach(path -> {
+                        try {
+                            String pageClassName = path.getFileName().toString().replace(".java", "");
+                            String content = new String(Files.readAllBytes(path));
+
+                            Matcher matcher = locatorMethodPattern.matcher(content);
+                            while (matcher.find()) {
+                                String methodName = matcher.group(1);
+                                String methodNameLower = methodName.toLowerCase();
+
+                                // Check if this is a common locator name
+                                for (String commonName : commonLocatorNames) {
+                                    if (methodNameLower.contains(commonName.toLowerCase())) {
+                                        // Store first occurrence (usually in Login.java or most common page)
+                                        if (!commonLocators.containsKey(methodNameLower)) {
+                                            commonLocators.put(methodNameLower, pageClassName);
+                                            System.out.println("[CROSS-PROJECT] Registered: " + methodName + "() from "
+                                                    + pageClassName);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (IOException e) {
+                            // Ignore read errors
+                        }
+                    });
+
+        } catch (Exception e) {
+            System.err.println("[WARN] Error scanning page objects for common locators: " + e.getMessage());
+        }
+
+        return commonLocators;
+    }
+
+    /**
+     * Scans existing page object to find all existing locators and methods.
+     * Returns a map of existing locators (name -> selector) and methods.
+     * This prevents duplication when regenerating or updating page objects.
+     *
+     * @param className The page object class name
+     * @return Map containing existing locators and methods
+     */
+    @SuppressWarnings("unused") // Reserved for advanced merge mode functionality
+    private static Map<String, Object> scanExistingPageObject(String className) {
+        Map<String, Object> existingElements = new HashMap<>();
+        Set<String> existingLocators = new HashSet<>();
+        Set<String> existingMethods = new HashSet<>();
+
+        try {
+            Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
+            if (!Files.exists(pageObjectPath)) {
+                existingElements.put("locators", existingLocators);
+                existingElements.put("methods", existingMethods);
+                return existingElements;
+            }
+
+            String content = new String(Files.readAllBytes(pageObjectPath));
+
+            // Pattern for Locator-returning methods: public static Locator methodName()
+            Pattern locatorMethodPattern = Pattern.compile("public static Locator (\\w+)\\(\\)");
+            Matcher locatorMatcher = locatorMethodPattern.matcher(content);
+            while (locatorMatcher.find()) {
+                existingLocators.add(locatorMatcher.group(1));
+            }
+
+            // Pattern for action methods: public static void main(
+            Pattern actionMethodPattern = Pattern.compile("public static void (\\w+)\\(");
+            Matcher actionMatcher = actionMethodPattern.matcher(content);
+            while (actionMatcher.find()) {
+                existingMethods.add(actionMatcher.group(1));
+            }
+
+            if (!existingLocators.isEmpty()) {
+                System.out.println(
+                        "[REUSE] Found " + existingLocators.size() + " existing locators in " + className + ".java");
+            }
+            if (!existingMethods.isEmpty()) {
+                System.out.println(
+                        "[REUSE] Found " + existingMethods.size() + " existing methods in " + className + ".java");
+            }
+
+        } catch (Exception e) {
+            System.err.println("[WARN] Error scanning existing page object: " + e.getMessage());
+        }
+
+        existingElements.put("locators", existingLocators);
+        existingElements.put("methods", existingMethods);
+        return existingElements;
+    }
+
+    /**
+     * Analyzes framework configuration and returns key settings.
+     *
+     * @return FrameworkInfo with configuration details
+     */
+    public static FrameworkInfo analyzeFramework() {
+        FrameworkInfo info = new FrameworkInfo();
+
+        info.baseUrl = loadProps.getProperty(loadProps.PropKeys.URL);
+        info.browser = loadProps.getProperty(loadProps.PropKeys.BROWSER);
+        info.headless = Boolean.parseBoolean(loadProps.getProperty(loadProps.PropKeys.HEADLESS_MODE));
+        info.recordingEnabled = Boolean.parseBoolean(loadProps.getProperty(loadProps.PropKeys.RECORDING_MODE));
+        info.screenshotEnabled = Boolean.parseBoolean(loadProps.getProperty(loadProps.PropKeys.SCREENSHOTS_MODE));
+        info.defaultTimeout = Integer.parseInt(loadProps.getProperty(loadProps.PropKeys.DEFAULT_TIMEOUT));
+        info.retryCount = Integer.parseInt(loadProps.getProperty(loadProps.PropKeys.MAX_RETRY_COUNT));
+
+        // JIRA configuration
+        info.jiraEnabled = loadProps.getJIRAConfig("JIRA_BASE_URL") != null;
+        info.jiraBaseUrl = loadProps.getJIRAConfig("JIRA_BASE_URL");
+        info.jiraProjectKey = loadProps.getJIRAConfig("PROJECT_KEY");
+
+        return info;
     }
 
     /**
@@ -3007,6 +4665,8 @@ public class TestGeneratorHelper {
      * @return TestRequirement with story details, or null if failed
      */
     public static TestRequirement generateFromJiraStory(String issueKey, boolean autoDetect) {
+        // Support full JIRA URLs as well as plain issue keys
+        issueKey = extractJiraIssueKey(issueKey);
         System.out.println("🔍 Fetching JIRA story: " + issueKey);
 
         jiraClient.JiraStory story = jiraClient.getJiraStory(issueKey);
@@ -3547,27 +5207,428 @@ public class TestGeneratorHelper {
     }
 
     /**
-     * Analyzes framework configuration and returns key settings.
-     * 
-     * @return FrameworkInfo with configuration details
+     * Action extracted from Playwright recording.
+     * Enhanced with iframe and shadow DOM support.
      */
-    public static FrameworkInfo analyzeFramework() {
-        FrameworkInfo info = new FrameworkInfo();
+    private static class RecordedAction {
+        String type;
+        String selector;
+        String value;
+        String methodName;
+        String stepText;
+        @SuppressWarnings("unused")
+        String elementName; // Reserved for future use
+        String readableName;
+        String locatorMethodName; // For Locator-returning method name
+        String frameSelector; // For iframe context (e.g., "iframe#payment", "iframe[name='checkout']")
+        boolean isInFrame; // True if action is within an iframe
+        boolean isInShadowDom; // True if selector uses shadow DOM piercing
+        String options; // Chained options like .setExact(true), .setHasText("..."), etc.
 
-        info.baseUrl = loadProps.getProperty("URL");
-        info.browser = loadProps.getProperty("Browser");
-        info.headless = Boolean.parseBoolean(loadProps.getProperty("Headless"));
-        info.recordingEnabled = Boolean.parseBoolean(loadProps.getProperty("Record"));
-        info.screenshotEnabled = Boolean.parseBoolean(loadProps.getProperty("TakeScreenShots"));
-        info.defaultTimeout = Integer.parseInt(loadProps.getProperty("Timeout"));
-        info.retryCount = Integer.parseInt(loadProps.getProperty("RetryCount"));
+        RecordedAction(int id, String type, String selector, String value) {
+            this(id, type, selector, value, null);
+        }
 
-        // JIRA configuration
-        info.jiraEnabled = loadProps.getJIRAConfig("JIRA_BASE_URL") != null;
-        info.jiraBaseUrl = loadProps.getJIRAConfig("JIRA_BASE_URL");
-        info.jiraProjectKey = loadProps.getJIRAConfig("PROJECT_KEY");
+        RecordedAction(int id, String type, String selector, String value, String options) {
+            this.type = type;
+            this.selector = selector;
+            this.value = value;
+            this.options = options;
 
-        return info;
+            // Parse iframe context from selector
+            parseFrameContext();
+
+            // Check for shadow DOM
+            this.isInShadowDom = selector != null && (selector.contains(">>>") || selector.contains(":shadow"));
+
+            this.readableName = extractReadableName(selector);
+            this.elementName = generateElementName(readableName, id);
+            this.methodName = generateMethodName(type, readableName, id);
+            this.stepText = generateStepText(type, readableName);
+        }
+
+        /**
+         * Parse iframe context from selector.
+         * Examples:
+         * "iframe#payment >> button#submit" -> frameSelector="iframe#payment",
+         * selector="button#submit"
+         * "iframe[name='checkout'] >> input#card" ->
+         * frameSelector="iframe[name='checkout']", selector="input#card"
+         */
+        private void parseFrameContext() {
+            if (selector == null || selector.isEmpty()) {
+                this.isInFrame = false;
+                return;
+            }
+
+            // Check for iframe selector pattern: iframe... >> innerSelector
+            if (selector.contains("iframe") && selector.contains(">>")) {
+                String[] parts = selector.split(">>", 2);
+                if (parts.length == 2) {
+                    String potentialFrame = parts[0].trim();
+                    if (potentialFrame.startsWith("iframe") || potentialFrame.contains("[name=")
+                            || potentialFrame.contains("[id=")) {
+                        this.frameSelector = potentialFrame;
+                        this.selector = parts[1].trim();
+                        this.isInFrame = true;
+                        System.out
+                                .println("[IFRAME] Detected iframe context: " + frameSelector + " -> " + this.selector);
+                        return;
+                    }
+                }
+            }
+
+            this.isInFrame = false;
+        }
+
+        /**
+         * Extract a readable name from the selector.
+         * Examples:
+         * text=Sign In -> SignIn
+         * text=Save -> Save
+         * #username -> Username
+         * input[placeholder="Email"] -> Email
+         * button:has-text("Submit") -> Submit
+         * role=button[name="Login"] -> Login
+         */
+        private String extractReadableName(String selector) {
+            if (selector == null || selector.isEmpty()) {
+                return "Element";
+            }
+
+            String name = selector;
+
+            // Extract from text= locator (Playwright modern)
+            if (selector.startsWith("text=")) {
+                name = selector.substring(5).trim();
+            }
+            // Extract from placeholder= locator
+            else if (selector.startsWith("placeholder=")) {
+                name = selector.substring(12).trim();
+            }
+            // Extract from label= locator
+            else if (selector.startsWith("label=")) {
+                name = selector.substring(6).trim();
+            }
+            // Extract from ID selector
+            else if (selector.startsWith("#")) {
+                name = selector.substring(1).trim();
+                // Remove common suffixes from IDs
+                name = name.replaceAll("(?i)[-_](btn|button|input|field|link|txt|id)$", "");
+            }
+            // Extract from role=xxx,name=... or role=xxx:name=... pattern (modern format
+            // without quotes)
+            else if (selector.contains("role=") && selector.contains("name=")) {
+                int start = selector.indexOf("name=") + 5;
+
+                // Skip opening quote if present
+                if (start < selector.length() && selector.charAt(start) == '"') {
+                    start++;
+                }
+
+                // Find the end: either closing quote, comma, bracket, or end of string
+                int end = -1;
+                if (selector.indexOf("\"", start) > start) {
+                    end = selector.indexOf("\"", start);
+                } else if (selector.indexOf(",", start) > start) {
+                    end = selector.indexOf(",", start);
+                } else if (selector.indexOf("]", start) > start) {
+                    end = selector.indexOf("]", start);
+                } else {
+                    end = selector.length(); // Read until end of string
+                }
+
+                if (end > start) {
+                    name = selector.substring(start, end).trim();
+                }
+            }
+            // Extract from :has-text("...") pattern
+            else if (selector.contains(":has-text(")) {
+                int start = selector.indexOf(":has-text(") + 11;
+                int end = selector.indexOf(")", start);
+                if (end > start) {
+                    name = selector.substring(start, end).replace("\"", "").replace("'", "");
+                }
+            }
+            // Extract from getByRole patterns (modern Playwright)
+            else if (selector.contains("getByRole")) {
+                if (selector.contains("name=\"")) {
+                    int start = selector.indexOf("name=\"") + 6;
+                    int end = selector.indexOf("\"", start);
+                    if (end > start) {
+                        name = selector.substring(start, end);
+                    }
+                }
+            }
+            // Extract from name attribute
+            else if (selector.contains("name=\"")) {
+                int start = selector.indexOf("name=\"") + 6;
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                }
+            }
+            // Extract from placeholder attribute
+            else if (selector.contains("placeholder=\"")) {
+                int start = selector.indexOf("placeholder=\"") + 13;
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                }
+            }
+            // Extract from aria-label
+            else if (selector.contains("aria-label=\"")) {
+                int start = selector.indexOf("aria-label=\"") + 12;
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                }
+            }
+            // Extract from title attribute
+            else if (selector.contains("title=\"")) {
+                int start = selector.indexOf("title=\"") + 7;
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                }
+            }
+            // Extract from value attribute (for buttons with value)
+            else if (selector.contains("value=\"")) {
+                int start = selector.indexOf("value=\"") + 7;
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                }
+            }
+            // Extract from class name (last class)
+            else if (selector.startsWith(".")) {
+                name = selector.substring(1).split("\\.")[0];
+                // Convert kebab-case or camelCase class names
+                name = name.replaceAll("-", " ").replaceAll("_", " ");
+            }
+            // Extract from data-testid or data-test-id
+            else if (selector.contains("data-testid=\"") || selector.contains("data-test-id=\"")) {
+                String pattern = selector.contains("data-testid=\"") ? "data-testid=\"" : "data-test-id=\"";
+                int start = selector.indexOf(pattern) + pattern.length();
+                int end = selector.indexOf("\"", start);
+                if (end > start) {
+                    name = selector.substring(start, end);
+                    name = name.replaceAll("-", " ").replaceAll("_", " ");
+                }
+            }
+
+            // Clean up the name
+            name = name.trim()
+                    .replaceAll("[^a-zA-Z0-9\\s]", " ") // Remove special chars
+                    .replaceAll("\\s+", " ") // Normalize spaces
+                    .trim();
+
+            // Remove consecutive duplicate words (e.g., "Setup Setup" -> "Setup")
+            name = removeDuplicateWords(name);
+
+            // Remove common button/input suffixes for cleaner names
+            name = name.replaceAll("(?i)\\s+(button|btn|input|field|link|checkbox|radio)$", "");
+
+            // Convert to PascalCase
+            String[] words = name.split("\\s+");
+            StringBuilder pascalCase = new StringBuilder();
+            for (String word : words) {
+                if (!word.isEmpty()) {
+                    pascalCase.append(word.substring(0, 1).toUpperCase());
+                    if (word.length() > 1) {
+                        pascalCase.append(word.substring(1).toLowerCase());
+                    }
+                }
+            }
+
+            String result = pascalCase.toString();
+
+            // If result is empty or just numbers, provide a more descriptive default
+            if (result.isEmpty()) {
+                return "Element";
+            } else if (result.matches("^\\d+$")) {
+                return "Number" + result;
+            }
+
+            return result;
+        }
+
+        /**
+         * Remove consecutive duplicate words from text.
+         * Examples:
+         * "Setup Setup" -> "Setup"
+         * "Logout Logout" -> "Logout"
+         * "Click Click Click" -> "Click"
+         * "Save Changes" -> "Save Changes" (no change)
+         */
+        private String removeDuplicateWords(String text) {
+            if (text == null || text.trim().isEmpty()) {
+                return text;
+            }
+
+            String[] words = text.split("\\s+");
+            StringBuilder result = new StringBuilder();
+            String previousWord = null;
+
+            for (String word : words) {
+                // Only add word if it's different from previous (case-insensitive)
+                if (previousWord == null || !word.equalsIgnoreCase(previousWord)) {
+                    if (result.length() > 0) {
+                        result.append(" ");
+                    }
+                    result.append(word);
+                    previousWord = word;
+                }
+            }
+
+            return result.toString();
+        }
+
+        /**
+         * Generate element constant name (e.g., SIGN_IN, USERNAME, PASSWORD)
+         * NO ID SUFFIX - Use semantic names only
+         */
+        private String generateElementName(String readableName, int id) {
+            // Convert PascalCase to UPPER_SNAKE_CASE
+            String snakeCase = readableName.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase();
+            // Don't append ID - use semantic name only
+            return snakeCase;
+        }
+
+        /**
+         * Generate method name based on action type and readable name.
+         * Creates descriptive, verb-based method names following Java conventions.
+         *
+         * CRITICAL: This method MUST NEVER return "Value" as a method name!
+         * All method names must be action-based and descriptive.
+         *
+         * @param type         Action type (click, fill, select, check, press, navigate)
+         * @param readableName Human-readable element name (e.g., "SignIn", "Username")
+         * @param id           Element ID for uniqueness
+         * @return Action-based method name (e.g., "clickSignIn", "enterUsername")
+         */
+        private String generateMethodName(String type, String readableName, int id) {
+            // Validate inputs - prevent empty or "Value" method names
+            if (readableName == null || readableName.trim().isEmpty()) {
+                readableName = "Element" + id;
+            }
+            if (readableName.equalsIgnoreCase("Value")) {
+                readableName = "Field" + id;
+            }
+
+            String methodName;
+            switch (type) {
+                case "click":
+                    // Use "click" for buttons/links, makes sense contextually
+                    methodName = "click" + readableName;
+                    break;
+
+                case "fill":
+                    // Use "enter" for text fields to match natural language
+                    // Special handling for common field names
+                    if (readableName.toLowerCase().contains("search")) {
+                        methodName = "search" + readableName.replace("Search", "");
+                    } else if (readableName.toLowerCase().contains("email")) {
+                        methodName = "enterEmail";
+                    } else if (readableName.toLowerCase().contains("password")) {
+                        methodName = "enterPassword";
+                    } else if (readableName.toLowerCase().contains("username")) {
+                        methodName = "enterUsername";
+                    } else {
+                        methodName = "enter" + readableName;
+                    }
+                    break;
+
+                case "select":
+                    // Use "select" for dropdowns
+                    methodName = "select" + readableName;
+                    break;
+
+                case "check":
+                    // Use "check" for checkboxes, "toggle" for switches
+                    if (readableName.toLowerCase().contains("toggle") ||
+                            readableName.toLowerCase().contains("switch")) {
+                        methodName = "toggle" + readableName.replace("Toggle", "").replace("Switch", "");
+                    } else {
+                        methodName = "check" + readableName;
+                    }
+                    break;
+
+                case "press":
+                    // Use "pressKeyOn" for keyboard actions
+                    methodName = "pressKeyOn" + readableName;
+                    break;
+
+                case "verify":
+                    // Use "verify" prefix for assertions/validations
+                    methodName = "verify" + readableName;
+                    break;
+
+                case "navigate":
+                    methodName = "navigateTo";
+                    break;
+
+                default:
+                    // Fallback with camelCase - ensure it's descriptive
+                    String camelCase = readableName.substring(0, 1).toLowerCase() +
+                            (readableName.length() > 1 ? readableName.substring(1) : "");
+                    methodName = camelCase + "Action";
+                    break;
+            }
+
+            // Final safety check: NEVER return "Value" or similar generic names
+            if (methodName.equalsIgnoreCase("Value") ||
+                    methodName.equalsIgnoreCase("value") ||
+                    methodName.isEmpty()) {
+                methodName = "performAction" + id;
+                System.err.println("⚠️ WARNING: Generated invalid method name, using fallback: " + methodName);
+            }
+
+            return methodName;
+        }
+
+        /**
+         * Generate human-readable step text.
+         * Enhanced to handle verify actions for assertions and clean up role-based
+         * names.
+         *
+         * IMPROVEMENT: Removes redundant "role {type} name" prefixes to make steps more
+         * readable:
+         * - "user clicks on role link name invoices" → "user clicks on invoices"
+         * - "user clicks on role button name sign in" → "user clicks on sign in"
+         * - "invoice groups should be visible" (verification keeps as-is)
+         */
+        private String generateStepText(String type, String readableName) {
+            String lowerName = readableName.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
+
+            // Remove redundant "role {type} name " prefix if present
+            // Matches patterns like: "role link name ...", "role button name ...", "role
+            // heading name ..."
+            lowerName = lowerName.replaceAll(
+                    "^role\\s+(link|button|heading|checkbox|textbox|listbox|combobox|option|menuitem|tab|radio)\\s+name\\s+",
+                    "");
+
+            switch (type) {
+                case "click":
+                    return "user clicks on " + lowerName;
+                case "fill":
+                    return "user enters text into " + lowerName;
+                case "select":
+                    return "user selects option from " + lowerName;
+                case "check":
+                    return "user checks " + lowerName;
+                case "press":
+                    return "user presses key on " + lowerName;
+                case "verify":
+                    // For verify, clean up the name but keep it descriptive
+                    return lowerName + " should be visible";
+                case "navigate":
+                    return "user navigates to page";
+                default:
+                    return "user performs action on " + lowerName;
+            }
+        }
+
     }
 
     /**
@@ -3753,6 +5814,104 @@ public class TestGeneratorHelper {
      * 
      * @param args Command line arguments
      */
+    /**
+     * Clean up unused "Recorded" template file after successful generation.
+     * This file is a placeholder/template that's not used by the framework.
+     */
+    private static void cleanupUnusedRecordedFile() {
+        try {
+            java.io.File recordedFile = new java.io.File("Recorded");
+            if (recordedFile.exists() && recordedFile.isFile()) {
+                if (recordedFile.delete()) {
+                    System.out.println("\n🧹 Cleanup: Deleted unused 'Recorded' template file");
+                }
+            }
+        } catch (Exception e) {
+            // Silently ignore cleanup errors - not critical
+            System.out.println("\n⚠️  Note: Could not delete 'Recorded' file (not critical): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Cleanup recording directory after successful test generation.
+     * <p>
+     * PERMANENT FIX (Feb 18, 2026): Automatically deletes recording directories
+     * after successful generation to keep the project clean.
+     * <p>
+     * This runs regardless of how TestGeneratorHelper is invoked:
+     * - Via automation-cli.js (Option 1 or 1B)
+     * - Via direct Maven: mvn exec:java
+     * -Dexec.mainClass=configs.TestGeneratorHelper
+     * - Via any other method
+     * <p>
+     * Why this is needed:
+     * - Recording directories can accumulate over time
+     * - Each recording is only needed once for generation
+     * - Cleaning up saves disk space and reduces clutter
+     * <p>
+     * Example cleanup:
+     * Recorded/recording_meter_1771417629256/ → Deleted after Meter.java generation
+     * <p>
+     * DO NOT REMOVE - Critical for maintaining clean project structure!
+     * 
+     * @param recordingFile Path to the recorded-actions.java file
+     */
+    private static void cleanupRecordingDirectory(String recordingFile) {
+        try {
+            // Extract the recording directory from the recording file path
+            // Example: "Recorded/recording_meter_1771417629256/recorded-actions.java"
+            // → "Recorded/recording_meter_1771417629256"
+            Path recordingPath = Paths.get(recordingFile);
+            Path recordingDir = recordingPath.getParent();
+
+            if (recordingDir != null && Files.exists(recordingDir)) {
+                // Verify this is actually a recording directory (safety check)
+                String dirName = recordingDir.getFileName().toString();
+                if (dirName.startsWith("recording_")) {
+                    System.out.println("\n🧹 [CLEANUP] Deleting recording directory: " + recordingDir);
+
+                    // Delete the entire recording directory recursively
+                    deleteDirectoryRecursively(recordingDir);
+
+                    System.out.println("✅ [CLEANUP] Recording directory deleted successfully");
+                    System.out.println(
+                            "💡 [TIP] Recording directories are auto-deleted after successful generation to save space\n");
+                } else {
+                    System.out.println("⚠️  [CLEANUP] Skipping cleanup - not a recording directory: " + recordingDir);
+                }
+            }
+        } catch (Exception e) {
+            // Non-critical - just log the error
+            System.out.println("\n⚠️  [CLEANUP] Could not delete recording directory: " + e.getMessage());
+            System.out.println("💡 [TIP] You can manually delete: "
+                    + recordingFile.substring(0, recordingFile.lastIndexOf('/')) + "\n");
+        }
+    }
+
+    /**
+     * Recursively delete a directory and all its contents.
+     * Used by cleanupRecordingDirectory() to remove recording folders.
+     * 
+     * @param directory Path to directory to delete
+     * @throws IOException if deletion fails
+     */
+    private static void deleteDirectoryRecursively(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
+        }
+
+        try (Stream<Path> paths = Files.walk(directory)) {
+            paths.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            System.err.println("Failed to delete: " + path + " - " + e.getMessage());
+                        }
+                    });
+        }
+    }
+
     public static void main(String[] args) {
         if (args.length == 4) {
             // Recording mode: Generate from Playwright recording

@@ -15,11 +15,10 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
   ListResourcesRequestSchema,
+  ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -113,17 +112,17 @@ async function listFiles(dirPath: string, extension?: string): Promise<string[]>
 async function analyzePageObjects(): Promise<any> {
   const pageFiles = await listFiles(PAGES_DIR, '.java');
   const pages = [];
-  
+
   for (const file of pageFiles) {
     if (file === 'BasePage.java') continue;
-    
+
     const content = await readFileContent(path.join(PAGES_DIR, file));
     const className = file.replace('.java', '');
-    
+
     // Extract methods (simple regex-based)
     const methodMatches = content.matchAll(/protected static \w+\s+(\w+)\s*\([^)]*\)/g);
     const methods = Array.from(methodMatches, m => m[1]);
-    
+
     pages.push({
       name: className,
       file,
@@ -131,7 +130,7 @@ async function analyzePageObjects(): Promise<any> {
       methods: methods.slice(0, 5) // First 5 methods as sample
     });
   }
-  
+
   return pages;
 }
 
@@ -141,15 +140,15 @@ async function analyzePageObjects(): Promise<any> {
 async function analyzeFeatures(): Promise<any> {
   const featureFiles = await listFiles(FEATURES_DIR, '.feature');
   const features = [];
-  
+
   for (const file of featureFiles) {
     const content = await readFileContent(path.join(FEATURES_DIR, file));
     const featureName = file.replace('.feature', '');
-    
+
     // Extract scenarios
     const scenarioMatches = content.matchAll(/Scenario:(.+)/g);
     const scenarios = Array.from(scenarioMatches, m => m[1].trim());
-    
+
     features.push({
       name: featureName,
       file,
@@ -157,174 +156,155 @@ async function analyzeFeatures(): Promise<any> {
       scenarios: scenarios.slice(0, 3)
     });
   }
-  
+
   return features;
 }
 
 /**
  * Tool: Generate Page Object
+ * Uses Playwright Locator pattern: locator methods + action methods.
+ * Follows the same pattern as Treecomponent.java and Login.java.
  */
 async function generatePageObject(args: any): Promise<string> {
   const { pageName, elements, description, verification } = args;
-  
+
   const className = pageName.charAt(0).toUpperCase() + pageName.slice(1);
   const fileName = `${className}.java`;
   const filePath = path.join(PAGES_DIR, fileName);
-  
+
   const enableLogging = verification?.logging ?? false;
   const enableAssertions = verification?.functional ?? false;
   const enablePerformance = verification?.performance ?? false;
-  
-  // Generate element methods matching existing project pattern (using utils methods)
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const toPascal = (name: string) =>
+    name.replace(/[^a-zA-Z0-9\s]/g, '').trim().split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+
+  const toCamel = (name: string) => {
+    const p = toPascal(name);
+    return p.charAt(0).toLowerCase() + p.slice(1);
+  };
+
+  const smartLocator = (el: any): string => {
+    const n = el.name.toLowerCase();
+    const act = (el.action || 'click').toLowerCase();
+    const label = el.name.replace(/\s+(field|button|btn|dropdown|select|input|checkbox|link|text|area|textbox)$/i, '').trim();
+    const cid = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (n.includes('password') || n.includes('pass'))
+      return "page.locator(\"input[type='password'], input[name*='password' i], input[id*='password' i]\")";
+    if (n.includes('email') || n.includes('e-mail'))
+      return "page.locator(\"input[type='email'], input[name*='email' i], input[id*='email' i]\")";
+    if (n.includes('username') || n.includes('user name'))
+      return "page.locator(\"input[type='email'], input[name*='user' i], input[id*='user' i]\")";
+    if (n.includes('search'))
+      return `page.locator("input[name*='search' i], input[id*='search' i], input[placeholder*='search' i]")`;
+    if (n.includes('checkbox') || (n.includes('check') && !n.includes('search')))
+      return `page.getByRole(AriaRole.CHECKBOX, new Page.GetByRoleOptions().setName("${label}"))`;
+    if (act === 'select' || n.includes('dropdown') || n.includes('select') || n.includes('combo'))
+      return `page.getByRole(AriaRole.COMBOBOX, new Page.GetByRoleOptions().setName("${label}"))`;
+    if (n.includes('link') || n.includes('menu') || n.includes('nav'))
+      return `page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("${label}"))`;
+    if (act === 'type' || n.includes('field') || n.includes('input') || n.includes('text') || n.includes('name'))
+      return `page.locator("input[name*='${cid}' i], input[id*='${cid}' i], input[placeholder*='${label}' i], textarea[name*='${cid}' i]")`;
+    // Default: button
+    return `page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("${label}"))`;
+  };
+
+  // ── generate locator + action methods ─────────────────────────────────────
+  const seenLocators = new Set<string>();
   const elementMethods = elements.map((el: any) => {
-    const methodName = el.name.replace(/\s+/g, '');
-    const action = el.action || 'click';
-    
-    let methodCode = `    /**
-     * ${el.description || `Interact with ${el.name}`}
-     * @param locator The element locator
-     */
-    protected static void ${methodName}(String locator${action === 'type' ? ', String text' : ''}) {`;
-    
+    const locatorId = toCamel(el.name);   // "usernameField"
+    const pascalId = toPascal(el.name);  // "UsernameField"
+    const act = (el.action || 'click').toLowerCase();
+    const locExpr = smartLocator(el);
+
+    let block = '';
+
+    if (!seenLocators.has(locatorId)) {
+      seenLocators.add(locatorId);
+      block += `    /** Locator for ${el.name} */\n`;
+      block += `    public static Locator ${locatorId}() {\n`;
+      block += `        return ${locExpr};\n`;
+      block += `    }\n\n`;
+    }
+
+    const prefix = act === 'type' ? 'enter' : act === 'select' ? 'select' : 'click';
+    const methodName = `${prefix}${pascalId}`;
+    const sigParam = act === 'type' ? 'Page page, String text' : act === 'select' ? 'Page page, String option' : 'Page page';
+
+    block += `    /**\n     * ${el.description || el.name} - ${act} action\n     * @param page Playwright Page instance\n     */\n`;
+    block += `    public static void ${methodName}(${sigParam}) {\n`;
+
     if (enableLogging) {
-      methodCode += `\n        log.info("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+      block += `        log.info("${act === 'type' ? '⌨️' : '🖱️'} ${el.name}");\n`;
     } else {
-      methodCode += `\n        System.out.println("🎯 ${action.charAt(0).toUpperCase() + action.slice(1)}ing on: ${el.name}");`;
+      block += `        System.out.println("📍 Step: ${prefix} ${el.name}");\n`;
     }
-    
+
+    if (enablePerformance) block += `        long startTime = System.currentTimeMillis();\n`;
+
+    if (act === 'click') block += `        clickOnElement(${locatorId}());\n`;
+    else if (act === 'type') block += `        enterText(${locatorId}(), text);\n`;
+    else if (act === 'select') block += `        selectDropDownValueByText(${locatorId}(), option);\n`;
+
     if (enablePerformance) {
-      methodCode += `\n        long startTime = System.currentTimeMillis();`;
+      block += `        long duration = System.currentTimeMillis() - startTime;\n`;
+      block += `        log.info("⏱️ Action completed in " + duration + "ms");\n`;
     }
-    
-    // Use actual project methods from utils class
-    methodCode += `\n        ${action === 'click' ? 'clickOnElement(locator);' : 
-          action === 'type' ? 'enterText(locator, text);' :
-          action === 'select' ? 'selectDropDownValueByText(locator, text);' :
-          'clickOnElement(locator);'}`;
-    
-    if (enablePerformance) {
-      methodCode += `\n        long duration = System.currentTimeMillis() - startTime;`;
-      methodCode += `\n        log.info("⏱️ ${el.name} action completed in " + duration + "ms");`;
-    }
-    
-    methodCode += `\n        TimeoutConfig.shortWait();`;
-    
-    if (enableLogging) {
-      methodCode += `\n        log.info("✅ ${el.name} action completed successfully");`;
-    } else {
-      methodCode += `\n        System.out.println("✅ ${el.name} action completed");`;
-    }
-    
-    methodCode += `\n    }`;
-    return methodCode;
+
+    block += `        TimeoutConfig.waitShort();\n`;
+    if (enableLogging) block += `        log.info("✅ ${el.name} completed");\n`;
+    block += `    }`;
+    return block;
   }).join('\n\n');
-  
-  // Add verification methods if enabled
+
+  // ── verification methods ───────────────────────────────────────────────────
   let verificationMethods = '';
-  
   if (enableAssertions) {
-    verificationMethods += `\n\n    /**
-     * Verify element is present and visible
-     * @param locator The element locator
-     * @param elementName Name for logging
-     */
-    protected static void verifyElementVisible(String locator, String elementName) {
-        log.info("🔍 Verifying " + elementName + " is visible");
-        Assert.assertTrue(isElementPresent(locator), 
-            elementName + " is not visible");
-        log.info("✓ " + elementName + " verification passed");
-    }`;
-    
-    verificationMethods += `\n\n    /**
-     * Verify page is loaded successfully
-     * @param expectedUrlPart Expected URL substring
-     */
-    protected static void verifyPageLoaded(String expectedUrlPart) {
-        log.info("🔍 Verifying page loaded with URL: " + expectedUrlPart);
-        Assert.assertTrue(isUrlContains(expectedUrlPart), 
-            "Page URL does not contain: " + expectedUrlPart);
-        log.info("✓ Page loaded successfully");
-    }`;
+    verificationMethods += `\n\n    /** Verify page loaded via URL check */\n`;
+    verificationMethods += `    public static void verifyPageLoaded(String expectedUrlPart) {\n`;
+    verificationMethods += `        log.info("🔍 Verifying page loaded");\n`;
+    verificationMethods += `        Assert.assertTrue(isUrlContains(expectedUrlPart), "Page URL verification failed");\n`;
+    verificationMethods += `        log.info("✓ Page verified");\n`;
+    verificationMethods += `    }`;
   }
-  
-  if (enablePerformance) {
-    verificationMethods += `\n\n    /**
-     * Measure and verify page load time
-     * @param expectedTimeMs Expected time in milliseconds
-     * @return Actual load time
-     */
-    protected static long measurePageLoadTime(long expectedTimeMs) {
-        long startTime = System.currentTimeMillis();
-        waitForPageLoad();
-        long duration = System.currentTimeMillis() - startTime;
-        log.info("⏱️ Page load time: " + duration + "ms");
-        Assert.assertTrue(duration < expectedTimeMs, 
-            "Page load too slow: " + duration + "ms (expected < " + expectedTimeMs + "ms)");
-        return duration;
-    }`;
-  }
-  
-  const imports = enableLogging || enableAssertions ? 
-    `\nimport org.testng.Assert;\nimport java.util.logging.Logger;` : '';
-  
-  const loggerDeclaration = enableLogging ? 
-    `\n    private static final Logger log = Logger.getLogger(${className}.class.getName());` : '';
-  
+
+  // Include Logger only when it is actually referenced (logging, performance timing, assertions)
+  const useLogger = enableLogging || enablePerformance || enableAssertions;
+  let imports = '';
+  if (enableAssertions) imports += `\nimport org.testng.Assert;`;
+  if (useLogger) imports += `\nimport java.util.logging.Logger;`;
+
+  const loggerDeclaration = useLogger
+    ? `\n    private static final Logger log = Logger.getLogger(${className}.class.getName());`
+    : '';
+
   const pageContent = `package pages;
 
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.AriaRole;
 import configs.TimeoutConfig;${imports}
 
 /**
  * ${description || `${className} Page Object`}
- * 
- * This page object handles interactions with the ${className} page.
- * Extends BasePage to inherit common utilities and methods.
- * ${verification?.functional ? '\n * Includes functional verification and assertions.' : ''}
- * ${verification?.performance ? '\n * Includes performance monitoring.' : ''}
- * 
- * @author Automation Team (AI Generated)
- * @version 1.0
+ * Auto-generated by MCP Server - uses Playwright Locator pattern.
+ * Extends BasePage to inherit common utilities.
  */
 public class ${className} extends BasePage {${loggerDeclaration}
-    
-    /**
-     * Constructor
-     */
-    public ${className}() {
-        super();
-    }
-    
-    // ============================================================
-    // PAGE INTERACTIONS
-    // ============================================================
-    
+    private static final String PAGE_PATH = "";
+
+    /* --------------------
+       Locators for ${className}
+       -----------------------*/
+
 ${elementMethods}${verificationMethods}
-    
+
 }
- * 
- * This page object handles interactions with the ${className} page.
- * All methods follow the Page Object Model pattern and extend BasePage.
- * 
- * @author Automation Team (AI Generated)
- * @version 1.0
- */
-public class ${className} extends BasePage {
-    
-    /**
-     * Constructor
-     */
-    public ${className}() {
-        super();
-    }
-    
-    // ============================================================
-    // PAGE INTERACTIONS
-    // ============================================================
-    
-${elementMethods}
-    
-}`;
-  
+`;
+
   await writeFileContent(filePath, pageContent);
   return `✅ Page Object generated: ${fileName}\n📁 Location: ${filePath}\n\nNext steps:\n1. Review the generated code\n2. Create corresponding feature file using 'generate-feature' tool\n3. Generate step definitions using 'generate-step-definitions' tool`;
 }
@@ -334,19 +314,19 @@ ${elementMethods}
  */
 async function generateFeatureFile(args: any): Promise<string> {
   const { featureName, scenarios, description } = args;
-  
+
   const fileName = `${featureName}.feature`;
   const filePath = path.join(FEATURES_DIR, fileName);
-  
+
   // Generate scenarios
   const scenarioContent = scenarios.map((scenario: any, index: number) => {
     const steps = scenario.steps.map((step: string) => `    ${step}`).join('\n');
-    
+
     return `  @Functional @Priority=${index}
   Scenario: ${scenario.name}
 ${steps}`;
   }).join('\n\n');
-  
+
   const featureContent = `Feature: ${description || featureName}
   As a user
   I want to test ${featureName} functionality
@@ -357,7 +337,7 @@ ${steps}`;
 
 ${scenarioContent}
 `;
-  
+
   await writeFileContent(filePath, featureContent);
   return `✅ Feature file generated: ${fileName}\n📁 Location: ${filePath}\n\nNext step: Generate step definitions using 'generate-step-definitions' tool`;
 }
@@ -367,19 +347,19 @@ ${scenarioContent}
  */
 async function generateStepDefinitions(args: any): Promise<string> {
   const { featureName, pageName, steps } = args;
-  
+
   const className = `${featureName}Steps`;
   const fileName = `${className}.java`;
   const filePath = path.join(STEPDEFS_DIR, fileName);
-  
+
   const pageClass = pageName.charAt(0).toUpperCase() + pageName.slice(1);
-  
+
   // Generate step methods
   const stepMethods = steps.map((step: any) => {
     const annotation = step.type; // Given, When, Then
     const regex = step.regex || step.text.replace(/"/g, '\\"');
     const methodName = step.methodName || step.text.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    
+
     return `    @${annotation}("${regex}")
     public void ${methodName}() {
         System.out.println("📋 Step: ${step.text}");
@@ -387,7 +367,7 @@ async function generateStepDefinitions(args: any): Promise<string> {
         ${step.implementation || '// Add implementation here'}
     }`;
   }).join('\n\n');
-  
+
   const stepDefContent = `package stepDefs;
 
 import io.cucumber.java.en.Given;
@@ -422,7 +402,7 @@ public class ${className} {
 ${stepMethods}
     
 }`;
-  
+
   await writeFileContent(filePath, stepDefContent);
   return `✅ Step Definitions generated: ${fileName}\n📁 Location: ${filePath}\n\nNext steps:\n1. Implement the TODO sections\n2. Run tests using Maven: mvn clean test\n3. Check reports in MRITestExecutionReports/`;
 }
@@ -433,7 +413,7 @@ ${stepMethods}
 async function analyzeFramework(): Promise<string> {
   const pages = await analyzePageObjects();
   const features = await analyzeFeatures();
-  
+
   const analysis = {
     framework: FRAMEWORK_INFO,
     currentState: {
@@ -449,7 +429,7 @@ async function analyzeFramework(): Promise<string> {
       "Follow the existing naming conventions and patterns"
     ]
   };
-  
+
   return JSON.stringify(analysis, null, 2);
 }
 
@@ -458,9 +438,9 @@ async function analyzeFramework(): Promise<string> {
  */
 async function generateCompleteTestSuite(args: any): Promise<string> {
   const { testName, pageElements, scenarios, description } = args;
-  
+
   const results = [];
-  
+
   // 1. Generate Page Object
   const pageResult = await generatePageObject({
     pageName: testName,
@@ -468,7 +448,7 @@ async function generateCompleteTestSuite(args: any): Promise<string> {
     description: `Page object for ${testName} functionality`
   });
   results.push(pageResult);
-  
+
   // 2. Generate Feature File
   const featureResult = await generateFeatureFile({
     featureName: testName,
@@ -476,25 +456,25 @@ async function generateCompleteTestSuite(args: any): Promise<string> {
     description: description
   });
   results.push(featureResult);
-  
+
   // 3. Generate Step Definitions
-  const steps = scenarios.flatMap((s: any) => 
+  const steps = scenarios.flatMap((s: any) =>
     s.steps.map((step: string) => ({
-      type: step.startsWith('Given') ? 'Given' : 
-            step.startsWith('When') ? 'When' : 'Then',
+      type: step.startsWith('Given') ? 'Given' :
+        step.startsWith('When') ? 'When' : 'Then',
       text: step.replace(/^(Given|When|Then|And)\s+/, ''),
       regex: step.replace(/^(Given|When|Then|And)\s+/, ''),
       methodName: step.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().substring(0, 50)
     }))
   );
-  
+
   const stepDefResult = await generateStepDefinitions({
     featureName: testName,
     pageName: testName,
     steps: steps
   });
   results.push(stepDefResult);
-  
+
   return `🎉 Complete test suite generated for: ${testName}\n\n${results.join('\n\n---\n\n')}`;
 }
 
@@ -654,9 +634,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const { name, arguments: args } = request.params;
-    
+
     let result: string;
-    
+
     switch (name) {
       case 'analyze-framework':
         result = await analyzeFramework();
@@ -676,7 +656,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-    
+
     return {
       content: [
         {
@@ -722,7 +702,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
-  
+
   if (uri === 'framework://info') {
     return {
       contents: [
@@ -734,7 +714,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   if (uri === 'framework://basepage') {
     const basePagePath = path.join(PAGES_DIR, 'BasePage.java');
     const content = await readFileContent(basePagePath);
@@ -748,7 +728,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown resource: ${uri}`);
 });
 

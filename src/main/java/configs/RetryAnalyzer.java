@@ -5,18 +5,42 @@ import org.testng.ITestResult;
 
 /**
  * TestNG Retry Analyzer for automatically retrying failed test cases.
- * Implements IRetryAnalyzer interface to determine if a failed test should be
- * retried.
+ * Implements IRetryAnalyzer interface to determine if a failed test should be retried.
  * Thread-safe implementation for parallel test execution.
  *
- * Usage: Add @Test(retryAnalyzer = RetryAnalyzer.class) to test methods
- * Or configure globally via listener in testng.xml
+ * CONFIGURATION:
+ *    - MaxRetryCount in configurations.properties (default: 2)
+ *    - Works with Cucumber-TestNG integration
+ *    - Must be attached directly to @Test annotation
+ *
+ * USAGE:
+ *    Option 1 (Automatic via RetryListener in testng.xml):
+ *       <listeners>
+ *           <listener class-name="configs.RetryListener"/>
+ *       </listeners>
+ *
+ *    Option 2 (Direct attachment):
+ *       @Test(retryAnalyzer = RetryAnalyzer.class)
+ *       public void testMethod() { ... }
+ *
+ * HOW IT WORKS:
+ *    1. Test fails → retry() method called
+ *    2. Checks current retry count vs MaxRetryCount
+ *    3. If retries remaining: sets result to SKIP, returns true
+ *    4. TestNG reruns the test
+ *    5. After max retries: returns false, test fails permanently
+ *
+ * FIXED ISSUES (Feb 11, 2026):
+ *    - Proper TestNG integration with result.setStatus(SKIP)
+ *    - Thread-safe retry counting
+ *    - Detailed logging for debugging
+ *    - Cleanup of ThreadLocal to prevent memory leaks
+ *
+ * See README.md for complete documentation.
  */
 public class RetryAnalyzer implements IRetryAnalyzer {
 
     private static final int maxRetryCount;
-    private final ThreadLocal<Integer> retryCount = ThreadLocal.withInitial(() -> 0);
-
     static {
         // Load max retry count from configuration
         String retryConfig = loadProps.getProperty("MaxRetryCount");
@@ -24,8 +48,16 @@ public class RetryAnalyzer implements IRetryAnalyzer {
                 ? Integer.parseInt(retryConfig)
                 : 2; // Default to 2 retries if not configured
 
-        System.out.println("🔄 RetryAnalyzer initialized with maxRetryCount: " + maxRetryCount);
+        System.out.println("========================================");
+        System.out.println("🔄 RetryAnalyzer STATIC INITIALIZATION");
+        System.out.println("========================================");
+        System.out.println("MaxRetryCount from config: " + retryConfig);
+        System.out.println("Effective maxRetryCount: " + maxRetryCount);
+        System.out.println("========================================\n");
     }
+
+    // Use Integer instead of int to allow proper initialization per test
+    private ThreadLocal<Integer> retryCount = ThreadLocal.withInitial(() -> 0);
 
     /**
      * Determines if a test should be retried based on the retry count.
@@ -35,8 +67,14 @@ public class RetryAnalyzer implements IRetryAnalyzer {
      */
     @Override
     public boolean retry(ITestResult result) {
-        int currentRetryCount = retryCount.get();
+        // Get the current retry count for this test in this thread
+        Integer currentRetryCount = retryCount.get();
 
+        // Log that retry() was actually called
+        System.out.println("\n>>> RetryAnalyzer.retry() CALLED for: " + result.getName());
+        System.out.println(">>> Current retry count: " + currentRetryCount + "/" + maxRetryCount);
+
+        // Check if we should retry
         if (currentRetryCount < maxRetryCount) {
             currentRetryCount++;
             retryCount.set(currentRetryCount);
@@ -58,13 +96,18 @@ public class RetryAnalyzer implements IRetryAnalyzer {
             System.out.println(retryMessage);
             System.err.println(retryMessage); // Also print to stderr for visibility
 
+            // Set attributes to track retry status
             result.setAttribute("retryCount", currentRetryCount);
             result.setAttribute("maxRetryCount", maxRetryCount);
             result.setAttribute("isRetry", true);
 
-            return true;
+            // Mark this result as not to be added to reports (TestNG will rerun it)
+            result.setStatus(ITestResult.SKIP);
+
+            return true; // Retry the test
         }
 
+        // Max retries exhausted
         String failMessage = String.format(
                 "\n========================================\n" +
                         "❌ TEST FAILED PERMANENTLY\n" +
@@ -81,7 +124,10 @@ public class RetryAnalyzer implements IRetryAnalyzer {
 
         // Clean up ThreadLocal to prevent memory leaks
         retryCount.remove();
-        return false;
+
+        // Set final failure status
+        result.setAttribute("retryExhausted", true);
+        return false; // Don't retry anymore
     }
 
     /**

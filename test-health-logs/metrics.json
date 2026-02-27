@@ -1,0 +1,10 @@
+[
+  {
+    "timestamp": "2026-02-18T11:36:41.492Z",
+    "total": 92,
+    "passed": 2,
+    "failed": 30,
+    "skipped": 60,
+    "passRate": 2.17
+  }
+]

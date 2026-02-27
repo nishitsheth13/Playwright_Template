@@ -541,6 +541,190 @@ public class jiraClient {
         }
     }
 
+    /**
+     * Transitions a JIRA issue to a specific status (e.g., "Done", "In Progress").
+     * 
+     * @param issueKey JIRA issue key (e.g., "ECS-123")
+     * @param transitionName Name of the transition (e.g., "Done", "To Do", "In Progress")
+     * @return true if transition successful, false otherwise
+     */
+    public static boolean transitionIssue(String issueKey, String transitionName) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return false;
+        }
+
+        String authHeader = getAuthHeader();
+        if (authHeader == null) {
+            System.err.println("❌ Cannot transition issue - authentication failed");
+            return false;
+        }
+
+        try {
+            // Get available transitions for this issue
+            Response transitionsResponse = RestAssured
+                    .given()
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", "application/json")
+                    .get(baseUrl + "rest/api/3/issue/" + issueKey + "/transitions");
+
+            if (transitionsResponse.getStatusCode() != 200) {
+                System.err.println("❌ Failed to get transitions for " + issueKey + " (" + transitionsResponse.getStatusCode() + ")");
+                return false;
+            }
+
+            // Find transition ID by name
+            List<Map<String, Object>> transitions = transitionsResponse.jsonPath().getList("transitions");
+            String transitionId = null;
+
+            for (Map<String, Object> transition : transitions) {
+                String name = (String) transition.get("name");
+                if (name != null && name.equalsIgnoreCase(transitionName)) {
+                    transitionId = String.valueOf(transition.get("id"));
+                    break;
+                }
+            }
+
+            if (transitionId == null) {
+                System.err.println("❌ Transition '" + transitionName + "' not available for " + issueKey);
+                System.out.println("   Available transitions:");
+                transitions.forEach(t -> System.out.println("   - " + t.get("name")));
+                return false;
+            }
+
+            // Execute transition
+            Map<String, Object> requestBody = new HashMap<>();
+            Map<String, Object> transitionMap = new HashMap<>();
+            transitionMap.put("id", transitionId);
+            requestBody.put("transition", transitionMap);
+
+            Response response = RestAssured
+                    .given()
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", "application/json")
+                    .body(requestBody)
+                    .post(baseUrl + "rest/api/3/issue/" + issueKey + "/transitions");
+
+            if (response.getStatusCode() == 204 || response.getStatusCode() == 200) {
+                System.out.println("✅ " + issueKey + " transitioned to '" + transitionName + "'");
+                return true;
+            } else {
+                System.err.println("❌ Transition failed (" + response.getStatusCode() + "): " + response.getBody().asString());
+                return false;
+            }
+
+        } catch (Exception e) {
+            System.err.println("❌ Error transitioning issue: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Marks a JIRA story as complete/done after successful test execution.
+     * Adds a success comment and attempts to transition to "Done" status.
+     * 
+     * @param issueKey JIRA issue key
+     * @param testName Name of the test that passed
+     * @param executionTime Test execution time in milliseconds
+     * @return true if successfully completed, false otherwise
+     */
+    public static boolean completeStory(String issueKey, String testName, long executionTime) {
+        String baseUrl = getJiraBaseUrl();
+        if (baseUrl == null) {
+            return false;
+        }
+
+        try {
+            // Add completion comment
+            String version = configs.loadProps.getProperty("Version");
+            String commentText = String.format(
+                "✅ *Automation Complete*\n\n" +
+                "Test: %s\n" +
+                "Status: PASSED\n" +
+                "Execution Time: %.2f seconds\n" +
+                "Version: %s\n" +
+                "Date: %s",
+                testName,
+                executionTime / 1000.0,
+                version != null ? version : "N/A",
+                new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())
+            );
+
+            addComment(issueKey, commentText);
+
+            // Attempt to transition to Done
+            // Common transition names: "Done", "Complete", "Resolve", "Close"
+            String[] possibleDoneTransitions = {"Done", "Complete", "Resolve", "Close", "Resolved", "Closed"};
+            
+            for (String transition : possibleDoneTransitions) {
+                if (transitionIssue(issueKey, transition)) {
+                    System.out.println("🎉 Story " + issueKey + " marked as complete!");
+                    return true;
+                }
+            }
+
+            System.out.println("⚠️ Story " + issueKey + " updated with comment, but could not auto-transition to Done");
+            System.out.println("   (Transition may need to be done manually in JIRA)");
+            return false;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error completing story: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Command-line interface for JIRA operations.
+     * Usage:
+     *   mvn exec:java -Dexec.mainClass=configs.jira.jiraClient -Dexec.args="completeStory ECS-123 LoginTest 5000"
+     *   mvn exec:java -Dexec.mainClass=configs.jira.jiraClient -Dexec.args="transitionIssue ECS-123 Done"
+     */
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.err.println("❌ No command specified");
+            System.out.println("Usage:");
+            System.out.println("  completeStory <issueKey> <testName> <executionTime>");
+            System.out.println("  transitionIssue <issueKey> <transitionName>");
+            System.exit(1);
+        }
+
+        String command = args[0];
+
+        try {
+            switch (command) {
+                case "completeStory":
+                    if (args.length < 4) {
+                        System.err.println("❌ Usage: completeStory <issueKey> <testName> <executionTime>");
+                        System.exit(1);
+                    }
+                    String issueKey = args[1];
+                    String testName = args[2];
+                    long executionTime = Long.parseLong(args[3]);
+                    boolean success = completeStory(issueKey, testName, executionTime);
+                    System.exit(success ? 0 : 1);
+                    break;
+
+                case "transitionIssue":
+                    if (args.length < 3) {
+                        System.err.println("❌ Usage: transitionIssue <issueKey> <transitionName>");
+                        System.exit(1);
+                    }
+                    boolean transitioned = transitionIssue(args[1], args[2]);
+                    System.exit(transitioned ? 0 : 1);
+                    break;
+
+                default:
+                    System.err.println("❌ Unknown command: " + command);
+                    System.exit(1);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
     private static String escapeForJson(String text) {
         return text.replace("\\", "\\\\")
                 .replace("\"", "\\\"")

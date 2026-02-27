@@ -64,4 +64,10 @@ temp_recording_*/
 ./jiraConfig.java
 node_modules/
 package.json
-package-lock.json  
+package-lock.json
+
+# npm cache
+.npm-cache/
+.npm/
+npm-debug.log*
+.npmrc.local

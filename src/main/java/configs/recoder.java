@@ -1,17 +1,24 @@
 package configs;
 
-import org.monte.media.Format;
-import org.monte.media.Registry;
-import org.monte.media.math.Rational;
-import org.monte.screenrecorder.ScreenRecorder;
+import static org.monte.media.FormatKeys.*;
+import static org.monte.media.VideoFormatKeys.*;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static org.monte.media.VideoFormatKeys.*;
+import org.monte.media.Format;
+import org.monte.media.FormatKeys.MediaType;
+import org.monte.media.Registry;
+import org.monte.media.math.Rational;
+import org.monte.screenrecorder.ScreenRecorder;
 
 /**
  * SCREEN VIDEO RECORDER (Monte Library)
@@ -33,7 +40,7 @@ import static org.monte.media.VideoFormatKeys.*;
  * - Records browser actions as code (clicks, fills, navigation)
  * - Saves to: temp_recording_XXX/recorded-actions.java
  * - Used for: Test script generation
- * - Triggered by: quick-start.bat Option 1 (Record Actions)
+ * - Triggered by: npm run record (automation-cli.js)
  * - File type: .java source files
  * <p>
  * USAGE:
@@ -45,7 +52,7 @@ import static org.monte.media.VideoFormatKeys.*;
  *
  * @author Framework Team
  * @see browserSelector for integration
- * @see quick-start.bat for browser action recording (codegen)
+ * @see automation-cli.js for browser action recording (codegen)
  */
 public class recoder extends ScreenRecorder {
     public static ScreenRecorder screenRecorder;
