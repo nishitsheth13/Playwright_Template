@@ -1,0 +1,69 @@
+{
+    "name": "playwright-automation-framework",
+    "version": "1.0.0",
+    "description": "Cross-platform Playwright Java automation framework with Cucumber BDD, TestNG, and AI-powered test generation",
+    "main": "automation-cli.js",
+    "type": "commonjs",
+    "engines": {
+        "node": ">=14.0.0",
+        "npm": ">=6.0.0"
+    },
+    "scripts": {
+        "start": "node automation-cli.js",
+        "menu": "node automation-cli.js",
+        "record": "node automation-cli.js --option=1",
+        "retry": "node automation-cli.js --option=1B",
+        "jira": "node automation-cli.js --option=2",
+        "ai": "node automation-cli.js --option=3",
+        "setup": "node automation-cli.js --option=S",
+        "validate": "node automation-cli.js --option=V",
+        "tag": "node automation-cli.js --option=4",
+        "parallel": "node automation-cli.js --option=5",
+        "run": "node automation-cli.js --option=6",
+        "report": "node automation-cli.js --option=R",
+        "metrics": "node automation-cli.js --option=M",
+        "clean": "node automation-cli.js --option=C",
+        "help": "node automation-cli.js --option=H",
+        "test": "mvn clean test",
+        "test:suite": "mvn clean test -DsuiteXmlFile=testng.xml",
+        "test:parallel": "mvn clean test -Dparallel=methods -DthreadCount=4",
+        "report:surefire": "mvn surefire-report:report",
+        "build": "mvn clean compile",
+        "verify": "mvn clean verify",
+        "package": "mvn clean package",
+        "deps:tree": "mvn dependency:tree",
+        "deps:analyze": "mvn dependency:analyze"
+    },
+    "keywords": [
+        "playwright",
+        "java",
+        "automation",
+        "testing",
+        "cucumber",
+        "bdd",
+        "testng",
+        "selenium",
+        "ai-testing",
+        "test-generation",
+        "cross-platform"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "chalk": "^4.1.2",
+        "prompts": "^2.4.2",
+        "ora": "^5.4.1",
+        "commander": "^9.5.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.50.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nishitsheth13/Playwright_Template.git"
+    },
+    "bugs": {
+        "url": "https://github.com/nishitsheth13/Playwright_Template/issues"
+    },
+    "homepage": "https://github.com/nishitsheth13/Playwright_Template#readme"
+}

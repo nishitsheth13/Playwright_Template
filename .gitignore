@@ -3,14 +3,21 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# ─── IDE ──────────────────────────────────────────────────────────────────────
+
 ### IntelliJ IDEA ###
+.idea/
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/shelf/
 *.iws
 *.iml
 *.ipr
+out/
 
 ### Eclipse ###
 .apt_generated
@@ -20,6 +27,8 @@ target/
 .settings
 .springBeans
 .sts4-cache
+.metadata/
+.recommenders/
 
 ### NetBeans ###
 /nbproject/private/
@@ -33,41 +42,97 @@ build/
 
 ### VS Code ###
 .vscode/
+*.code-workspace
+
+# ─── OS GENERATED ─────────────────────────────────────────────────────────────
 
 ### Mac OS ###
 .DS_Store
-# IntelliJ
-.idea/
-*.iml
+.AppleDouble
+.LSOverride
+._*
 
-# Test execution reports
-MRITestExecutionReports/
-*.avi
-*.png
-*.html
-*.pdf
+### Windows ###
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# Temporary recording directories
-temp_recording_*/
-
-# Log files
-*.log
-
-# Backup files
-*.bak
-*.old
-*.tmp
+### Linux ###
 *~
-*.swp
 
-# Files
-./jiraConfig.java
+# ─── JAVA / MAVEN ─────────────────────────────────────────────────────────────
+
+# Compiled class files
+*.class
+
+# Maven local repo (if stored inside project)
+.m2/
+
+# Surefire / Failsafe test output
+**/surefire-reports/
+**/failsafe-reports/
+
+# ─── NODE / NPM ───────────────────────────────────────────────────────────────
+
 node_modules/
-package.json
 package-lock.json
-
-# npm cache
 .npm-cache/
 .npm/
 npm-debug.log*
+yarn-error.log*
 .npmrc.local
+.pnp.*
+.yarn/
+
+# ─── TEST EXECUTION & REPORTS ─────────────────────────────────────────────────
+
+MRITestExecutionReports/
+Recorded/
+test-health-logs/
+temp_recording_*/
+recordings/
+screenShots/
+screenshots/
+
+# Media & report output files
+*.avi
+*.mp4
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.html
+*.pdf
+
+# ─── LOGS ─────────────────────────────────────────────────────────────────────
+
+*.log
+*.log.*
+logs/
+log/
+
+# ─── TEMP / BACKUP / SCRATCH ──────────────────────────────────────────────────
+
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*.swo
+*.swn
+*.~lock.*
+
+# ─── CREDENTIALS / LOCAL CONFIG ───────────────────────────────────────────────
+
+./jiraConfig.java
+*.env
+.env
+.env.*
+!.env.example
+secrets.properties
+local.properties
+jiraConfigurations.properties
