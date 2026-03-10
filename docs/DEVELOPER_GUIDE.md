@@ -1399,10 +1399,10 @@ If you need to revert the CLI to a previous state:
 1. To fully remove NPM: `rm package.json package-lock.json && rm -rf node_modules/`
 2. Revert CLI: `git checkout automation-cli.js`
 
-> ⚠️ **Note:** On Windows, `automation-cli.js` still writes a temporary `.bat` file and executes it
-> via `cmd.exe` with `{ shell: false }` to handle spaces in path. On macOS and Linux, Maven is
-> spawned directly via `spawn('mvn', ['allure:report'], { shell: false })` — no intermediate batch
-> files are written or required.
+> ⚠️ **Note:** `automation-cli.js` uses a cross-platform spawn strategy: on Windows it invokes Maven
+> via a temporary `.bat` file through `cmd.exe`; on macOS/Linux it spawns `mvn` directly via
+> `spawn('mvn', [...], { shell: true })`. Both paths produce identical behaviour and work regardless
+> of spaces in the project path.
 
 ---
 
