@@ -419,9 +419,9 @@ async function recordAndGenerate() {
 
   // ── Sanitize featureName ────────────────────────────────────────────────────
   // Must match Java's autoFixFeatureName: strip special chars, PascalCase each
-    // word, join with no spaces.  Without this a name like "My Feature" becomes
-    // four Maven exec.args instead of the expected four (recordingFile/name/url/jira)
-    // and Java's main() exits with "Invalid arguments!".
+    // word, join with no spaces.  Without this a name like "My Feature" is split
+    // into two separate name args, so Maven sees more than the expected four
+    // exec.args (recordingFile/name/url/jira) and Java's main() exits with "Invalid arguments!".
     const safeFeatureName = featureName.trim()
         .replace(/[^a-zA-Z0-9_\s]/g, '')        // strip special chars (keep spaces for now)
         .split(/\s+/)                             // split on spaces
@@ -5646,23 +5646,35 @@ async function generateAllureReport() {
 
     console.log(colors.yellow + '🔨 Generating Allure static report...\n' + colors.reset);
 
-    // Use a temp batch file to avoid spaces-in-path issues on Windows
     const os = require('os');
-    const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
-    fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+    const isWindows = process.platform === 'win32';
 
   return new Promise((resolve) => {
-      const allureProcess = spawn('cmd.exe', ['/c', batchFile], {
-      cwd: process.cwd(),
-          stdio: 'inherit',
-          shell: false
-    });
+      let allureProcess;
+      if (isWindows) {
+          // Use a temp batch file to avoid spaces-in-path issues on Windows
+          const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
+          fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+          allureProcess = spawn('cmd.exe', ['/c', batchFile], {
+              cwd: process.cwd(),
+              stdio: 'inherit',
+              shell: false
+          });
+          allureProcess.on('close', (code) => {
+              try { fs.unlinkSync(batchFile); } catch (e) {}
+              handleAllureClose(code);
+          });
+      } else {
+          // macOS / Linux: invoke mvn directly, no shell wrapper needed
+          allureProcess = spawn('mvn', ['allure:report'], {
+              cwd: process.cwd(),
+              stdio: 'inherit',
+              shell: false
+          });
+          allureProcess.on('close', handleAllureClose);
+      }
 
-    allureProcess.on('close', (code) => {
-        try {
-            fs.unlinkSync(batchFile);
-        } catch (e) {
-        }
+      function handleAllureClose(code) {
         if (code === 0 && fs.existsSync(reportHtml)) {
             // Copy the generated HTML report into the versioned MRI directory:
             //   MRITestExecutionReports/<Version>/allureReport/
@@ -5682,7 +5694,7 @@ async function generateAllureReport() {
             console.log(colors.yellow + '\ud83d\udca1 Run manually: mvn allure:report\n' + colors.reset);
       }
       resolve();
-    });
+      }
   });
 }
 
