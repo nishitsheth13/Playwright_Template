@@ -5632,23 +5632,35 @@ async function generateAllureReport() {
 
     console.log(colors.yellow + '🔨 Generating Allure static report...\n' + colors.reset);
 
-    // Use a temp batch file to avoid spaces-in-path issues on Windows
     const os = require('os');
-    const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
-    fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+    const isWindows = process.platform === 'win32';
 
   return new Promise((resolve) => {
-      const allureProcess = spawn('cmd.exe', ['/c', batchFile], {
-      cwd: process.cwd(),
-          stdio: 'inherit',
-          shell: false
-    });
+      let allureProcess;
+      if (isWindows) {
+          // Use a temp batch file to avoid spaces-in-path issues on Windows
+          const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
+          fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+          allureProcess = spawn('cmd.exe', ['/c', batchFile], {
+              cwd: process.cwd(),
+              stdio: 'inherit',
+              shell: false
+          });
+          allureProcess.on('close', (code) => {
+              try { fs.unlinkSync(batchFile); } catch (e) {}
+              handleAllureClose(code);
+          });
+      } else {
+          // macOS / Linux: invoke mvn directly, no shell wrapper needed
+          allureProcess = spawn('mvn', ['allure:report'], {
+              cwd: process.cwd(),
+              stdio: 'inherit',
+              shell: false
+          });
+          allureProcess.on('close', handleAllureClose);
+      }
 
-    allureProcess.on('close', (code) => {
-        try {
-            fs.unlinkSync(batchFile);
-        } catch (e) {
-        }
+      function handleAllureClose(code) {
         if (code === 0 && fs.existsSync(reportHtml)) {
             // Copy the generated HTML report into the versioned MRI directory:
             //   MRITestExecutionReports/<Version>/allureReport/
@@ -5668,7 +5680,7 @@ async function generateAllureReport() {
             console.log(colors.yellow + '\ud83d\udca1 Run manually: mvn allure:report\n' + colors.reset);
       }
       resolve();
-    });
+      }
   });
 }
 
