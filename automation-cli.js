@@ -707,26 +707,40 @@ async function recordAndGenerate() {
               process.stdout.write(colors.dim + `[DEBUG] args file   : ${normalizedArgsFile}\n` + colors.reset);
               process.stdout.write(colors.dim + `[DEBUG] args content: ${argsContent.replace(/\n/g, ' | ')}\n` + colors.reset);
 
-              // Single batch: compile phase + exec:java together.
-              // stdio: ['ignore','inherit','inherit'] — stdin is /dev/null so the batch
+              // Single spawn: compile phase + exec:java together.
+              // stdio: ['ignore','inherit','inherit'] — stdin is /dev/null so the process
               // never waits on a broken stdin handle; stdout/stderr stream to console.
-              const os = require('os');
-              const batchFile = path.join(os.tmpdir(), `mvn-gen-${Date.now()}.bat`);
-              const batchContent = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile}"\r\n`;
-              fs.writeFileSync(batchFile, batchContent, 'utf-8');
-              process.stdout.write(colors.dim + `[DEBUG] batch: ${batchFile}\n` + colors.reset);
+              const isWin = process.platform === 'win32';
+              let generateProcess;
+              if (isWin) {
+                  const os = require('os');
+                  const batchFile = path.join(os.tmpdir(), `mvn-gen-${Date.now()}.bat`);
+                  const batchContent = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile}"\r\n`;
+                  fs.writeFileSync(batchFile, batchContent, 'utf-8');
+                  process.stdout.write(colors.dim + `[DEBUG] batch: ${batchFile}\n` + colors.reset);
+                  generateProcess = spawn('cmd.exe', ['/c', batchFile], {
+                      cwd: process.cwd(),
+                      stdio: ['ignore', 'inherit', 'inherit'],
+                      shell: false
+                  });
+                  generateProcess.on('close', (genCode) => {
+                      try { fs.unlinkSync(batchFile); } catch (e) { }
+                      _onGenerateDone(genCode);
+                  });
+              } else {
+                  generateProcess = spawn('mvn', [
+                      'compile', 'exec:java',
+                      `-Dexec.mainClass=configs.TestGeneratorHelper`,
+                      `-DtfArgsFile=${normalizedArgsFile}`
+                  ], {
+                      cwd: process.cwd(),
+                      stdio: ['ignore', 'inherit', 'inherit'],
+                      shell: true
+                  });
+                  generateProcess.on('close', _onGenerateDone);
+              }
 
-              const generateProcess = spawn('cmd.exe', ['/c', batchFile], {
-                  cwd: process.cwd(),
-                  stdio: ['ignore', 'inherit', 'inherit'],
-                  shell: false
-              });
-
-              generateProcess.on('close', (genCode) => {
-                  try {
-                      fs.unlinkSync(batchFile);
-                  } catch (e) {
-                  }
+              function _onGenerateDone(genCode) {
                   if (genCode === 0) {
                       process.stdout.write(colors.green + '\n\n✅ Test files generated successfully!\n' + colors.reset);
                       process.stdout.write(colors.cyan + '\n📋 Generated Files:\n' + colors.reset);
@@ -774,7 +788,7 @@ async function recordAndGenerate() {
                       restoreReadline();
                       resolve();
                   }
-              });
+              }
           } catch (handlerErr) {
               process.stderr.write(colors.red + '\n❌ [ERROR] Post-recording handler failed: ' + handlerErr.message + '\n' + colors.reset);
               process.stderr.write(handlerErr.stack + '\n');
