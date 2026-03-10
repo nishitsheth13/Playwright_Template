@@ -33,9 +33,14 @@ import java.util.stream.Collectors;
  */
 public class AITestFramework {
 
+    /**
+     * Dynamic project root – resolves correctly wherever the JVM is launched from
+     */
+    private static final String PROJECT_ROOT = System.getProperty("user.dir");
+
     private static final String HEALTH_LOG_DIR = "test-health-logs/";
     @SuppressWarnings("unused") // Reserved for future locator strategy persistence
-    private static final String LOCATOR_STRATEGY_FILE = "src/test/resources/locator-strategies.properties";
+    private static final String LOCATOR_STRATEGY_FILE = PROJECT_ROOT + "/src/test/resources/locator-strategies.properties";
     private static final int FLAKY_THRESHOLD = 2;
     @SuppressWarnings("unused") // Reserved for future parallel execution enhancements
     private static final int DEFAULT_THREAD_COUNT = Runtime.getRuntime().availableProcessors();
@@ -385,7 +390,7 @@ public class AITestFramework {
         CoverageReport report = new CoverageReport(featureName);
 
         try {
-            Path featurePath = Paths.get("src/test/java/features/" + featureName + ".feature");
+            Path featurePath = Paths.get(PROJECT_ROOT, "src/test/java/features/" + featureName + ".feature");
             if (Files.exists(featurePath)) {
                 List<String> lines = Files.readAllLines(featurePath);
                 report.totalScenarios = countScenarios(lines);
@@ -394,7 +399,7 @@ public class AITestFramework {
                 report.boundaryScenarios = countScenarioType(lines, "boundary|edge|limit");
             }
 
-            Path stepsPath = Paths.get("src/test/java/stepDefs/" + featureName + "Steps.java");
+            Path stepsPath = Paths.get(PROJECT_ROOT, "src/test/java/stepDefs/" + featureName + "Steps.java");
             if (Files.exists(stepsPath)) {
                 List<String> lines = Files.readAllLines(stepsPath);
                 report.implementedSteps = countImplementedSteps(lines);
@@ -469,7 +474,7 @@ public class AITestFramework {
         OptimizationSuggestions suggestions = new OptimizationSuggestions();
 
         try {
-            Path stepsPath = Paths.get("src/test/java/stepDefs/" + featureName + "Steps.java");
+            Path stepsPath = Paths.get(PROJECT_ROOT, "src/test/java/stepDefs/" + featureName + "Steps.java");
             if (Files.exists(stepsPath)) {
                 String content = Files.readString(stepsPath);
 

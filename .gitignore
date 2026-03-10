@@ -86,6 +86,15 @@ yarn-error.log*
 .pnp.*
 .yarn/
 
+# ─── MCP SERVER BUILD OUTPUT ──────────────────────────────────────────────────
+
+mcp-server/node_modules/
+mcp-server/dist/
+
+# ─── ALLURE CLI (auto-downloaded by allure-maven plugin) ──────────────────────
+
+.allure/
+
 # ─── TEST EXECUTION & REPORTS ─────────────────────────────────────────────────
 
 MRITestExecutionReports/
@@ -95,6 +104,7 @@ temp_recording_*/
 recordings/
 screenShots/
 screenshots/
+node_modules/
 
 # Media & report output files
 *.avi

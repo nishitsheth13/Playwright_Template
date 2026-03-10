@@ -61,6 +61,7 @@ const net = require('net');
 const colors = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',
+    dim: '\x1b[2m',
   cyan: '\x1b[36m',
   green: '\x1b[32m',
   yellow: '\x1b[33m',
@@ -213,7 +214,7 @@ const MENU_CONFIG = {
   ]
 };
 
-const rl = readline.createInterface({
+let rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
@@ -222,7 +223,9 @@ const rl = readline.createInterface({
 let mcpServerProcess = null;
 const MCP_SERVER_PORT = 3000; // Default MCP server port
 
-// Promisify readline question
+// Promisify readline question.
+// IMPORTANT: Always reads the current `rl` binding so it works after
+// the readline interface is closed + recreated around codegen sessions.
 const question = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 // ============================================================================
@@ -409,8 +412,58 @@ async function recordAndGenerate() {
 
   const jiraId = jiraStory.trim() || 'AUTO-GEN';
 
-  // Create recording directory
-  const recordingDir = `Recorded/recording_${featureName}_${Date.now()}`;
+    // Write back URL to config if user entered a different one (or no default existed)
+    if (!configUrl || pageUrl !== configUrl) {
+        updateConfigProperty('URL', pageUrl);
+    }
+
+  // ── Sanitize featureName ────────────────────────────────────────────────────
+  // Must match Java's autoFixFeatureName: strip special chars, PascalCase each
+    // word, join with no spaces.  Without this a name like "My Feature" is split
+    // into two separate name args, so Maven sees more than the expected four
+    // exec.args (recordingFile/name/url/jira) and Java's main() exits with "Invalid arguments!".
+    const safeFeatureName = featureName.trim()
+        .replace(/[^a-zA-Z0-9_\s]/g, '')        // strip special chars (keep spaces for now)
+        .split(/\s+/)                             // split on spaces
+        .filter(w => w.length > 0)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1)) // PascalCase each word
+        .join('');                                // join without spaces
+
+    if (!safeFeatureName) {
+        console.log(colors.red + '\n❌ Feature name must contain at least one alphanumeric character!' + colors.reset);
+        return;
+    }
+    if (safeFeatureName !== featureName.trim()) {
+        console.log(colors.yellow + `⚠️  Feature name sanitized to: "${safeFeatureName}" (spaces/special chars removed)` + colors.reset);
+    }
+
+    // ── Check for existing generated files ──────────────────────────────────────
+    // Ask user BEFORE rl.close() — readline must still be open to accept input.
+    // Without this check, mergeMode=false silently OVERWRITES Login.java etc.
+    const pageObjectFile = path.join('src', 'main', 'java', 'pages', `${safeFeatureName}.java`);
+    const featureFileCheck = path.join('src', 'test', 'java', 'features', `${safeFeatureName.toLowerCase()}.feature`);
+    const stepDefsFile = path.join('src', 'test', 'java', 'stepDefs', `${safeFeatureName}Steps.java`);
+    const existingFiles = [pageObjectFile, featureFileCheck, stepDefsFile].filter(f => fs.existsSync(f));
+
+    let mergeMode = false;
+    if (existingFiles.length > 0) {
+        console.log(colors.yellow + '\n⚠️  The following files already exist:' + colors.reset);
+        existingFiles.forEach(f => console.log(colors.dim + `   • ${f}` + colors.reset));
+        console.log(colors.cyan + '\n🔀 Choose generation mode:' + colors.reset);
+        console.log('   [M] Merge    — preserve existing methods and append new ones');
+        console.log('   [O] Overwrite — replace files entirely with newly recorded actions\n');
+        const modeAnswer = await question(colors.cyan + 'Enter M or O: ' + colors.reset);
+        const modeChoice = modeAnswer.trim().toLowerCase();
+        if (modeChoice !== 'm' && modeChoice !== 'o' && modeChoice !== 'merge' && modeChoice !== 'overwrite') {
+            console.log(colors.red + '\n❌ Invalid choice. Please run again and enter M or O.' + colors.reset);
+            return;
+        }
+        mergeMode = modeChoice === 'm' || modeChoice === 'merge';
+        console.log(colors.green + `✓ Mode: ${mergeMode ? 'Merge (existing code preserved, new actions appended)' : 'Overwrite (files will be fully replaced)'}` + colors.reset);
+    }
+
+    // Create recording directory
+    const recordingDir = `Recorded/recording_${safeFeatureName}_${Date.now()}`;
   const recordingFile = path.join(recordingDir, 'recorded-actions.java');
 
   try {
@@ -426,7 +479,7 @@ async function recordAndGenerate() {
   }
 
   console.log(colors.yellow + '\n🚀 Starting recording process...' + colors.reset);
-  console.log(colors.cyan + '📝 Feature: ' + featureName + colors.reset);
+    console.log(colors.cyan + '📝 Feature: ' + safeFeatureName + colors.reset);
   console.log(colors.cyan + '🌐 URL: ' + pageUrl + colors.reset);
   console.log(colors.cyan + '🎫 JIRA: ' + jiraId + colors.reset);
   console.log(colors.cyan + '💾 Recording will be saved to: ' + recordingFile + colors.reset);
@@ -486,148 +539,257 @@ async function recordAndGenerate() {
         console.log(colors.yellow + '⚠️  Could not verify Playwright installation: ' + checkError.message + colors.reset);
       }
 
-      // Launch Playwright Codegen with auto-save to file
-      const codegenProcess = spawn('npx', [
-        'playwright',
-        'codegen',
+        // Close readline ENTIRELY before spawning codegen.
+        // On Windows, readline.createInterface() modifies process.stdin so that
+        // child processes can detect an "interactive" TTY — but even rl.pause()
+        // is not enough; any lingering readline state makes Playwright believe
+        // stdin is a non-interactive pipe and it exits the Inspector immediately.
+        // Calling rl.close() fully releases the stdin handle back to the OS so
+        // the spawned codegen process inherits a clean, real TTY (stdio:'inherit').
+        rl.close();
+
+        const outputPath = path.resolve(recordingFile);
+
+        console.log(colors.dim + `[DEBUG] codegen output: ${outputPath}` + colors.reset);
+
+        // WHY npx playwright codegen instead of the old node -e inline script:
+        //
+        //   The previous approach used context._enableRecorder() — a private
+        //   internal API that was REMOVED in playwright-core 1.40+. With the
+        //   globally installed playwright@1.44.1 the method simply does not exist,
+        //   so the Inspector would open but NOTHING was ever written to the output
+        //   file. The browser closed, file check failed → generation was skipped.
+        //
+        //   The correct, stable, version-safe approach is:
+        //     npx playwright codegen --output=<file> --target=java <url>
+        //
+        //   Self-signed / internal TLS certs (ERR_CERT_AUTHORITY_INVALID):
+        //   We pass --ignore-https-errors which tells the codegen CLI to set
+        //   ignoreHTTPSErrors on the browser context. For older Chromium builds
+        //   we also inject PLAYWRIGHT_CHROMIUM_ARGS via the environment so the
+        //   binary-level --ignore-certificate-errors flag is always applied.
+        //
+        //   rl.close() fully releases Node's readline wrapper so the child
+        //   inherits a clean real TTY on fd 0. stdio:'inherit' is required —
+        //   'ignore' on stdin causes Playwright to detect a non-TTY and exit
+        //   the Inspector immediately.
+
+        // Build the codegen argument list.
+        // On Windows with shell:true, Node.js joins all args with spaces and
+        // wraps the whole thing in outer quotes for cmd.exe:
+        //   cmd /d /s /c "npx playwright ... --output "path with spaces" url"
+        // cmd.exe with /c strips the first and last " in the argument, leaving
+        // the inner "path with spaces" intact as a single properly-quoted arg.
+        // Without this quoting the space in "Automation Projects" would split
+        // outputPath into two separate args, causing Playwright to treat the
+        // second half as a URL and fail to open the Inspector.
+        //
+        // We pass the real URL directly (instead of about:blank) so the browser
+        // opens on the correct page immediately — no manual copy-paste needed.
+        // --ignore-https-errors handles self-signed certs AND follows redirects
+        // (HTTP→HTTPS, /page → /page/login, etc.) without killing the Inspector.
+        // The URL is quoted to protect special characters (& ? # spaces) from
+        // being split or interpreted by cmd.exe's shell tokeniser.
+
+        // Normalize URL: ensure it has a protocol prefix so Playwright accepts it.
+        // pageUrl is either what the user typed or the default from configurations.properties.
+        let normalizedPageUrl = pageUrl;
+        if (!/^https?:\/\//i.test(normalizedPageUrl)) {
+            normalizedPageUrl = 'https://' + normalizedPageUrl;
+            console.log(colors.yellow + `⚠️  Protocol missing — using: ${normalizedPageUrl}` + colors.reset);
+        }
+        console.log(colors.dim + `[DEBUG] codegen URL   : ${normalizedPageUrl}` + colors.reset);
+
+        const quotedOutputPath = `"${outputPath}"`;
+        const quotedPageUrl = `"${normalizedPageUrl}"`;
+        const codegenArgs = [
+            'playwright', 'codegen',
         '--target', 'java',
-        '--output', recordingFile,
-        pageUrl
-      ], {
+            '--ignore-https-errors',   // suppresses cert errors AND follows HTTPS redirects
+            '--output', quotedOutputPath,
+            quotedPageUrl              // open directly on target URL; redirects are followed automatically
+        ];
+
+        console.log(colors.dim + `[DEBUG] codegen cmd: npx ${codegenArgs.join(' ')}` + colors.reset);
+
+        // Environment: pass --ignore-certificate-errors at the Chromium binary
+        // level via PLAYWRIGHT_CHROMIUM_ARGS for self-signed cert sites.
+        const codegenEnv = Object.assign({}, process.env, {
+            PLAYWRIGHT_CHROMIUM_ARGS: '--ignore-certificate-errors --ignore-certificate-errors-spki-list'
+        });
+
+        const codegenProcess = spawn('npx', codegenArgs, {
         cwd: process.cwd(),
-        shell: true,
-        stdio: 'inherit'
+            shell: true,           // needed on Windows for npx to resolve correctly
+            stdio: 'inherit',      // inherit all three fds so Playwright sees a real TTY
+            windowsHide: false,    // (stdin:'ignore' causes codegen to exit immediately)
+            env: codegenEnv
       });
 
       console.log(colors.green + '✅ Playwright Inspector launched!' + colors.reset);
-      console.log(colors.yellow + '📝 Recording in progress... Close browser when done.\n' + colors.reset);
+        console.log(colors.cyan + `\n🌐 Browser is navigating to: ${normalizedPageUrl}` + colors.reset);
+        console.log(colors.dim + '   (HTTPS certificate errors are ignored; redirects are followed automatically)' + colors.reset);
+        console.log(colors.yellow + '\n📝 Perform your actions in the browser. Close it when done.\n' + colors.reset);
 
       codegenProcess.on('close', async (code) => {
-        console.log(colors.cyan + '\n📋 Recording session ended.\n' + colors.reset);
+          // ── helper: safely restore the readline interface at the very end ──
+          // MUST be called as the final step before every resolve() path.
+          // Reason: on Windows, after rl.close() stdin can be in a destroyed /
+          // half-closed state.  Calling readline.createInterface() on it at the
+          // TOP of this handler throws "write after end", which the outer
+          // try/catch silently catches → resolve() is called with no files
+          // generated.  Deferring to the end means generation always runs first.
+          const restoreReadline = () => {
+              try {
+                  if (process.stdin.destroyed || !process.stdin.readable) {
+                      process.stdin.resume(); // attempt to revive before attaching
+                  }
+                  rl = readline.createInterface({input: process.stdin, output: process.stdout});
+              } catch (_) {
+                  // stdin is unrecoverable — CLI will re-create rl on next menu paint
+              }
+          };
+
+          try {
+              process.stdout.write(colors.dim + `[DEBUG] codegenProcess exited with code: ${code}\n` + colors.reset);
+              process.stdout.write(colors.cyan + '\n📋 Recording session ended.\n\n' + colors.reset);
+
+              // Give the OS a moment to flush the file write before we check it.
+              // On Windows, Playwright may still be writing the output file when
+              // the process exits, causing a false "file not found / empty" error.
+              await new Promise(r => setTimeout(r, 800));
 
         // Check if recording file was created
         if (!fs.existsSync(recordingFile)) {
-          console.log(colors.red + '❌ No recording file found. Recording may have been cancelled.\n' + colors.reset);
-          resolve();
-          return;
+            process.stdout.write(colors.red + '❌ No recording file found at: ' + recordingFile + '\n' + colors.reset);
+            process.stdout.write(colors.yellow + '\n💡 Possible reasons:\n' + colors.reset);
+            process.stdout.write('   • You closed the browser before performing any actions\n');
+            process.stdout.write('   • Playwright codegen exited with an error (see output above)\n');
+            process.stdout.write('   • The output path could not be written (check permissions)\n');
+            process.stdout.write('\n💡 Tip: Use Option 1B to retry generation from an existing recording.\n\n');
+            restoreReadline();
+            resolve();
+            return;
         }
 
         // Check if recording file has content
         const stats = fs.statSync(recordingFile);
         if (stats.size === 0) {
-          console.log(colors.red + '❌ Recording file is empty. No actions were recorded.\n' + colors.reset);
-          resolve();
-          return;
-        }
-
-        console.log(colors.green + '✅ Recording saved successfully (' + stats.size + ' bytes)\n' + colors.reset);
-        console.log(colors.yellow + '🔄 Auto-generating test files...\n' + colors.reset);
-
-        // First, compile the project to ensure TestGeneratorHelper and dependencies are compiled
-        console.log(colors.cyan + '🔨 Compiling framework classes...\n' + colors.reset);
-
-        const compileFramework = spawn('mvn', ['compile', '-q'], {
-          cwd: process.cwd(),
-          shell: true,
-          stdio: 'inherit'
-        });
-
-        compileFramework.on('close', (compileCode) => {
-          if (compileCode !== 0) {
-            console.log(colors.red + '\n❌ Framework compilation failed!' + colors.reset);
-            console.log(colors.yellow + '💡 Please fix compilation errors and try again.\n' + colors.reset);
+            process.stdout.write(colors.red + '❌ Recording file is empty. No actions were recorded.\n\n' + colors.reset);
+            restoreReadline();
             resolve();
             return;
-          }
+        }
 
-          console.log(colors.green + '✅ Framework compiled successfully\n' + colors.reset);
+              process.stdout.write(colors.green + `✅ Recording saved successfully (${stats.size} bytes)\n\n` + colors.reset);
+              process.stdout.write(colors.yellow + '🔄 Auto-generating test files...\n\n' + colors.reset);
+              process.stdout.write(colors.cyan + '🔨 Compiling and generating test files...\n\n' + colors.reset);
 
-          // Call TestGeneratorHelper to generate files
-          // Use temp batch file to avoid Windows CMD quoting issues
-          const escapedRecordingFile = recordingFile.replace(/\\/g, '\\\\');
-          const escapedPageUrl = pageUrl.replace(/\\/g, '\\\\');
+              stripBomFromJavaFiles(); // Prevent UTF-8 BOM javac error
 
-          // For -Dexec.args, use space-separated values
-          const execArgsValue = `${escapedRecordingFile} ${featureName} ${escapedPageUrl} ${jiraId}`;
+              // Normalize path separators for Maven (backslashes break -D arg parsing)
+              const normalizedRecordingFile = recordingFile.replace(/\\/g, '/');
 
-          console.log(colors.dim + `[DEBUG]URL being passed: ${escapedPageUrl}` + colors.reset);
+              // Write all generation arguments to a properties file inside the recording dir.
+              // Only the FILE PATH is passed on the command line — no spaces, no special chars —
+              // bypassing the Windows cmd.exe problem where https:// in exec.args is split.
+              const argsFile = path.join(recordingDir, 'gen-args.properties');
+              const argsContent = [
+                  `tfRecFile=${normalizedRecordingFile}`,
+                  `tfFeature=${safeFeatureName}`,
+                  `tfUrl=${pageUrl}`,
+                  `tfJira=${jiraId}`,
+                  `tfMerge=${mergeMode}`
+              ].join('\n');
+              fs.writeFileSync(argsFile, argsContent, 'utf-8');
+              const normalizedArgsFile = argsFile.replace(/\\/g, '/');
 
-          // Create temporary batch file with the Maven command
-          const tempBatchFile = path.join(process.cwd(), 'temp_generate.bat');
-          const batchContent = `@echo off\nmvn exec:java -e -Dexec.mainClass=configs.TestGeneratorHelper "-Dexec.args=${execArgsValue}"`;
+              process.stdout.write(colors.dim + `[DEBUG] args file   : ${normalizedArgsFile}\n` + colors.reset);
+              process.stdout.write(colors.dim + `[DEBUG] args content: ${argsContent.replace(/\n/g, ' | ')}\n` + colors.reset);
 
-          fs.writeFileSync(tempBatchFile, batchContent);
-          console.log(colors.dim + `[DEBUG] Created temp batch: ${tempBatchFile}` + colors.reset);
+              // Single batch: compile phase + exec:java together.
+              // stdio: ['ignore','inherit','inherit'] — stdin is /dev/null so the batch
+              // never waits on a broken stdin handle; stdout/stderr stream to console.
+              const os = require('os');
+              const batchFile = path.join(os.tmpdir(), `mvn-gen-${Date.now()}.bat`);
+              const batchContent = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile}"\r\n`;
+              fs.writeFileSync(batchFile, batchContent, 'utf-8');
+              process.stdout.write(colors.dim + `[DEBUG] batch: ${batchFile}\n` + colors.reset);
 
-          // Execute the batch file
-          const generateProcess = spawn(tempBatchFile, [], {
-            cwd: process.cwd(),
-            stdio: 'inherit',
-            shell: true
-          });
-
-          // Cleanup and original handler
-          generateProcess.on('close', (genCode) => {
-            // Clean up batch file
-            try {
-              fs.unlinkSync(tempBatchFile);
-            } catch (err) {
-              // Ignore cleanup errors
-            }
-
-            // Continue with original logic
-            if (genCode === 0) {
-              console.log(colors.green + '\n\n✅ Test files generated successfully!' + colors.reset);
-              console.log(colors.cyan + '\n📋 Generated Files:' + colors.reset);
-              console.log(`   ✓ src/main/java/pages/${featureName}.java`);
-              console.log(`   ✓ src/test/java/features/${featureName.toLowerCase()}.feature`);
-              console.log(`   ✓ src/test/java/stepDefs/${featureName}Steps.java`);
-
-              console.log(colors.yellow + '\n🔨 Compiling generated files...\n' + colors.reset);
-
-              // Compile to verify
-              const compileProcess = spawn('mvn', ['clean', 'compile', '-DskipTests'], {
-                cwd: process.cwd(),
-                shell: true,
-                stdio: 'inherit'
+              const generateProcess = spawn('cmd.exe', ['/c', batchFile], {
+                  cwd: process.cwd(),
+                  stdio: ['ignore', 'inherit', 'inherit'],
+                  shell: false
               });
 
-              compileProcess.on('close', async (compileCode) => {
-                if (compileCode === 0) {
-                  console.log(colors.green + '\n\n✅ Compilation successful! Your test is ready to use.' + colors.reset);
-                  console.log(colors.cyan + '\n💡 Next Steps:' + colors.reset);
-                  console.log('   1. Review generated files for accuracy');
-                  console.log('   2. Run with: npm run tag -- --tags @' + featureName.toLowerCase());
-                  console.log('   3. Or run all tests with: npm run run\n');
-
-                  // Clean up recording directory after successful generation
+              generateProcess.on('close', (genCode) => {
                   try {
-                    const rimraf = require('fs').rmSync || require('fs').rmdirSync;
-                    rimraf(recordingDir, { recursive: true, force: true });
-                    console.log(colors.dim + `✓ Cleaned up recording directory: ${recordingDir}` + colors.reset);
-                  } catch (cleanupErr) {
-                    console.log(colors.dim + `⚠️  Could not clean up recording directory: ${cleanupErr.message}` + colors.reset);
+                      fs.unlinkSync(batchFile);
+                  } catch (e) {
                   }
-                } else {
-                  console.log(colors.yellow + '\n⚠️  Compilation had issues. Please review the errors above.' + colors.reset);
-                  console.log(colors.cyan + '💡 You can fix errors with: npm run validate\n' + colors.reset);
-                }
-                resolve();
+                  if (genCode === 0) {
+                      process.stdout.write(colors.green + '\n\n✅ Test files generated successfully!\n' + colors.reset);
+                      process.stdout.write(colors.cyan + '\n📋 Generated Files:\n' + colors.reset);
+                      process.stdout.write(`   ✓ src/main/java/pages/${safeFeatureName}.java\n`);
+                      process.stdout.write(`   ✓ src/test/java/features/${safeFeatureName.toLowerCase()}.feature\n`);
+                      process.stdout.write(`   ✓ src/test/java/stepDefs/${safeFeatureName}Steps.java\n`);
+                      process.stdout.write(colors.yellow + '\n🔨 Compiling generated files...\n\n' + colors.reset);
+
+                      // Final verification compile — stdin ignored to avoid handle conflicts
+                      const compileProcess = spawn('mvn', ['clean', 'compile', '-DskipTests'], {
+                          cwd: process.cwd(),
+                          shell: true,
+                          stdio: ['ignore', 'inherit', 'inherit']
+                      });
+
+                      compileProcess.on('close', (compileCode) => {
+                          if (compileCode === 0) {
+                              process.stdout.write(colors.green + '\n\n✅ Compilation successful! Your test is ready to use.\n' + colors.reset);
+                              process.stdout.write(colors.cyan + '\n💡 Next Steps:\n' + colors.reset);
+                              process.stdout.write('   1. Review generated files for accuracy\n');
+                              process.stdout.write('   2. Run with: npm run tag -- --tags @' + safeFeatureName.toLowerCase() + '\n');
+                              process.stdout.write('   3. Or run all tests with: npm run run\n\n');
+
+                              // Safety-net cleanup (Java's cleanupRecordingDirectory normally handles this)
+                              if (fs.existsSync(recordingDir)) {
+                  try {
+                      fs.rmSync(recordingDir, {recursive: true, force: true});
+                      process.stdout.write(colors.dim + `✓ Cleaned up recording directory: ${recordingDir}\n` + colors.reset);
+                  } catch (_) { /* Java already cleaned it */
+                  }
+                              }
+                          } else {
+                              process.stdout.write(colors.yellow + '\n⚠️  Compilation had issues. Please review the errors above.\n' + colors.reset);
+                              process.stdout.write(colors.cyan + '💡 You can fix errors with: npm run validate\n\n' + colors.reset);
+                          }
+                          restoreReadline();
+                          resolve();
+                      });
+                  } else {
+                      process.stdout.write(colors.red + '\n❌ File generation failed! Check the errors above.\n\n' + colors.reset);
+                      process.stdout.write(colors.yellow + '💡 Troubleshooting:\n' + colors.reset);
+                      process.stdout.write('   - Ensure recording file has valid Playwright Java code\n');
+                      process.stdout.write('   - Check if feature name is valid (alphanumeric only)\n');
+                      process.stdout.write('   - Try Option 1B (Retry) if you want to regenerate\n\n');
+                      restoreReadline();
+                      resolve();
+                  }
               });
-            } else {
-              console.log(colors.red + '\n❌ File generation failed! Check the errors above.\n' + colors.reset);
-              console.log(colors.yellow + '💡 Troubleshooting:' + colors.reset);
-              console.log('   - Ensure recording file has valid Playwright Java code');
-              console.log('   - Check if feature name is valid (alphanumeric only)');
-              console.log('   - Try Option 1B (Retry) if you want to regenerate\n');
+          } catch (handlerErr) {
+              process.stderr.write(colors.red + '\n❌ [ERROR] Post-recording handler failed: ' + handlerErr.message + '\n' + colors.reset);
+              process.stderr.write(handlerErr.stack + '\n');
+              restoreReadline();
               resolve();
-            }
-          });
-        }); // Close compileFramework.on('close')
+          }
       });
 
       codegenProcess.on('error', (error) => {
-        console.log(colors.red + '\n❌ Failed to start Playwright: ' + error.message + colors.reset);
+          try {
+              if (process.stdin.destroyed || !process.stdin.readable) process.stdin.resume();
+              rl = readline.createInterface({input: process.stdin, output: process.stdout});
+          } catch (_) {
+          }
+          process.stdout.write(colors.red + '\n❌ Failed to start Playwright: ' + error.message + '\n' + colors.reset);
         console.log(colors.yellow + '\n💡 Possible solutions:' + colors.reset);
         console.log('   1. Run: npm run setup (installs Playwright)');
         console.log('   2. Or manually run: npx playwright install');
@@ -4923,118 +5085,133 @@ async function retryFromRecording() {
     return;
   }
 
-  const recordingFile = recordings[parseInt(selection) - 1].path;
+    // Write back URL to config if user entered a different one (or no default existed)
+    if (!configUrl || pageUrl !== configUrl) {
+        updateConfigProperty('URL', pageUrl);
+    }
+
+    // Sanitize featureName: strip special chars, PascalCase — must match Java autoFixFeatureName.
+    // Spaces would corrupt the Maven exec.args space-split, sending wrong arg count to Java main().
+    const safeFeatureName = featureName.trim()
+        .replace(/[^a-zA-Z0-9_\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 0)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('');
+
+    if (!safeFeatureName) {
+        console.log(colors.red + '\n❌ Feature name must contain at least one alphanumeric character!\n' + colors.reset);
+        return;
+    }
+    if (safeFeatureName !== featureName.trim()) {
+        console.log(colors.yellow + `⚠️  Feature name sanitized to: "${safeFeatureName}"` + colors.reset);
+    }
+
+    // Normalize path separators and convert 'y'/'n' mergeMode to boolean string for Java 5th arg
+    const normalizedRecordingFile1B = recordings[parseInt(selection) - 1].path.replace(/\\/g, '/');
+    const mergeModeArg1B = (mergeMode.trim().toLowerCase() === 'y') ? 'true' : 'false';
+    // recordingFile = normalized path used in execArgsValue and console messages below
+    const recordingFile = normalizedRecordingFile1B;
 
   console.log(colors.yellow + '\n🔄 Generating test files from recording...\n' + colors.reset);
   console.log(colors.cyan + '  📄 Recording: ' + recordingFile + colors.reset);
-  console.log(colors.cyan + '  📝 Feature: ' + featureName + colors.reset);
+    console.log(colors.cyan + '  📝 Feature: ' + safeFeatureName + colors.reset);
   console.log(colors.cyan + '  🌐 URL: ' + pageUrl + colors.reset);
   console.log(colors.cyan + '  🎫 JIRA: ' + jiraStory + colors.reset);
-  console.log(colors.cyan + '  🔄 Merge Mode: ' + (mergeMode.toLowerCase() === 'y' ? 'Yes' : 'No') + colors.reset);
+    console.log(colors.cyan + '  🔄 Merge Mode: ' + (mergeModeArg1B === 'true' ? 'Yes (merge)' : 'No (overwrite)') + colors.reset);
   console.log('');
 
-  // First, compile the project to ensure TestGeneratorHelper and dependencies are compiled
-  console.log(colors.cyan + '🔨 Compiling framework classes...\n' + colors.reset);
+    // Compile + generate in a single Maven invocation.
+    // 'mvn compile exec:java' runs the compile lifecycle phase first automatically —
+    // no silent -q flag, no separate spawn, no nested callbacks. All errors visible.
+    console.log(colors.cyan + '🔨 Compiling and generating test files...\n' + colors.reset);
+    stripBomFromJavaFiles(); // Prevent UTF-8 BOM javac error
 
   return new Promise((resolve) => {
-    const compileFramework = spawn('mvn', ['compile', '-q'], {
-      cwd: process.cwd(),
-      shell: true,
-      stdio: 'inherit'
-    });
+      // Write all generation arguments to a properties file inside the recording dir.
+      // Only the FILE PATH is passed on the command line — no spaces, no special chars —
+      // bypassing the Windows cmd.exe problem where https:// in exec.args is split.
+      const argsFile1B = path.join(path.dirname(recordingFile), 'gen-args.properties');
+      const argsContent1B = [
+          `tfRecFile=${recordingFile}`,
+          `tfFeature=${safeFeatureName}`,
+          `tfUrl=${pageUrl}`,
+          `tfJira=${jiraStory}`,
+          `tfMerge=${mergeModeArg1B}`
+      ].join('\n');
+      require('fs').writeFileSync(argsFile1B, argsContent1B, 'utf-8');
+      const normalizedArgsFile1B = argsFile1B.replace(/\\/g, '/');
 
-    compileFramework.on('close', (compileCode) => {
-      if (compileCode !== 0) {
-        console.log(colors.red + '\n❌ Framework compilation failed!' + colors.reset);
-        console.log(colors.yellow + '💡 Please fix compilation errors and try again.\n' + colors.reset);
-        resolve();
-        return;
-      }
+      console.log(colors.dim + `[DEBUG] args file   : ${normalizedArgsFile1B}` + colors.reset);
+      console.log(colors.dim + `[DEBUG] args content: ${argsContent1B.replace(/\n/g, ' | ')}` + colors.reset);
 
-      console.log(colors.green + '✅ Framework compiled successfully\n' + colors.reset);
+      // Single batch: compile phase + exec:java together.
+      // cmd.exe /c <batchFile> with shell:false avoids Node.js arg serialisation issues.
+      const os1B = require('os');
+      const batchFile1B = path.join(os1B.tmpdir(), `mvn-gen1b-${Date.now()}.bat`);
+      const batchContent1B = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile1B}"\r\n`;
+      require('fs').writeFileSync(batchFile1B, batchContent1B, 'utf-8');
+      console.log(colors.dim + `[DEBUG] batch: ${batchFile1B}` + colors.reset);
 
-      // Call Java TestGeneratorHelper
-      // Use temp batch file to avoid Windows CMD quoting issues
-      const escapedRecordingFile = recordingFile.replace(/\\/g, '\\\\');
-      const escapedPageUrl = pageUrl.replace(/\\/g, '\\\\');
-
-      // For -Dexec.args, use space-separated values
-      const execArgsValue = `${escapedRecordingFile} ${featureName} ${escapedPageUrl} ${jiraStory}`;
-
-      console.log(colors.dim + `[DEBUG] URL being passed: ${escapedPageUrl}` + colors.reset);
-
-      // Create temporary batch file with the Maven command
-      const tempBatchFile = path.join(process.cwd(), 'temp_generate.bat');
-      const batchContent = `@echo off\nmvn exec:java -e -Dexec.mainClass=configs.TestGeneratorHelper "-Dexec.args=${execArgsValue}"`;
-
-      fs.writeFileSync(tempBatchFile, batchContent);
-      console.log(colors.dim + `[DEBUG] Created temp batch: ${tempBatchFile}` + colors.reset);
-
-      // Execute the batch file
-      const generate = spawn(tempBatchFile, [], {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        shell: true
+      const generate = spawn('cmd.exe', ['/c', batchFile1B], {
+          cwd: process.cwd(),
+          stdio: 'inherit',
+          shell: false
       });
 
       generate.on('close', (code) => {
-        // Clean up batch file
-        try {
-          fs.unlinkSync(tempBatchFile);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
+          try {
+              require('fs').unlinkSync(batchFile1B);
+          } catch (e) {
+          }
+          if (code === 0) {
+              console.log(colors.green + '\n\n✅ Test files generated successfully!' + colors.reset);
+              console.log(colors.cyan + '\n📋 Generated Files:' + colors.reset);
+              console.log(`   ✓ src/main/java/pages/${safeFeatureName}.java`);
+              console.log(`   ✓ src/test/java/features/${safeFeatureName.toLowerCase()}.feature`);
+              console.log(`   ✓ src/test/java/stepDefs/${safeFeatureName}Steps.java`);
 
-        // Continue with original logic
-        if (code === 0) {
-          console.log(colors.green + '\n\n✅ Test files generated successfully!' + colors.reset);
-          console.log(colors.cyan + '\n📋 Generated Files:' + colors.reset);
-          console.log(`   ✓ src/main/java/pages/${featureName}.java`);
-          console.log(`   ✓ src/test/java/features/${featureName.toLowerCase()}.feature`);
-          console.log(`   ✓ src/test/java/stepDefs/${featureName}Steps.java`);
+              console.log(colors.yellow + '\n🔨 Compiling generated files...\n' + colors.reset);
 
-          console.log(colors.yellow + '\n🔨 Compiling generated files...\n' + colors.reset);
+              // Final verification compile
+              const compileProcess = spawn('mvn', ['clean', 'compile', '-DskipTests'], {
+                  cwd: process.cwd(),
+                  shell: true,
+                  stdio: 'inherit'
+              });
 
-          // Compile to verify
-          const compileProcess = spawn('mvn', ['clean', 'compile', '-DskipTests'], {
-            cwd: process.cwd(),
-            shell: true,
-            stdio: 'inherit'
-          });
+              compileProcess.on('close', (compileCode) => {
+                  if (compileCode === 0) {
+                      console.log(colors.green + '\n\n✅ Compilation successful! Your test is ready to use.' + colors.reset);
+                      console.log(colors.cyan + '\n💡 Next Steps:' + colors.reset);
+                      console.log('   1. Review generated files for accuracy');
+                      console.log('   2. Run with: npm run tag -- --tags @' + safeFeatureName.toLowerCase());
+                      console.log('   3. Or run all tests with: npm run run\n');
 
-          compileProcess.on('close', (compileCode) => {
-            if (compileCode === 0) {
-              console.log(colors.green + '\n\n✅ Compilation successful! Your test is ready to use.' + colors.reset);
-              console.log(colors.cyan + '\n💡 Next Steps:' + colors.reset);
-              console.log('   1. Review generated files for accuracy');
-              console.log('   2. Run with: npm run tag -- --tags @' + featureName.toLowerCase());
-              console.log('   3. Or run all tests with: npm run run\n');
-
-              // Clean up recording directory after successful generation
-              try {
-                const recordingDirPath = path.dirname(recordingFile);
-                const rimraf = require('fs').rmSync || require('fs').rmdirSync;
-                rimraf(recordingDirPath, { recursive: true, force: true });
-                console.log(colors.dim + `✓ Cleaned up recording directory: ${recordingDirPath}` + colors.reset);
-              } catch (cleanupErr) {
-                console.log(colors.dim + `⚠️  Could not clean up recording directory: ${cleanupErr.message}` + colors.reset);
-              }
-            } else {
-              console.log(colors.yellow + '\n⚠️  Compilation had issues. Please review the errors above.' + colors.reset);
-              console.log(colors.cyan + '💡 You can fix errors with: npm run validate\n' + colors.reset);
-            }
-            resolve();
-          });
-        } else {
-          console.log(colors.red + '\n❌ Generation failed! Check the error messages above.\n' + colors.reset);
-          console.log(colors.yellow + '💡 Troubleshooting:' + colors.reset);
-          console.log('   - Ensure recording file has valid Playwright Java code');
-          console.log('   - Check if feature name is valid (alphanumeric only)');
-          console.log('   - Try regenerating the recording with Option 1\n');
-          resolve();
-        }
+                      // Clean up recording directory after successful generation
+                      try {
+                          const recordingDirPath = path.dirname(recordingFile);
+                          const rimraf = require('fs').rmSync || require('fs').rmdirSync;
+                          rimraf(recordingDirPath, {recursive: true, force: true});
+                          console.log(colors.dim + `✓ Cleaned up recording directory: ${recordingDirPath}` + colors.reset);
+                      } catch (cleanupErr) {
+                          console.log(colors.dim + `⚠️  Could not clean up recording directory: ${cleanupErr.message}` + colors.reset);
+                      }
+                  } else {
+                      console.log(colors.yellow + '\n⚠️  Compilation had issues. Please review the errors above.' + colors.reset);
+                      console.log(colors.cyan + '💡 You can fix errors with: npm run validate\n' + colors.reset);
+                  }
+                  resolve();
+              });
+          } else {
+              console.log(colors.red + '\n❌ Generation failed! Check the error messages above.\n' + colors.reset);
+              console.log(colors.yellow + '💡 Troubleshooting:' + colors.reset);
+              console.log('   - Ensure recording file has valid Playwright Java code');
+              console.log('   - Check if feature name is valid (alphanumeric only)');
+              console.log('   - Try regenerating the recording with Option 1\n');
+              resolve();
+          }
       });
-    }); // Close compileFramework.on('close')
   });
 }
 
@@ -5135,7 +5312,13 @@ async function runSpecificTagTests() {
   console.log(colors.yellow + `\n🧪 Running tests with tag: ${tag}\n` + colors.reset);
 
   return new Promise((resolve) => {
-    const test = spawn('mvn', ['test', `-Dcucumber.filter.tags="${tag}"`], {
+      // WHY no quotes around the tag value:
+      //   With shell:true, cmd.exe processes the argument string. If the tag
+      //   is wrapped in inner double-quotes (-Dcucumber.filter.tags="@Login"),
+      //   Maven receives the literal string "@Login" WITH the quote characters,
+      //   which Cucumber's tag parser doesn't recognise — no tests match.
+      //   Without the inner quotes the tag value reaches Cucumber clean.
+      const test = spawn('mvn', ['test', `-Dcucumber.filter.tags=${tag}`], {
       cwd: process.cwd(),
       shell: true,
       stdio: 'inherit'
@@ -5391,45 +5574,98 @@ async function generateAndViewReports() {
 
 async function generateHTMLReport() {
   const fs = require('fs');
-  const reportPath = path.join(process.cwd(), 'target', 'cucumber-reports', 'cucumber.html');
-  if (fs.existsSync(reportPath)) {
-    console.log(colors.green + '\u2705 HTML Report found at: ' + reportPath + '\n' + colors.reset);
+    const srcDir = path.join(process.cwd(), 'target', 'cucumber-reports');
+    const srcFile = path.join(srcDir, 'cucumber.html');
+
+    if (!fs.existsSync(srcFile)) {
+        console.log(colors.red + '\u274c HTML report not found. Run tests first.\n' + colors.reset);
+        return;
+    }
+
+    // Copy entire cucumber-reports folder into versioned MRI directory
+    const destDir = getMriVersionedDir('cucumberReports');
+    copyDirSync(srcDir, destDir);
+    // Remove original from target/ to avoid redundant data
+    deleteDirSync(srcDir);
+    const destFile = path.join(destDir, 'cucumber.html');
+    console.log(colors.green + '\u2705 HTML Report saved to:\n  ' + destFile + '\n' + colors.reset);
+
     const open = await question(colors.cyan + 'Open in browser? (Y/n): ' + colors.reset);
     if (open.toLowerCase() !== 'n') {
-      openInBrowser(reportPath);
-    }
-  } else {
-    console.log(colors.red + '\u274c HTML report not found. Run tests first.\n' + colors.reset);
+        openInBrowser(destFile);
   }
 }
 
 async function generateJSONReport() {
-  const reportPath = path.join(process.cwd(), 'target', 'json-report', 'cucumber.json');
-  if (require('fs').existsSync(reportPath)) {
-    console.log(colors.green + '✅ JSON Report found at: ' + reportPath + '\n' + colors.reset);
-    console.log(colors.cyan + '📋 This report can be used for CI/CD integration\n' + colors.reset);
-  } else {
-    console.log(colors.red + '❌ JSON report not found. Run tests first.\n' + colors.reset);
+    const fs = require('fs');
+    const srcFile = path.join(process.cwd(), 'target', 'json-report', 'cucumber.json');
+
+    if (!fs.existsSync(srcFile)) {
+        console.log(colors.red + '\u274c JSON report not found. Run tests first.\n' + colors.reset);
+        return;
   }
+
+    // Copy JSON into versioned MRI directory
+    const destDir = getMriVersionedDir('jsonReports');
+    const destFile = path.join(destDir, 'cucumber.json');
+    fs.copyFileSync(srcFile, destFile);
+    // Remove original from target/ to avoid redundant data
+    deleteDirSync(path.join(process.cwd(), 'target', 'json-report'));
+    console.log(colors.green + '\u2705 JSON Report saved to:\n  ' + destFile + '\n' + colors.reset);
+    console.log(colors.cyan + '\ud83d\udccb Use this file for CI/CD integration (Jenkins, GitLab, Azure DevOps)\n' + colors.reset);
 }
 
 async function generateAllureReport() {
-  console.log(colors.yellow + '🚀 Launching Allure server...\n' + colors.reset);
-  console.log(colors.cyan + '📊 Allure will open in your browser automatically\n' + colors.reset);
+    const fs = require('fs');
+    // Results are written here by the Allure Cucumber adapter during test execution
+    // (matches allure.results.directory in allure.properties)
+    const resultsDir = path.join(process.cwd(), 'MRITestExecutionReports', 'allure-results');
+    const reportDir  = path.join(process.cwd(), 'target', 'allure-report');
+    const reportHtml = path.join(reportDir, 'index.html');
+
+    // Guard: results must exist before we can generate a report
+    if (!fs.existsSync(resultsDir) || fs.readdirSync(resultsDir).length === 0) {
+        console.log(colors.red + '\n❌ No Allure results found.' + colors.reset);
+        console.log(colors.yellow + '💡 Run your tests first (option 1), then generate the Allure report.\n' + colors.reset);
+        return;
+    }
+
+    console.log(colors.yellow + '🔨 Generating Allure static report...\n' + colors.reset);
+
+    // Use a temp batch file to avoid spaces-in-path issues on Windows
+    const os = require('os');
+    const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
+    fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
 
   return new Promise((resolve) => {
-    const allureProcess = spawn('mvn', ['allure:serve'], {
+      const allureProcess = spawn('cmd.exe', ['/c', batchFile], {
       cwd: process.cwd(),
-      shell: true,
-      stdio: 'inherit'
+          stdio: 'inherit',
+          shell: false
     });
 
     allureProcess.on('close', (code) => {
-      if (code === 0) {
-        console.log(colors.green + '\n✅ Allure report generated!\n' + colors.reset);
+        try {
+            fs.unlinkSync(batchFile);
+        } catch (e) {
+        }
+        if (code === 0 && fs.existsSync(reportHtml)) {
+            // Copy the generated HTML report into the versioned MRI directory:
+            //   MRITestExecutionReports/<Version>/allureReport/
+            const destDir = getMriVersionedDir('allureReport');
+            copyDirSync(reportDir, destDir);
+            // Clean up temp HTML report and the staging results folder
+            deleteDirSync(reportDir);
+            deleteDirSync(resultsDir);
+            const destHtml = path.join(destDir, 'index.html');
+            console.log(colors.green + '\n\u2705 Allure report saved to:\n  ' + destHtml + colors.reset);
+            console.log(colors.cyan + '\ud83c\udf10 Opening in browser...\n' + colors.reset);
+            openInBrowser(destHtml);
+        } else if (code === 0) {
+            console.log(colors.yellow + '\n\u26a0\ufe0f  Report generated but index.html not found.\n   Check: ' + reportDir + '\n' + colors.reset);
       } else {
-        console.log(colors.red + '\n❌ Failed to generate Allure report\n' + colors.reset);
-        console.log(colors.yellow + '💡 Tip: Ensure Allure is configured in pom.xml\n' + colors.reset);
+            console.log(colors.red + '\n\u274c Failed to generate Allure report (exit code: ' + code + ')' + colors.reset);
+            console.log(colors.yellow + '\ud83d\udca1 Run manually: mvn allure:report\n' + colors.reset);
       }
       resolve();
     });
@@ -5479,19 +5715,26 @@ async function viewAllReports() {
   const fs = require('fs');
   console.log(colors.cyan + '\n\u{1F4C2} Available Report Locations:\n' + colors.reset);
 
-  const reportLocations = [
-    { name: 'Cucumber HTML',      path: 'target/cucumber-reports/cucumber.html' },
-    { name: 'Cucumber JSON',      path: 'target/json-report/cucumber.json' },
-    { name: 'Surefire Reports',   path: 'target/surefire-reports/' },
-    { name: 'MRI Extent Reports', path: 'MRITestExecutionReports/' },
-    { name: 'Recorded Videos',    path: 'Recorded/' },
-    { name: 'Test Health Logs',   path: 'test-health-logs/' }
+    // Get the versioned MRI base dir (same logic as getMriVersionedDir but without mkdir)
+    const cfg = readConfigSync();
+    const version = (cfg.Version || 'default').replace(/[()\\+.^:, -]/g, '');
+    const mriVersionDir = path.join(process.cwd(), 'MRITestExecutionReports', version);
+
+    const reportLocations = [
+        {name: 'MRI Cucumber HTML', path: path.join(mriVersionDir, 'cucumberReports', 'cucumber.html')},
+        {name: 'MRI JSON Report', path: path.join(mriVersionDir, 'jsonReports', 'cucumber.json')},
+        {name: 'MRI Allure Report', path: path.join(mriVersionDir, 'allureReport', 'index.html')},
+        {name: 'MRI Extent Reports', path: mriVersionDir},
+        {name: 'Surefire Reports', path: path.join(process.cwd(), 'target', 'surefire-reports')},
+        {name: 'Recorded Videos', path: path.join(process.cwd(), 'Recorded')},
+        {name: 'Test Health Logs', path: path.join(process.cwd(), 'test-health-logs')}
   ];
 
   reportLocations.forEach(location => {
     const exists = fs.existsSync(location.path);
     const status = exists ? colors.green + '\u2713' : colors.red + '\u2717';
-    console.log('  ' + status + ' ' + location.name + ': ' + location.path + colors.reset);
+      console.log('  ' + status + ' ' + location.name + ':\n    ' + location.path + colors.reset);
+
   });
   console.log('');
 
@@ -5830,6 +6073,142 @@ async function showHelp() {
 /**
  * Exit function
  */
+
+/**
+ * Read configurations.properties synchronously and return a plain key→value object.
+ * Handles Java-escaped colons (\:) transparently.
+ */
+function readConfigSync() {
+    const fsSync = require('fs');
+    const configPath = path.join(process.cwd(), 'src/test/resources/configurations.properties');
+    if (!fsSync.existsSync(configPath)) return {};
+    const config = {};
+    fsSync.readFileSync(configPath, 'utf-8').split('\n').forEach(line => {
+        const trimmed = line.trim().replace(/\r$/, '');
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) return;
+        const key = trimmed.slice(0, eq).trim();
+        const val = trimmed.slice(eq + 1).trim().replace(/\\:/g, ':');
+        config[key] = val;
+    });
+    return config;
+}
+
+/**
+ * Build the versioned MRI report directory path — mirrors what testNGExtentReporter.java does:
+ *   MRITestExecutionReports/<Version stripped of special chars>/<subFolder>
+ * Creates the directory if it does not exist.
+ */
+function getMriVersionedDir(subFolder) {
+    const fsSync = require('fs');
+    const cfg = readConfigSync();
+    const version = (cfg.Version || 'default').replace(/[()\\+.^:, -]/g, '');
+    const dir = path.join(process.cwd(), 'MRITestExecutionReports', version, subFolder);
+    if (!fsSync.existsSync(dir)) fsSync.mkdirSync(dir, {recursive: true});
+    return dir;
+}
+
+/**
+ * Recursively delete a directory (rm -rf equivalent).
+ */
+function deleteDirSync(dir) {
+    const fsSync = require('fs');
+    if (!fsSync.existsSync(dir)) return;
+    fsSync.rmSync(dir, {recursive: true, force: true});
+}
+
+/**
+ * Recursively copy a directory tree from src to dest.
+ */
+function copyDirSync(src, dest) {
+    const fsSync = require('fs');
+    if (!fsSync.existsSync(src)) return;
+    fsSync.mkdirSync(dest, {recursive: true});
+    for (const entry of fsSync.readdirSync(src, {withFileTypes: true})) {
+        const s = path.join(src, entry.name);
+        const d = path.join(dest, entry.name);
+        if (entry.isDirectory()) copyDirSync(s, d);
+        else fsSync.copyFileSync(s, d);
+    }
+}
+
+/**
+ * Update any property in configurations.properties, including refreshing the
+ * #Updated on: timestamp at the top of the file.
+ *
+ * - URL values are automatically escaped for Java Properties format
+ *   (https:// → https\://) so Java's Properties.load() can read them.
+ * - A fresh ISO timestamp replaces the existing #Updated on: comment so the
+ *   file always reflects when it was last changed.
+ *
+ * @param {string} key   - Property key (e.g. 'URL', 'Browser')
+ * @param {string} value - New value (colons in URLs are escaped automatically)
+ */
+function updateConfigProperty(key, value) {
+    try {
+        const fsSync = require('fs');
+        const configPath = path.join(process.cwd(), 'src/test/resources/configurations.properties');
+        if (!fsSync.existsSync(configPath)) return;
+        let content = fsSync.readFileSync(configPath, 'utf-8');
+
+        // Escape the colon after the scheme for Java Properties format
+        // (https:// → https\://).  Only the protocol separator needs escaping;
+        // forward slashes in the path do not.
+        const escapedValue = value.replace('://', '\\://');
+
+        // Update or append the property line
+        const keyPattern = new RegExp(`^${key}=.*`, 'm');
+        if (keyPattern.test(content)) {
+            content = content.replace(keyPattern, `${key}=${escapedValue}`);
+        } else {
+            content = content.trimEnd() + `\n${key}=${escapedValue}\n`;
+        }
+
+        // Refresh the #Updated on: timestamp so the file matches Java's behaviour
+        const timestamp = new Date().toISOString();
+        if (/^#Updated on:/m.test(content)) {
+            content = content.replace(/^#Updated on:.*$/m, `#Updated on: ${timestamp}`);
+        } else {
+            content = `#Updated on: ${timestamp}\n` + content;
+        }
+
+        fsSync.writeFileSync(configPath, content, 'utf-8');
+        console.log(colors.green + `✓ configurations.properties updated: ${key}=${value}` + colors.reset);
+    } catch (e) {
+        console.log(colors.yellow + `⚠️  Could not update configurations.properties: ${e.message}` + colors.reset);
+    }
+}
+
+/**
+ * Strip UTF-8 BOM (\uFEFF) from all Java source files.
+ * VS Code tooling on Windows sometimes saves files with BOM; javac rejects it.
+ * Called automatically before every mvn compile to prevent build failures.
+ */
+function stripBomFromJavaFiles() {
+    const fsSync = require('fs');
+    const walkSync = (dir) => {
+        if (!fsSync.existsSync(dir)) return [];
+        let files = [];
+        for (const entry of fsSync.readdirSync(dir, {withFileTypes: true})) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) files = files.concat(walkSync(full));
+            else if (entry.name.endsWith('.java')) files.push(full);
+        }
+        return files;
+    };
+    let fixed = 0;
+    for (const file of walkSync('src')) {
+        const buf = fsSync.readFileSync(file);
+        if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+            fsSync.writeFileSync(file, buf.slice(3));
+            fixed++;
+            console.log(colors.dim + `  ✓ BOM stripped: ${file}` + colors.reset);
+        }
+    }
+    if (fixed > 0) console.log(colors.yellow + `⚠️  Stripped BOM from ${fixed} Java file(s) before compile.` + colors.reset);
+}
+
 async function exit() {
   return { exit: true };
 }

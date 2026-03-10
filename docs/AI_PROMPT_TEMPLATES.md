@@ -1,7 +1,7 @@
 # 🤖 AI Prompt Templates - Enterprise Test Automation Framework
 
-**Version:** 3.1 (Professional + Advanced Edition)  
-**Last Updated:** February 26, 2026  
+**Version:** 3.2 (Professional + Advanced Edition)  
+**Last Updated:** February 27, 2026  
 **Purpose:** Production-grade, error-free AI prompts for complete test automation lifecycle  
 **Quality Guarantee:** All prompts include validation, error handling, and working code examples
 
@@ -13,6 +13,18 @@
 - **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**: ⚠️ **REQUIRED** - File generation standards, step definition best practices, smart element handler, and NPM CLI guide
 
 ---
+
+## ⭐ What's New in Version 3.2 (February 27, 2026)
+
+### Infrastructure Fixes
+
+- ✅ **Dynamic Project Paths** - `TestGeneratorHelper.java` and `AITestFramework.java` no longer use bare relative
+  `Paths.get("src/...")` calls. All paths are now anchored to `System.getProperty("user.dir")` via a `PROJECT_ROOT`
+  constant — resolves correctly regardless of JVM launch directory.
+- ✅ **No More Temp Batch File** - `automation-cli.js` previously wrote and executed a `temp_generate.bat` file to invoke
+  Maven. This broke on any machine where the project path contained spaces (e.g. `C:\My Projects\...`). The temp file
+  approach has been removed entirely; Maven is now spawned directly via Node's `spawn('mvn', [...], { shell: true })` —
+  zero file I/O, no path dependency.
 
 ## ⭐ What's New in Version 3.1 (February 26, 2026)
 

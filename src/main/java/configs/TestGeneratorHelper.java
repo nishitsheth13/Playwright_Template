@@ -1,25 +1,17 @@
 package configs;
 
+import configs.jira.jiraClient;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import configs.jira.jiraClient;
 
 /**
  * Unified Test Generator Helper - Single class for all test generation needs.
@@ -98,6 +90,11 @@ import configs.jira.jiraClient;
  * ═══════════════════════════════════════════════════════════════════════════
  */
 public class TestGeneratorHelper {
+
+    /**
+     * Dynamic project root – resolves correctly wherever the JVM is launched from
+     */
+    private static final String PROJECT_ROOT = System.getProperty("user.dir");
 
     // ========================================================================
     // ADVANCED AUTO-FIX SYSTEM - Error Prevention & Recovery
@@ -920,6 +917,56 @@ public class TestGeneratorHelper {
             System.out.println("═══════════════════════════════════════════════════════════════\n");
 
             // ═══════════════════════════════════════════════════════════════
+            // CONFIG UPDATE: Sync configurations.properties URL with the base
+            // URL used during this recording session. This ensures tests always
+            // run against the server where the recording was made, preventing
+            // "wrong server" failures when switching environments.
+            // ═══════════════════════════════════════════════════════════════
+            if (pageUrl != null && !pageUrl.trim().isEmpty()
+                    && (pageUrl.startsWith("http://") || pageUrl.startsWith("https://"))) {
+                String baseUrl = extractBaseUrl(pageUrl);
+                if (!baseUrl.isEmpty()) {
+                    // Extract recorded credentials from fill actions targeting login fields
+                    String recordedUsername = null;
+                    String recordedPassword = null;
+                    for (RecordedAction a : actions) {
+                        if (!"fill".equals(a.type)) continue;
+                        String sel = a.selector != null ? a.selector.toLowerCase() : "";
+                        String rname = a.readableName != null ? a.readableName.toLowerCase() : "";
+                        String val = a.value != null ? a.value.trim() : "";
+                        if (val.isEmpty()) continue;
+                        if (sel.contains("password") || rname.contains("password")) {
+                            recordedPassword = val;
+                        } else if ((sel.contains("username") || sel.contains("user") ||
+                                    rname.contains("username") || rname.contains("user")) &&
+                                   recordedUsername == null) {
+                            recordedUsername = val;
+                        }
+                    }
+
+                    String currentConfigUrl = loadProps.getProperty("URL", "").trim();
+                    boolean urlChanged = !baseUrl.equals(currentConfigUrl);
+                    if (urlChanged || recordedUsername != null || recordedPassword != null) {
+                        System.out.println("\n🔧 [CONFIG] Updating configurations.properties:");
+                        if (urlChanged) {
+                            System.out.println("   URL (previous) : " + (currentConfigUrl.isEmpty() ? "(not set)" : currentConfigUrl));
+                            System.out.println("   URL (new)      : " + baseUrl);
+                        }
+                        if (recordedUsername != null) System.out.println("   Username       : " + recordedUsername);
+                        if (recordedPassword != null) System.out.println("   Password       : ********");
+                        boolean updated = ConfigUpdater.updateUrlAndCredentials(baseUrl, recordedUsername, recordedPassword);
+                        if (updated) {
+                            System.out.println("   ✅ configurations.properties updated successfully");
+                        } else {
+                            System.out.println("   ⚠️  Could not update configurations.properties - please update manually");
+                        }
+                    } else {
+                        System.out.println("\n✅ [CONFIG] configurations.properties already up to date");
+                    }
+                }
+            }
+
+            // ═══════════════════════════════════════════════════════════════
             // CLEANUP: Delete unused "Recorded" template file if it exists
             // ═══════════════════════════════════════════════════════════════
             cleanupUnusedRecordedFile();
@@ -1496,7 +1543,7 @@ public class TestGeneratorHelper {
     private static void generatePageObject(String className, String pageUrl, String jiraStory,
             jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
 
-        Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
+        Path pageObjectPath = Paths.get(PROJECT_ROOT, "src/main/java/pages/" + className + ".java");
 
         // Check if page object already exists
         if (Files.exists(pageObjectPath)) {
@@ -1920,7 +1967,7 @@ public class TestGeneratorHelper {
 
         // Write file with error handling
         try {
-            Files.write(Paths.get("src/main/java/pages/" + className + ".java"), pageObjectContent.getBytes());
+            Files.write(Paths.get(PROJECT_ROOT, "src/main/java/pages/" + className + ".java"), pageObjectContent.getBytes());
             System.out.println("[AUTO-FIX] ✅ Page Object file written successfully");
         } catch (IOException e) {
             System.err.println("[ERROR] Failed to write Page Object file: " + e.getMessage());
@@ -2041,9 +2088,13 @@ public class TestGeneratorHelper {
                 "page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.fill\\(\"([^\"]+)\"\\)");
         Pattern getByTextPressPattern = Pattern.compile(
                 "page\\.getByText\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByTextOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.press\\(\"([^\"]+)\"\\)");
+        Pattern getByPlaceholderClickPattern = Pattern.compile(
+                "page\\.getByPlaceholder\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByPlaceholderOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.click\\(");
         Pattern getByPlaceholderFillPattern = Pattern
                 .compile(
                         "page\\.getByPlaceholder\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByPlaceholderOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.fill\\(\"([^\"]+)\"\\)");
+        Pattern getByPlaceholderPressPattern = Pattern.compile(
+                "page\\.getByPlaceholder\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByPlaceholderOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.press\\(\"([^\"]+)\"\\)");
         Pattern getByLabelClickPattern = Pattern.compile(
                 "page\\.getByLabel\\(\"([^\"]+)\"((?:,\\s*new Page\\.GetByLabelOptions\\(\\)(?:\\.\\w+\\([^)]*\\))+)?)\\)\\.click\\(");
         Pattern getByLabelFillPattern = Pattern.compile(
@@ -2333,6 +2384,17 @@ public class TestGeneratorHelper {
                 continue;
             }
 
+            // MODERN API - getByPlaceholder().click()
+            matcher = getByPlaceholderClickPattern.matcher(line);
+            if (matcher.find()) {
+                String placeholder = matcher.group(1);
+                String options = matcher.groupCount() >= 2 ? matcher.group(2) : null;
+                System.out.println("[DEBUG] Found getByPlaceholder click: " + placeholder +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "click", "placeholder=" + placeholder, null, options));
+                continue;
+            }
+
             // MODERN API - getByPlaceholder().fill()
             matcher = getByPlaceholderFillPattern.matcher(line);
             if (matcher.find()) {
@@ -2342,6 +2404,18 @@ public class TestGeneratorHelper {
                 System.out.println("[DEBUG] Found getByPlaceholder fill: " + placeholder + " = " + value +
                         (options != null && !options.isEmpty() ? " with options: " + options : ""));
                 actions.add(new RecordedAction(actionId++, "fill", "placeholder=" + placeholder, value, options));
+                continue;
+            }
+
+            // MODERN API - getByPlaceholder().press()
+            matcher = getByPlaceholderPressPattern.matcher(line);
+            if (matcher.find()) {
+                String placeholder = matcher.group(1);
+                String options = matcher.groupCount() >= 3 ? matcher.group(2) : null;
+                String key = matcher.groupCount() >= 3 ? matcher.group(3) : matcher.group(2);
+                System.out.println("[DEBUG] Found getByPlaceholder press: " + placeholder + " - " + key +
+                        (options != null && !options.isEmpty() ? " with options: " + options : ""));
+                actions.add(new RecordedAction(actionId++, "press", "placeholder=" + placeholder, key, options));
                 continue;
             }
 
@@ -2502,7 +2576,7 @@ public class TestGeneratorHelper {
             jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
 
         // Check if feature file exists and merge mode is enabled
-        Path featurePath = Paths.get("src/test/java/features/" + className.toLowerCase() + ".feature");
+        Path featurePath = Paths.get(PROJECT_ROOT, "src/test/java/features/" + className.toLowerCase() + ".feature");
         if (mergeMode && Files.exists(featurePath)) {
             System.out.println("[MERGE MODE] Feature file exists - will append new scenario");
             // Implementation: Merge by appending new scenario to existing feature file
@@ -2888,7 +2962,7 @@ public class TestGeneratorHelper {
 
         // Write file with error handling
         try {
-            Files.write(Paths.get("src/test/java/features/" + className + ".feature"),
+            Files.write(Paths.get(PROJECT_ROOT, "src/test/java/features/" + className + ".feature"),
                     fixedContent.toString().getBytes());
             System.out.println("[AUTO-FIX] ✅ Feature file written successfully");
 
@@ -2994,6 +3068,67 @@ public class TestGeneratorHelper {
     }
 
     /**
+     * Extracts the base URL (scheme + host + app context path) from a full URL
+     * by stripping the page-specific path segment.
+     * <p>
+     * Strategy:
+     * 1. Ask extractPathFromUrl() for the page-specific suffix.
+     * 2. If the URL ends with that suffix — strip it to get the base.
+     * 3. Fallback: strip the last path segment (handles environments where
+     * the config URL differs from the recorded URL, e.g. new server).
+     * <p>
+     * Examples:
+     * https://server/MRIEnergy/AdvancedWeb/Accessgroup  →  https://server/MRIEnergy/AdvancedWeb
+     * https://newserver/MRIEnergy/AdvancedWeb/Login     →  https://newserver/MRIEnergy/AdvancedWeb
+     * https://server/MRIEnergy/AdvancedWeb              →  https://server/MRIEnergy/AdvancedWeb
+     */
+    private static String extractBaseUrl(String pageUrl) {
+        if (pageUrl == null || pageUrl.trim().isEmpty()) return "";
+        pageUrl = pageUrl.trim();
+        if (!pageUrl.startsWith("http://") && !pageUrl.startsWith("https://")) return "";
+
+        // Remove trailing slashes for clean comparison
+        while (pageUrl.endsWith("/")) pageUrl = pageUrl.substring(0, pageUrl.length() - 1);
+
+        // Step 1: ask extractPathFromUrl() for the page-specific suffix.
+        String pagePath = extractPathFromUrl(pageUrl);
+
+        // If path is empty the recorded URL IS already the base URL — return as-is.
+        if (pagePath == null || pagePath.isEmpty()) {
+            return pageUrl;
+        }
+
+        // The URL ends with the page path — strip it to get the base.
+        if (pageUrl.endsWith(pagePath)) {
+            String base = pageUrl.substring(0, pageUrl.length() - pagePath.length());
+            while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+            if (!base.isEmpty()) return base;
+        }
+
+        // Step 2: fallback for new environments — strip only the LAST path segment.
+        // e.g. https://newserver/MRIEnergy/AdvancedWeb/Login → https://newserver/MRIEnergy/AdvancedWeb
+        int schemeEnd = pageUrl.indexOf("://");
+        int domainStart = schemeEnd + 3;
+        int domainEnd = pageUrl.indexOf('/', domainStart);
+        int lastSlash = pageUrl.lastIndexOf('/');
+
+        // Only strip if there is more than one path segment beyond the domain
+        // i.e. the URL has at least /base/page — not just /base
+        if (domainEnd >= 0 && lastSlash > domainEnd) {
+            String beforeLast = pageUrl.substring(0, lastSlash);
+            // Ensure we keep the known context path depth: only strip if
+            // the remaining URL still has at least one path segment
+            int slashAfterDomain = beforeLast.indexOf('/', domainStart);
+            if (slashAfterDomain >= 0) {
+                return beforeLast;
+            }
+        }
+
+        // No path segments at all — the URL itself is the base URL
+        return pageUrl;
+    }
+
+    /**
      * Generate Step Definitions from recorded actions.
      *
      * CODE REUSABILITY (ENHANCED Feb 12, 2026):
@@ -3008,7 +3143,7 @@ public class TestGeneratorHelper {
             jiraClient.JiraStory jiraInfo, List<RecordedAction> actions, boolean mergeMode) throws IOException {
 
         // Check if step definitions exist and merge mode is enabled
-        Path stepDefPath = Paths.get("src/test/java/stepDefs/" + className + "Steps.java");
+        Path stepDefPath = Paths.get(PROJECT_ROOT, "src/test/java/stepDefs/" + className + "Steps.java");
         if (mergeMode && Files.exists(stepDefPath)) {
             System.out.println("[MERGE MODE] Step definitions exist - will add new steps only");
             // Parse existing to avoid duplicates
@@ -3069,16 +3204,19 @@ public class TestGeneratorHelper {
         sb.append("package stepDefs;\n");
         sb.append("import configs.browserSelector;\n");
 
-        // Import loadProps if we're reusing login functionality
-        if (shouldReuseLogin) {
+        // Import loadProps/utils/Login only when generating Login class step defs.
+        // For other classes, login steps are skipped (handled by LoginSteps.java),
+        // so these imports would be unused.
+        boolean willGenerateLoginSteps = shouldReuseLogin && className.equalsIgnoreCase("login");
+        if (willGenerateLoginSteps) {
             sb.append("import configs.loadProps;\n");
+            sb.append("import configs.utils;\n");
         }
 
         sb.append("import io.cucumber.java.en.*;\n");
         sb.append("import pages.").append(className).append(";\n");
 
-        // FIXED: Always import Login with capital L for login reuse
-        if (shouldReuseLogin) {
+        if (willGenerateLoginSteps) {
             sb.append("import pages.Login;\n");
         }
 
@@ -3120,15 +3258,22 @@ public class TestGeneratorHelper {
         Set<String> generatedSteps = new HashSet<>();
         Set<String> generatedStepMethods = new HashSet<>();
 
-        // Track if we're generating login steps
-        boolean hasGeneratedLoginSteps = false;
-
         for (RecordedAction action : actions) {
             if ("navigate".equals(action.type))
                 continue;
 
             // Check if this is a login-related action
             boolean isLoginAction = isLoginRelatedAction(action);
+
+            // For non-Login classes: skip login-related actions entirely.
+            // The feature file already references LoginSteps.java shared steps
+            // ("User enters valid username from configuration" etc.), so generating
+            // additional login step defs here would create unused, duplicate methods.
+            if (shouldReuseLogin && isLoginAction && !className.equalsIgnoreCase("login")) {
+                System.out.println("[SKIP LOGIN STEP] \"" + action.stepText
+                        + "\" skipped - handled by LoginSteps.java");
+                continue;
+            }
 
             // Generate camelCase method name for step definition
             String stepMethodName = action.methodName.substring(0, 1).toLowerCase() + action.methodName.substring(1);
@@ -3138,21 +3283,6 @@ public class TestGeneratorHelper {
                 System.out.println("[SKIP DUPLICATE METHOD] Step method already exists: " + stepMethodName
                         + "() for action: " + action.stepText);
                 continue;
-            }
-
-            // If login reuse is enabled and this is a login action, generate actual
-            // implementation
-            // instead of TODO comments
-            if (shouldReuseLogin && isLoginAction && !hasGeneratedLoginSteps) {
-                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // ℹ️  LOGIN STEPS FROM RECORDING - GENERATED BELOW\n");
-                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("    // NOTE: If LoginSteps.java already has matching steps, you may\n");
-                sb.append("    // remove duplicates, but ALL steps from the recording are generated.\n");
-                sb.append("    // ═══════════════════════════════════════════════════════════════\n");
-                sb.append("\n");
-                hasGeneratedLoginSteps = true;
-                // FIXED: Do NOT skip - fall through to generate actual step definition
             }
 
             // Mark step method as generated
@@ -3495,7 +3625,7 @@ public class TestGeneratorHelper {
         // NOT for steps that should have been generated above but were skipped
         try {
             String featureContent = new String(Files.readAllBytes(
-                    Paths.get("src/test/java/features/" + className.toLowerCase() + ".feature")));
+                    Paths.get(PROJECT_ROOT, "src/test/java/features/" + className.toLowerCase() + ".feature")));
 
             // Only run validation if we're NOT regenerating (to avoid creating placeholders
             // unnecessarily)
@@ -3514,7 +3644,7 @@ public class TestGeneratorHelper {
 
         // Write file with error handling
         try {
-            Files.write(Paths.get("src/test/java/stepDefs/" + className + "Steps.java"), stepDefContent.getBytes());
+            Files.write(Paths.get(PROJECT_ROOT, "src/test/java/stepDefs/" + className + "Steps.java"), stepDefContent.getBytes());
             System.out.println("[AUTO-FIX] ✅ Step Definitions file written successfully");
         } catch (IOException e) {
             System.err.println("[ERROR] Failed to write Step Definitions file: " + e.getMessage());
@@ -3745,11 +3875,11 @@ public class TestGeneratorHelper {
      * Mapping:
      * fill + password → Login.PasswordField(text);
      * fill + username → Login.UsernameField(text);
-     * press + password → Login.passwordField().press("Tab");
-     * press + username → Login.usernameField().press("Tab");
+     * press + password → pressKey(Login.passwordField(), "Tab");
+     * press + username → pressKey(Login.usernameField(), "Tab");
      * click + sign-in → Login.SignInButton();
-     * click + password → Login.passwordField().click();
-     * click + username → Login.usernameField().click();
+     * click + password → clickOnElement(Login.passwordField());
+     * click + username → clickOnElement(Login.usernameField());
      */
     private static String getLoginMethodCall(RecordedAction action) {
         String readableLower = action.readableName != null ? action.readableName.toLowerCase() : "";
@@ -3765,13 +3895,13 @@ public class TestGeneratorHelper {
         if ("fill".equals(type)) {
             return isPassword ? "Login.PasswordField(text);" : "Login.UsernameField(text);";
         } else if ("press".equals(type)) {
-            return isPassword ? "Login.passwordField().press(\"Tab\");" : "Login.usernameField().press(\"Tab\");";
+            return isPassword ? "utils.pressKey(Login.passwordField(), \"Tab\");" : "utils.pressKey(Login.usernameField(), \"Tab\");";
         } else { // click (and any other interaction)
             if (isSignIn)
                 return "Login.SignInButton();";
             if (isPassword)
-                return "Login.passwordField().click();";
-            return "Login.usernameField().click();";
+                return "utils.clickOnElement(Login.passwordField());";
+            return "utils.clickOnElement(Login.usernameField());";
         }
     }
 
@@ -4102,7 +4232,7 @@ public class TestGeneratorHelper {
      */
     private static void cleanupPlaceholderStepDefinitions(String className) {
         try {
-            Path stepDefPath = Paths.get("src/test/java/stepDefs/" + className + "Steps.java");
+            Path stepDefPath = Paths.get(PROJECT_ROOT, "src/test/java/stepDefs/" + className + "Steps.java");
 
             if (!Files.exists(stepDefPath)) {
                 return; // No file to cleanup
@@ -4173,7 +4303,7 @@ public class TestGeneratorHelper {
         Map<String, String> existingSteps = new HashMap<>();
 
         try {
-            Path stepDefsDir = Paths.get("src/test/java/stepDefs");
+            Path stepDefsDir = Paths.get(PROJECT_ROOT, "src/test/java/stepDefs");
 
             if (!Files.exists(stepDefsDir)) {
                 return existingSteps; // No existing step definitions
@@ -4240,7 +4370,7 @@ public class TestGeneratorHelper {
      */
     private static boolean pageObjectExists(String className) {
         try {
-            Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
+            Path pageObjectPath = Paths.get(PROJECT_ROOT, "src/main/java/pages/" + className + ".java");
             return Files.exists(pageObjectPath);
         } catch (Exception e) {
             return false;
@@ -4333,7 +4463,7 @@ public class TestGeneratorHelper {
         Map<String, String> commonLocators = new HashMap<>();
 
         try {
-            Path pagesDir = Paths.get("src/main/java/pages");
+            Path pagesDir = Paths.get(PROJECT_ROOT, "src/main/java/pages");
             if (!Files.exists(pagesDir)) {
                 return commonLocators;
             }
@@ -4406,7 +4536,7 @@ public class TestGeneratorHelper {
         Set<String> existingMethods = new HashSet<>();
 
         try {
-            Path pageObjectPath = Paths.get("src/main/java/pages/" + className + ".java");
+            Path pageObjectPath = Paths.get(PROJECT_ROOT, "src/main/java/pages/" + className + ".java");
             if (!Files.exists(pageObjectPath)) {
                 existingElements.put("locators", existingLocators);
                 existingElements.put("methods", existingMethods);
@@ -4479,7 +4609,7 @@ public class TestGeneratorHelper {
      */
     private static String detectExistingLogin() {
         try {
-            Path pagesDir = Paths.get("src/main/java/pages");
+            Path pagesDir = Paths.get(PROJECT_ROOT, "src/main/java/pages");
             if (!Files.exists(pagesDir))
                 return null;
 
@@ -4545,7 +4675,7 @@ public class TestGeneratorHelper {
      */
     private static boolean hasConfiguredCredentials() {
         try {
-            Path configPath = Paths.get("src/test/resources/configurations.properties");
+            Path configPath = Paths.get(PROJECT_ROOT, "src/test/resources/configurations.properties");
             if (!Files.exists(configPath))
                 return false;
 
@@ -5913,14 +6043,63 @@ public class TestGeneratorHelper {
     }
 
     public static void main(String[] args) {
-        if (args.length == 4) {
-            // Recording mode: Generate from Playwright recording
+        // PRIMARY path (Windows-safe): Node.js passes the properties-file path
+        // as Maven system property -DtfArgsFile=<path>.  Maven's own -D parser
+        // handles the value before cmd.exe can mangle https:// or split on spaces.
+        String tfArgsFileProp = System.getProperty("tfArgsFile");
+        if (tfArgsFileProp != null) {
+            java.util.Properties props = new java.util.Properties();
+            try (java.io.FileReader fr = new java.io.FileReader(tfArgsFileProp)) {
+                props.load(fr);
+            } catch (java.io.IOException e) {
+                System.err.println("\u274c Cannot read args file: " + tfArgsFileProp + " - " + e.getMessage());
+                System.exit(1);
+            }
+            String tfRecFile = props.getProperty("tfRecFile", "");
+            String tfFeature = props.getProperty("tfFeature", "");
+            String tfUrl = props.getProperty("tfUrl", "");
+            String tfJira = props.getProperty("tfJira", "AUTO-GEN");
+            boolean tfMerge = Boolean.parseBoolean(props.getProperty("tfMerge", "false"));
+            System.out.println("🔧 Args from properties file: " + tfArgsFileProp);
+            System.out.println("   Recording : " + tfRecFile);
+            System.out.println("   Feature   : " + tfFeature);
+            System.out.println("   URL       : " + tfUrl);
+            System.out.println("   JIRA      : " + tfJira);
+            System.out.println("   Merge     : " + tfMerge);
+            boolean success = generateFromRecording(tfRecFile, tfFeature, tfUrl, tfJira, tfMerge);
+            System.exit(success ? 0 : 1);
+
+        } else if (args.length == 4 || args.length == 5) {
+            // Legacy mode: args passed directly via exec.args (no URL involved).
             String recordingFile = args[0];
             String featureName = args[1];
             String pageUrl = args[2];
             String jiraStory = args[3];
+            boolean mergeMode = args.length == 5 && Boolean.parseBoolean(args[4]);
+            boolean success = generateFromRecording(recordingFile, featureName, pageUrl, jiraStory, mergeMode);
+            System.exit(success ? 0 : 1);
 
-            boolean success = generateFromRecording(recordingFile, featureName, pageUrl, jiraStory);
+        } else if (args.length == 1 && args[0].endsWith(".properties")) {
+            // Legacy properties-file via exec.args (kept for back-compat).
+            java.util.Properties props = new java.util.Properties();
+            try (java.io.FileReader fr = new java.io.FileReader(args[0])) {
+                props.load(fr);
+            } catch (java.io.IOException e) {
+                System.err.println("\u274c Cannot read args file: " + args[0] + " - " + e.getMessage());
+                System.exit(1);
+            }
+            String tfRecFile = props.getProperty("tfRecFile", "");
+            String tfFeature = props.getProperty("tfFeature", "");
+            String tfUrl = props.getProperty("tfUrl", "");
+            String tfJira = props.getProperty("tfJira", "AUTO-GEN");
+            boolean tfMerge = Boolean.parseBoolean(props.getProperty("tfMerge", "false"));
+            System.out.println("🔧 Args from properties file: " + args[0]);
+            System.out.println("   Recording : " + tfRecFile);
+            System.out.println("   Feature   : " + tfFeature);
+            System.out.println("   URL       : " + tfUrl);
+            System.out.println("   JIRA      : " + tfJira);
+            System.out.println("   Merge     : " + tfMerge);
+            boolean success = generateFromRecording(tfRecFile, tfFeature, tfUrl, tfJira, tfMerge);
             System.exit(success ? 0 : 1);
 
         } else if (args.length == 1) {
@@ -5962,7 +6141,8 @@ public class TestGeneratorHelper {
             System.err.println("❌ Invalid arguments!");
             System.err.println("\nUsage:");
             System.err.println("  Recording Mode:");
-            System.err.println("    java TestGeneratorHelper <recordingFile> <featureName> <pageUrl> <jiraStory>");
+            System.err.println("    java TestGeneratorHelper <recordingFile> <featureName> <pageUrl> <jiraStory> [true|false]");
+            System.err.println("    5th arg: true=merge (preserve existing files), false=overwrite (default)");
             System.err.println();
             System.err.println("  JIRA Mode:");
             System.err.println("    java TestGeneratorHelper <jiraStoryId>");
@@ -5973,3 +6153,5 @@ public class TestGeneratorHelper {
         }
     }
 }
+
+

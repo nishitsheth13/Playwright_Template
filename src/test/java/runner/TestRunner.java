@@ -20,6 +20,7 @@ import org.testng.annotations.Test;
                 "html:target/cucumber-reports/cucumber.html",
                 "junit:target/cucumber-reports/cucumber.xml",
                 "com.aventstack.extentreports.cucumber.adapter.ExtentCucumberAdapter:",
+                "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm",
                 "rerun:target/rerun.txt"
         },
         monochrome = true,
