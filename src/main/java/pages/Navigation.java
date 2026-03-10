@@ -33,8 +33,8 @@ public class Navigation extends BasePage {
        Locators for Navigation
        -----------------------*/
     
-    public static Locator page() {
-        return page.locator("page");
+    public static Locator pageNavigationBar() {
+        return page.locator(".mri-navigation-bar__expand-button");
     }
 
     public static Locator mrinavigationbarexpand() {
@@ -85,11 +85,12 @@ public class Navigation extends BasePage {
      * Uses Locator method
      */
     public static void verifyPage(Page page) {
-        log.info("🔍 Verifying: page should be visible");
-        // Use Playwright assertions for reliable visibility check with auto-waiting
-        PlaywrightAssertions.assertThat(page()).isVisible();
+        log.info("🔍 Verifying: page should be visible (navigation bar loaded after login)");
+        // Wait for the MRI navigation bar to appear — it is only rendered after successful login.
+        // Using navigateToNavigation expand-button as the post-login page-ready indicator.
+        PlaywrightAssertions.assertThat(pageNavigationBar()).isVisible();
         TimeoutConfig.waitShort();
-        log.info("✅ Verification passed: page should be visible");
+        log.info("✅ Verification passed: navigation page loaded");
     }
 
     /**
