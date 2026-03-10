@@ -419,9 +419,9 @@ async function recordAndGenerate() {
 
   // ── Sanitize featureName ────────────────────────────────────────────────────
   // Must match Java's autoFixFeatureName: strip special chars, PascalCase each
-    // word, join with no spaces.  Without this a name like "My Feature" becomes
-    // four Maven exec.args instead of the expected four (recordingFile/name/url/jira)
-    // and Java's main() exits with "Invalid arguments!".
+    // word, join with no spaces.  Without this a name like "My Feature" is split
+    // into two separate name args, so Maven sees more than the expected four
+    // exec.args (recordingFile/name/url/jira) and Java's main() exits with "Invalid arguments!".
     const safeFeatureName = featureName.trim()
         .replace(/[^a-zA-Z0-9_\s]/g, '')        // strip special chars (keep spaces for now)
         .split(/\s+/)                             // split on spaces
