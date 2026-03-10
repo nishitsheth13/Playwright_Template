@@ -19,7 +19,7 @@ We've created comprehensive AI prompt libraries to help you:
 
 **📚 Documentation Files:**
 
-1. **[docs/AI_PROMPT_TEMPLATES.md](docs/AI_PROMPT_TEMPLATES.md)** - 21 Enterprise AI Prompts ⭐
+1. **[docs/AI_PROMPT_TEMPLATES.md](docs/AI_PROMPT_TEMPLATES.md)** - 20 Enterprise AI Prompts ⭐
    - **PROMPT-103: Upgrade Existing Framework** (NEW!)
      - Analyzes your current project
      - Adds CLI automation menu (recording, retry, JIRA, AI)
@@ -36,28 +36,24 @@ We've created comprehensive AI prompt libraries to help you:
    - PROMPT-701-702: CI/CD & Docker
    - PROMPT-801-802: Troubleshooting
 
-2. **[docs/STEP_DEFINITION_BEST_PRACTICES.md](docs/STEP_DEFINITION_BEST_PRACTICES.md)** - Code Quality Standards ⭐ NEW!
-   - **Permanent fixes for common issues**
-   - **NO** `:has-text()` pseudo-selectors (Java incompatible)
-   - **Proper** string escaping in selectors
-   - **Smart** locator priority (ID first strategy)
-   - **Prevent** duplicate step definitions
-   - **Handling multiple elements** with same name
-   - **Code generation checklist**
-   - **Quality enforcement rules**
+2. **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Developer Reference (Code Quality + CLI) ⭐
+    - **Part 2 — Step Definition Best Practices**
+        - **NO** `:has-text()` pseudo-selectors (Java incompatible)
+        - **Proper** string escaping in selectors
+        - **Smart** locator priority (ID first strategy)
+        - **Prevent** duplicate step definitions
+        - **Code generation checklist** and quality enforcement rules
+    - **Part 3 — Smart Element Handler** (Multiple same-name elements)
+        - **9 strategies** (`clickButtonInContext`, `clickButtonSmart`, etc.)
+        - **Decision tree** + real-world examples
+    - **Part 4 — NPM CLI & Migration Guide**
+        - How to use NPM-based CLI
+        - Cross-platform automation
+        - Command reference
 
-3. **[docs/SMART_ELEMENT_HANDLER_GUIDE.md](docs/SMART_ELEMENT_HANDLER_GUIDE.md)** - Multiple Elements Guide ⭐ NEW!
-   - **Problem:** Multiple "Add", "Save", "Delete" buttons
-   - **Solution:** SmartElementHandler utility class
-   - **9 strategies** for handling multiple elements
-   - **Real-world examples** (User Management, E-commerce, Forms)
-   - **Decision tree** for choosing right strategy
-   - **Quick reference** with code samples
-
-4. **[docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** - NPM Migration Guide
-   - How to use NPM-based CLI
-   - Cross-platform automation
-   - Command reference
+3. **[docs/AI_DOCUMENTATION_INDEX.md](docs/AI_DOCUMENTATION_INDEX.md)** - Navigation Helper
+    - Quick start guide
+    - File structure overview
 
 5. **[docs/AI_DOCUMENTATION_INDEX.md](docs/AI_DOCUMENTATION_INDEX.md)** - Navigation Helper
    - Quick start guide
@@ -112,9 +108,11 @@ Even if your new project uses a different framework (not Playwright), these temp
 
 **📖 Start Here:**
 
-1. **Quick Start?** → Check [AI_QUICK_REFERENCE.md](AI_QUICK_REFERENCE.md)
-2. **Need Full Workflow?** → Follow [AI_WORKFLOW_EXAMPLES.md](AI_WORKFLOW_EXAMPLES.md)
-3. **Just Want Prompts?** → Copy from [AI_PROMPT_TEMPLATES.md](AI_PROMPT_TEMPLATES.md)
+1. **Quick Start?** → Check [docs/AI_DOCUMENTATION_INDEX.md](docs/AI_DOCUMENTATION_INDEX.md)
+2. **Need Full Workflow?** → Follow [docs/AI_PROMPT_TEMPLATES.md](docs/AI_PROMPT_TEMPLATES.md) — Workflow Examples
+   section
+3. **Just Want Prompts?** → Copy from [docs/AI_PROMPT_TEMPLATES.md](docs/AI_PROMPT_TEMPLATES.md)
+4. **Developer Standards?** → Read [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)
 
 ---
 
@@ -436,4 +434,4 @@ For issues or questions, refer to the console output during test generation - it
 Internal use - MRI Energy Test Automation
 
 ---
-**Last Updated**: February 2026
+**Last Updated**: February 27, 2026

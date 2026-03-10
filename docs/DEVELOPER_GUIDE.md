@@ -1,7 +1,7 @@
 # 📖 Developer Guide - Playwright Automation Framework
 
-**Version:** 1.0  
-**Last Updated:** February 26, 2026  
+**Version:** 1.1  
+**Last Updated:** February 27, 2026  
 **Consolidates:** File Generation Templates · Step Definition Best Practices · Smart Element Handler · NPM Migration Guide
 
 ---
@@ -1394,14 +1394,17 @@ https-proxy=http://proxy.company.com:8080
 
 ## Rollback Plan
 
-If you need to revert to old `.bat`/`.ps1` scripts:
+If you need to revert the CLI to a previous state:
 
-1. Keep old files (don't delete them yet)
-2. Run `quick-start.bat` — still works unchanged
-3. To fully remove NPM: `rm package.json .npmrc package-lock.json && rm -rf node_modules/`
-4. Revert CLI: `git checkout automation-cli.js`
+1. To fully remove NPM: `rm package.json package-lock.json && rm -rf node_modules/`
+2. Revert CLI: `git checkout automation-cli.js`
+
+> ⚠️ **Note:** The old `.bat`/`.ps1` script fallback has been removed. `automation-cli.js` now spawns
+> Maven directly via Node's `spawn('mvn', [...], { shell: true })` — no intermediate batch files are
+> written or required. This approach works on Windows, macOS, and Linux regardless of spaces in the
+> project path.
 
 ---
 
 **Status:** ✅ Active — All NPM commands tested and working on Windows, macOS, Linux  
-**Last Validation Date:** February 26, 2026
+**Last Validation Date:** February 27, 2026
