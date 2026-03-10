@@ -707,26 +707,37 @@ async function recordAndGenerate() {
               process.stdout.write(colors.dim + `[DEBUG] args file   : ${normalizedArgsFile}\n` + colors.reset);
               process.stdout.write(colors.dim + `[DEBUG] args content: ${argsContent.replace(/\n/g, ' | ')}\n` + colors.reset);
 
-              // Single batch: compile phase + exec:java together.
-              // stdio: ['ignore','inherit','inherit'] — stdin is /dev/null so the batch
-              // never waits on a broken stdin handle; stdout/stderr stream to console.
-              const os = require('os');
-              const batchFile = path.join(os.tmpdir(), `mvn-gen-${Date.now()}.bat`);
-              const batchContent = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile}"\r\n`;
-              fs.writeFileSync(batchFile, batchContent, 'utf-8');
-              process.stdout.write(colors.dim + `[DEBUG] batch: ${batchFile}\n` + colors.reset);
+              // Single invocation: compile phase + exec:java together.
+              // On Windows use a batch file + cmd.exe to avoid Node.js arg serialisation issues;
+              // on macOS/Linux spawn Maven directly (cmd.exe is not available there).
+              const isWindows = process.platform === 'win32';
+              let generateCmd, generateArgs, generateCleanup;
+              if (isWindows) {
+                  const os = require('os');
+                  const batchFile = path.join(os.tmpdir(), `mvn-gen-${Date.now()}.bat`);
+                  const batchContent = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile}"\r\n`;
+                  fs.writeFileSync(batchFile, batchContent, 'utf-8');
+                  process.stdout.write(colors.dim + `[DEBUG] batch: ${batchFile}\n` + colors.reset);
+                  generateCmd = 'cmd.exe';
+                  generateArgs = ['/c', batchFile];
+                  generateCleanup = () => { try { fs.unlinkSync(batchFile); } catch (e) {} };
+              } else {
+                  generateCmd = 'mvn';
+                  generateArgs = ['compile', 'exec:java',
+                      `-Dexec.mainClass=configs.TestGeneratorHelper`,
+                      `-DtfArgsFile=${normalizedArgsFile}`
+                  ];
+                  generateCleanup = () => {};
+              }
 
-              const generateProcess = spawn('cmd.exe', ['/c', batchFile], {
+              const generateProcess = spawn(generateCmd, generateArgs, {
                   cwd: process.cwd(),
                   stdio: ['ignore', 'inherit', 'inherit'],
                   shell: false
               });
 
               generateProcess.on('close', (genCode) => {
-                  try {
-                      fs.unlinkSync(batchFile);
-                  } catch (e) {
-                  }
+                  generateCleanup();
                   if (genCode === 0) {
                       process.stdout.write(colors.green + '\n\n✅ Test files generated successfully!\n' + colors.reset);
                       process.stdout.write(colors.cyan + '\n📋 Generated Files:\n' + colors.reset);
@@ -5145,25 +5156,37 @@ async function retryFromRecording() {
       console.log(colors.dim + `[DEBUG] args file   : ${normalizedArgsFile1B}` + colors.reset);
       console.log(colors.dim + `[DEBUG] args content: ${argsContent1B.replace(/\n/g, ' | ')}` + colors.reset);
 
-      // Single batch: compile phase + exec:java together.
-      // cmd.exe /c <batchFile> with shell:false avoids Node.js arg serialisation issues.
-      const os1B = require('os');
-      const batchFile1B = path.join(os1B.tmpdir(), `mvn-gen1b-${Date.now()}.bat`);
-      const batchContent1B = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile1B}"\r\n`;
-      require('fs').writeFileSync(batchFile1B, batchContent1B, 'utf-8');
-      console.log(colors.dim + `[DEBUG] batch: ${batchFile1B}` + colors.reset);
+      // Single invocation: compile phase + exec:java together.
+      // On Windows use a batch file + cmd.exe to avoid Node.js arg serialisation issues;
+      // on macOS/Linux spawn Maven directly (cmd.exe is not available there).
+      const isWindows = process.platform === 'win32';
+      let generate1BCmd, generate1BArgs, generate1BCleanup;
+      if (isWindows) {
+          const os1B = require('os');
+          const batchFile1B = path.join(os1B.tmpdir(), `mvn-gen1b-${Date.now()}.bat`);
+          const batchContent1B = `@echo off\r\nmvn compile exec:java "-Dexec.mainClass=configs.TestGeneratorHelper" "-DtfArgsFile=${normalizedArgsFile1B}"\r\n`;
+          require('fs').writeFileSync(batchFile1B, batchContent1B, 'utf-8');
+          console.log(colors.dim + `[DEBUG] batch: ${batchFile1B}` + colors.reset);
+          generate1BCmd = 'cmd.exe';
+          generate1BArgs = ['/c', batchFile1B];
+          generate1BCleanup = () => { try { require('fs').unlinkSync(batchFile1B); } catch (e) {} };
+      } else {
+          generate1BCmd = 'mvn';
+          generate1BArgs = ['compile', 'exec:java',
+              `-Dexec.mainClass=configs.TestGeneratorHelper`,
+              `-DtfArgsFile=${normalizedArgsFile1B}`
+          ];
+          generate1BCleanup = () => {};
+      }
 
-      const generate = spawn('cmd.exe', ['/c', batchFile1B], {
+      const generate = spawn(generate1BCmd, generate1BArgs, {
           cwd: process.cwd(),
           stdio: 'inherit',
           shell: false
       });
 
       generate.on('close', (code) => {
-          try {
-              require('fs').unlinkSync(batchFile1B);
-          } catch (e) {
-          }
+          generate1BCleanup();
           if (code === 0) {
               console.log(colors.green + '\n\n✅ Test files generated successfully!' + colors.reset);
               console.log(colors.cyan + '\n📋 Generated Files:' + colors.reset);
@@ -5632,23 +5655,32 @@ async function generateAllureReport() {
 
     console.log(colors.yellow + '🔨 Generating Allure static report...\n' + colors.reset);
 
-    // Use a temp batch file to avoid spaces-in-path issues on Windows
-    const os = require('os');
-    const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
-    fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+    // On Windows use a temp batch file + cmd.exe to avoid spaces-in-path issues;
+    // on macOS/Linux spawn Maven directly.
+    const isWindows = process.platform === 'win32';
+    let allureCmd, allureArgs, allureCleanup;
+    if (isWindows) {
+        const os = require('os');
+        const batchFile = path.join(os.tmpdir(), `allure-report-${Date.now()}.bat`);
+        fs.writeFileSync(batchFile, `@echo off\r\nmvn allure:report\r\n`, 'utf-8');
+        allureCmd = 'cmd.exe';
+        allureArgs = ['/c', batchFile];
+        allureCleanup = () => { try { fs.unlinkSync(batchFile); } catch (e) {} };
+    } else {
+        allureCmd = 'mvn';
+        allureArgs = ['allure:report'];
+        allureCleanup = () => {};
+    }
 
   return new Promise((resolve) => {
-      const allureProcess = spawn('cmd.exe', ['/c', batchFile], {
+      const allureProcess = spawn(allureCmd, allureArgs, {
       cwd: process.cwd(),
           stdio: 'inherit',
           shell: false
     });
 
     allureProcess.on('close', (code) => {
-        try {
-            fs.unlinkSync(batchFile);
-        } catch (e) {
-        }
+        allureCleanup();
         if (code === 0 && fs.existsSync(reportHtml)) {
             // Copy the generated HTML report into the versioned MRI directory:
             //   MRITestExecutionReports/<Version>/allureReport/
