@@ -1399,11 +1399,10 @@ If you need to revert the CLI to a previous state:
 1. To fully remove NPM: `rm package.json package-lock.json && rm -rf node_modules/`
 2. Revert CLI: `git checkout automation-cli.js`
 
-> ⚠️ **Note:** The old checked-in `.bat`/`.ps1` helper scripts are still removed from the repository.
-> However, for Maven-based generation and Allure report creation, `automation-cli.js` currently writes
-> temporary `.bat` files into the OS temp directory and executes them via `cmd.exe`. As a result, this
-> end-to-end CLI workflow is only supported on Windows. On macOS and Linux, you must run the equivalent
-> Maven commands manually (see the examples above) or provide your own platform-specific wrapper.
+> ⚠️ **Note:** On Windows, `automation-cli.js` still writes a temporary `.bat` file and executes it
+> via `cmd.exe` with `{ shell: false }` to handle spaces in path. On macOS and Linux, Maven is
+> spawned directly via `spawn('mvn', ['allure:report'], { shell: false })` — no intermediate batch
+> files are written or required.
 
 ---
 
